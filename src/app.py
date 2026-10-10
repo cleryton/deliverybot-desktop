@@ -13,6 +13,7 @@ from .db import init_db
 from .ia import aquecer_ollama
 from .links import link_valido
 from . import preferencias, processamento
+from . import seguranca, privacidade
 
 logging.basicConfig(
     level=logging.DEBUG if config.FLASK_DEBUG else logging.INFO,
@@ -29,6 +30,7 @@ app = Flask(
 app.config["MAX_CONTENT_LENGTH"] = config.MAX_CONTENT_LENGTH
 app.secret_key = secrets.token_hex(32)
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Strict")
+seguranca.instalar(app)
 
 # Banco e IA são inicializados UMA VEZ ao importar o módulo (não a cada
 # requisição -- rodar o schema inteiro e checar o cardápio em todo request
@@ -57,10 +59,19 @@ def _segredo_valido(segredo_recebido: str) -> bool:
         # é melhor "esquecer de configurar e nada funcionar" do que "esquecer
         # de configurar e o endpoint ficar aberto pra qualquer um".
         return False
-    return hmac.compare_digest(segredo_recebido or "", config.WEBHOOK_SECRET)
+    return seguranca.igual(segredo_recebido or "", config.WEBHOOK_SECRET)
 
 
 def _exigir_autenticacao_cozinha():
+    if not seguranca.acesso_administrativo() or seguranca.login_bloqueado():
+        return False
+    resultado = _validar_autenticacao_cozinha()
+    if request.authorization:
+        seguranca.registrar_login(resultado)
+    return resultado
+
+
+def _validar_autenticacao_cozinha():
     auth = request.authorization
     if not auth:
         return False
@@ -77,7 +88,7 @@ def _exigir_autenticacao_cozinha():
             "'python definir_senha_cozinha.py' para definir a senha."
         )
         return False
-    if not hmac.compare_digest(auth.username or "", config.COZINHA_USUARIO):
+    if not seguranca.igual(auth.username or "", config.COZINHA_USUARIO):
         return False
     return check_password_hash(config.COZINHA_SENHA_HASH, auth.password or "")
 
@@ -85,12 +96,18 @@ def _exigir_autenticacao_cozinha():
 def requer_login_cozinha(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
+        if not seguranca.acesso_administrativo():
+            return "Acesso administrativo remoto desativado.", 403
+        if seguranca.login_bloqueado():
+            return "Muitas tentativas. Aguarde cinco minutos.", 429
         if not _exigir_autenticacao_cozinha():
             return (
                 "Login necessário.",
                 401,
                 {"WWW-Authenticate": 'Basic realm="Painel da cozinha"'},
             )
+        if request.method != "GET" and not seguranca.csrf_valido():
+            return "Sessão inválida. Reabra o painel.", 403
         return view(*args, **kwargs)
 
     return wrapper
@@ -103,7 +120,7 @@ def apenas_em_desenvolvimento(view):
 
     @wraps(view)
     def wrapper(*args, **kwargs):
-        if not config.FLASK_DEBUG:
+        if not config.FLASK_DEBUG or not seguranca.local():
             return jsonify({"erro": "endpoint disponível apenas com FLASK_DEBUG=true"}), 404
         return view(*args, **kwargs)
 
@@ -120,7 +137,7 @@ def verificar_webhook():
     token = request.args.get("hub.verify_token")
     desafio = request.args.get("hub.challenge")
 
-    if modo == "subscribe" and hmac.compare_digest(token or "", config.WHATSAPP_VERIFY_TOKEN):
+    if config.WHATSAPP_VERIFY_TOKEN not in {"", "trocar_por_uma_palavra_secreta"} and modo == "subscribe" and seguranca.igual(token or "", config.WHATSAPP_VERIFY_TOKEN):
         return desafio, 200
     return "Token de verificação inválido", 403
 
@@ -133,6 +150,8 @@ def receber_webhook():
     if not hmac.compare_digest(request.headers.get("X-Hub-Signature-256", ""), assinatura):
         return jsonify(status="não autorizado"), 403
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return jsonify(status="dados inválidos"), 400
     dados = whatsapp.extrair_mensagem_recebida(payload)
 
     if dados is None:
@@ -150,7 +169,7 @@ def receber_webhook():
         # Nunca deixa uma exceção virar uma página de erro 500 pública --
         # loga internamente e confirma o recebimento mesmo assim (evita que
         # o provedor fique retransmitindo o mesmo webhook em loop).
-        logger.exception("Falha ao processar mensagem (Meta) de %s", telefone)
+        logger.error("Falha ao processar mensagem recebida da Meta")
         return jsonify({"status": "erro_interno"}), 200
 
     return jsonify({"status": "ok"}), 200
@@ -172,6 +191,8 @@ def receber_webhook_waha(segredo):
         return jsonify({"status": "não autorizado"}), 404  # 404 em vez de 401: não revela que a rota existe
 
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        return jsonify(status="dados inválidos"), 400
     dados = whatsapp.extrair_mensagem_recebida_waha(payload)
 
     if dados is None:
@@ -195,17 +216,19 @@ def api_processar_mensagem(segredo):
         return jsonify({"erro": "não autorizado"}), 404
 
     dados = request.get_json(silent=True) or {}
+    if not isinstance(dados, dict) or not isinstance(dados.get("telefone", ""), str) or not isinstance(dados.get("texto", ""), str):
+        return jsonify(erro="Dados inválidos."), 400
     telefone = whatsapp._numero_limpo(dados.get("telefone", ""))
     texto = (dados.get("texto") or "").strip()
 
-    if not telefone:
+    if not 10 <= len(telefone) <= 15 or not texto or len(texto) > 8000:
         return jsonify({"erro": "telefone é obrigatório"}), 400
 
     pedidos.registrar_mensagem(telefone, "ENTRADA", texto)
     try:
         resposta = bot.processar_mensagem(telefone, texto)
     except Exception:
-        logger.exception("Falha ao processar mensagem via API interna de %s", telefone)
+        logger.error("Falha ao processar mensagem via API interna")
         return jsonify({"erro": "falha ao processar mensagem"}), 500
     pedidos.registrar_mensagem(telefone, "SAIDA", resposta)
 
@@ -258,8 +281,13 @@ def enviar_pedido(token):
     if not ok:
         return render_template("link_invalido.html", mensagem=mensagem), 410
 
+    if not seguranca.csrf_valido():
+        return "A sessão do pedido expirou. Reabra seu link de compra.", 403
+
     telefone = link["telefone"]
     nome_cliente = request.form.get("nome", "Cliente").strip() or "Cliente"
+    if len(nome_cliente) > 160:
+        return "O nome deve ter no máximo 160 caracteres.", 400
     forma_pagamento = request.form.get("forma_pagamento", "Dinheiro")
     forma_entrega = request.form.get("forma_entrega", "RETIRADA BALCAO")
     cep = request.form.get("cep", "").strip()
@@ -288,9 +316,9 @@ def enviar_pedido(token):
 
     itens = []
     for chave, valor in request.form.items():
-        if chave.startswith("qtd_") and valor and valor.isdigit() and int(valor) > 0:
+        if chave.startswith("qtd_") and valor and len(valor) <= 6 and valor.isascii() and valor.isdigit() and int(valor) > 0:
             produto_id_str = chave.replace("qtd_", "")
-            if produto_id_str.isdigit():
+            if len(produto_id_str) <= 10 and produto_id_str.isascii() and produto_id_str.isdigit():
                 itens.append({"produto_id": int(produto_id_str), "quantidade": int(valor)})
 
     if not itens:
@@ -344,7 +372,7 @@ def enviar_pedido(token):
     except Exception:
         # O pedido já foi salvo com sucesso -- uma falha ao notificar pelo
         # WhatsApp não deve impedir de mostrar a confirmação na tela.
-        logger.exception("Pedido %s criado, mas falhou ao notificar %s pelo WhatsApp", pedido["numero_pedido"], telefone)
+        logger.error("Pedido criado; notificação WhatsApp não concluída")
 
     return render_template("pedido_sucesso.html", pedido=pedido, modo_teste=config.MODO_TESTE, notificacao_ok=notificacao_ok)
 
@@ -358,7 +386,7 @@ def enviar_pedido(token):
 @app.route("/cozinha", methods=["GET"])
 @requer_login_cozinha
 def painel_cozinha():
-    return render_template("cozinha.html", fila=fila.listar_fila())
+    return render_template("cozinha.html", fila=fila.listar_fila(), csrf=seguranca.csrf())
 
 
 @app.route("/cozinha/avancar/<int:pedido_id>", methods=["POST"])
@@ -388,6 +416,16 @@ app.register_blueprint(gestao_bp)
 @app.route("/")
 def inicio():
     return redirect(url_for("gestao.painel"))
+
+
+@app.route("/privacidade")
+def aviso_privacidade():
+    return render_template("privacidade.html", aviso=privacidade.aviso())
+
+
+@app.errorhandler(500)
+def erro_interno(_erro):
+    return jsonify(erro="Não foi possível concluir a operação. Tente novamente ou contate a loja."), 500
 
 
 if __name__ == "__main__":

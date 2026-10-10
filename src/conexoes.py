@@ -48,6 +48,8 @@ def _waha(metodo, caminho, dados=None, aceitar_404=False):
         endereco, chave = whatsapp_local.credenciais()
     else:
         endereco, chave = config.WAHA_URL, config.WAHA_API_KEY
+    from .seguranca import transporte_seguro
+    transporte_seguro(endereco)
     try:
         resposta = http().request(metodo, endereco + caminho, json=dados,
                                  headers={"X-Api-Key": chave, "Accept": "application/json"},

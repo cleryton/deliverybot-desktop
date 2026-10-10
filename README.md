@@ -4,6 +4,8 @@
 >
 > O [MANUAL.md](MANUAL.md) abaixo documenta o modo servidor e as integrações originais para desenvolvedores.
 
+> **Versão 2.3:** configure o responsável e o contato em **Privacidade e LGPD**. O app oferece aviso aos clientes, exportação e correção de dados, remoção da identificação e limpeza do histórico. Backups novos são criptografados por senha. Veja [PRIVACIDADE E SEGURANÇA.md](PRIVACIDADE%20E%20SEGURAN%C3%87A.md) para procedimentos, retenção e limites das medidas.
+
 ## Versões e histórico
 
 A versão atual está em [VERSION](VERSION), e as alterações são registradas em [CHANGELOG.md](CHANGELOG.md). Cada pedido que modificar o projeto gera um commit identificado por versão e uma tag `vX.Y.Z`, conforme [AGENTS.md](AGENTS.md). Os executáveis são gerados localmente e não fazem parte do histórico Git.

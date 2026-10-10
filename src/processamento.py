@@ -1,5 +1,6 @@
 """Fila persistente: webhooks rápidos, mensagens duplicadas sem repetir IA/envio."""
 import logging
+import hashlib
 import threading
 import time
 import uuid
@@ -34,8 +35,13 @@ def _servico_pronto():
 
 
 def enfileirar(dados, chave=None):
+    # WhatsApp pode fornecer um LID numérico quando o número alternativo não está disponível.
+    if not isinstance(dados.get("telefone"), str) or not dados["telefone"].isascii() or not dados["telefone"].isdigit() or not 10 <= len(dados["telefone"]) <= 20:
+        raise ValueError("Telefone de atendimento inválido.")
+    if not isinstance(dados.get("texto"), str) or not 1 <= len(dados["texto"]) <= 8000:
+        raise ValueError("Mensagem de atendimento inválida.")
     origem = ("LOCAL:" if config.WHATSAPP_PROVIDER == "LOCAL" else "WAHA:") + (dados.get("session") or "default")
-    chave = str(chave or uuid.uuid4())[:2048]
+    chave = "sha256:" + hashlib.sha256(str(chave or uuid.uuid4()).encode()).hexdigest()
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
         cur = conn.execute(

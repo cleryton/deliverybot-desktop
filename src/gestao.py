@@ -1,10 +1,7 @@
 """Painel administrativo compartilhado pelo aplicativo e pelo servidor."""
 import hmac
-from contextlib import closing
 from concurrent.futures import ThreadPoolExecutor
 import secrets
-import sqlite3
-from datetime import datetime
 from functools import wraps
 from pathlib import Path
 
@@ -13,20 +10,23 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
 from . import conexoes, processamento
+from . import seguranca, privacidade, backups
 
 bp = Blueprint("gestao", __name__)
 
 
 def _local():
     # Host também é verificado para impedir DNS rebinding contra o servidor local.
-    return request.remote_addr in {"127.0.0.1", "::1"} and request.host.split(":")[0] in {"127.0.0.1", "localhost"}
+    return seguranca.local()
 
 
 def autorizado():
     from .app import _exigir_autenticacao_cozinha
     token = current_app.config.get("DESKTOP_TOKEN")
     if token:
-        return _local() and hmac.compare_digest(session.get("desktop", ""), token)
+        return _local() and seguranca.igual(session.get("desktop", ""), token)
+    if not seguranca.acesso_administrativo():
+        return False
     return _exigir_autenticacao_cozinha()
 
 
@@ -36,8 +36,7 @@ def protegido(view):
         if not autorizado():
             return jsonify(erro="Acesso restrito ao administrador."), 401
         if request.method != "GET":
-            esperado = session.get("csrf", "")
-            if not esperado or not hmac.compare_digest(request.headers.get("X-CSRF-Token", ""), esperado):
+            if not seguranca.csrf_valido():
                 return jsonify(erro="Sessão expirada. Reabra o painel."), 403
         return view(*args, **kwargs)
     return wrapper
@@ -68,10 +67,11 @@ def cabecalhos(response):
 def painel():
     token = current_app.config.get("DESKTOP_TOKEN")
     recebido = request.args.get("acesso", "")
-    if token and _local() and recebido and hmac.compare_digest(recebido, token):
+    if token and _local() and recebido and seguranca.igual(recebido, token):
         session.clear()
         session["desktop"] = token
         session["csrf"] = secrets.token_urlsafe(32)
+        session.permanent = True
         return redirect(url_for("gestao.painel"))
     if not autorizado():
         return "Abra o aplicativo DeliveryBot ou entre com a conta administrativa.", 401, {"WWW-Authenticate": 'Basic realm="DeliveryBot"'}
@@ -90,8 +90,9 @@ def resumo():
                    baixos=sum(p["ativo"] and p["estoque"] is not None and p["estoque"] <= p["estoque_minimo"] for p in produtos),
                    pendentes=len(fila.listar_fila()), **total, nome=config.NOME_RESTAURANTE,
                    modo_teste=config.MODO_TESTE, whatsapp=config.WHATSAPP_PROVIDER,
+                   privacidade_configurada=bool(config.LGPD_RESPONSAVEL and config.LGPD_CONTATO),
                    base_url=config.BASE_URL, pasta=str(Path(config.DATABASE_PATH).resolve().parent),
-                   webhook_waha=_webhook_exibicao())
+                   webhook_waha="Endereço privado de recebimento configurado." if config.WEBHOOK_SECRET else "Configure a conexão do WhatsApp.")
 
 
 def _webhook_exibicao():
@@ -178,20 +179,34 @@ def simular():
     return jsonify(resposta=resposta, caminho="/m/" + resposta.rsplit("/", 1)[-1] if mensagem == "2" else None)
 
 
-def criar_backup():
-    pasta = Path(config.DATABASE_PATH).resolve().parent / "backups"
-    pasta.mkdir(exist_ok=True)
-    destino = pasta / ("DeliveryBot-" + datetime.now().strftime("%Y%m%d-%H%M%S-%f") + ".db")
-    with get_conn() as origem:
-        with closing(sqlite3.connect(destino)) as copia:
-            origem.backup(copia)
-    return str(destino)
+def criar_backup(senha):
+    return backups.criar(senha)
 
 
 @bp.route("/gestao/api/backup", methods=["POST"])
 @protegido
 def backup():
-    return jsonify(caminho=criar_backup())
+    return jsonify(caminho=criar_backup(dados_json().get("senha")))
+
+
+@bp.route("/gestao/api/privacidade")
+@protegido
+def privacidade_status():
+    return jsonify(privacidade.situacao())
+
+
+@bp.route("/gestao/api/privacidade/<acao>", methods=["POST"])
+@protegido
+def privacidade_acao(acao):
+    acoes = {"exportar": privacidade.exportar, "corrigir": privacidade.corrigir, "remover": privacidade.remover_identificacao}
+    dados = dados_json()
+    if acao == "limpar":
+        if dados.get("confirmar_limpeza") is not True:
+            raise ValueError("Confirme a limpeza do histórico fora do prazo.")
+        return jsonify(privacidade.limpar_historico())
+    if acao not in acoes:
+        raise ValueError("Operação de privacidade inválida.")
+    return jsonify(acoes[acao](dados))
 
 
 @bp.route("/gestao/api/conexoes")

@@ -32,7 +32,8 @@ MENU_TEXTO = (
     "5 - Telefone ☎️\n"
     "6 - Promoções 💰\n"
     "7 - Taxa de entrega 🛵\n"
-    "8 - Endereço 📍"
+    "8 - Endereço 📍\n"
+    "9 - Privacidade e seus dados 🔒"
 )
 
 _ultima_chamada_ia: dict[str, float] = {}
@@ -51,6 +52,9 @@ def _dentro_do_rate_limit(telefone: str) -> bool:
 
 
 def _resposta_opcao(opcao: str, telefone: str) -> str | None:
+    if opcao == "9" or opcao.casefold() in {"privacidade", "lgpd", "meus dados"}:
+        contato = config.LGPD_CONTATO or config.TELEFONE_RESTAURANTE or "esta conversa com a loja"
+        return f"🔒 Usamos seus dados para atendimento e pedidos. Para acesso, correção ou remoção, fale com o responsável: {contato}. Aviso de privacidade: {config.BASE_URL}/privacidade"
     if opcao == "1":
         return f"⏰ Nosso horário de funcionamento:\n{config.HORARIO_FUNCIONAMENTO}"
     if opcao == "2":
@@ -83,15 +87,27 @@ def _processar_mensagem_menu_fixo(telefone: str, texto_limpo: str) -> str:
 
 def processar_mensagem(telefone: str, texto: str) -> str:
     """Recebe o texto do cliente e devolve a resposta do bot."""
+    resposta = _processar(telefone, texto)
+    from .db import get_conn
+    with get_conn() as conn:
+        novo = conn.execute("INSERT OR IGNORE INTO sessoes_bot (telefone, estado) VALUES (?, 'AVISO_PRIVACIDADE')", (telefone,)).rowcount
+    if novo and (texto or "").strip().casefold() not in {"9", "privacidade", "lgpd", "meus dados"}:
+        resposta += f"\n\n🔒 Para saber como usamos seus dados e falar com o responsável, digite PRIVACIDADE ou veja {config.BASE_URL}/privacidade"
+    return resposta
+
+
+def _processar(telefone: str, texto: str) -> str:
     texto_limpo = (texto or "").strip()
+    if texto_limpo == "9" or texto_limpo.casefold() in {"privacidade", "lgpd", "meus dados"}:
+        return _resposta_opcao(texto_limpo, telefone)
 
     if _dentro_do_rate_limit(telefone):
-        logger.info("Rate limit: %s mandou mensagem rápido demais, usando menu fixo", telefone)
+        logger.info("Limite de frequência aplicado ao atendimento")
         return _processar_mensagem_menu_fixo(telefone, texto_limpo)
 
     try:
         return ia.responder(telefone, texto_limpo)
     except ia.IAIndisponivel as exc:
-        logger.warning("IA indisponível, usando menu fixo: %s", exc)
+        logger.warning("IA indisponível; atendimento continuará pelo menu")
 
     return _processar_mensagem_menu_fixo(telefone, texto_limpo)

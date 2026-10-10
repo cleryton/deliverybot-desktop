@@ -16,7 +16,7 @@ _FORMATO_DATA = "%Y-%m-%d %H:%M:%S"
 
 
 def gerar_link_pedido(telefone: str) -> str:
-    token = secrets.token_urlsafe(12)
+    token = secrets.token_urlsafe(32)
     expira_em = (datetime.now(timezone.utc) + timedelta(minutes=config.VALIDADE_LINK_MIN)).strftime(_FORMATO_DATA)
 
     with get_conn() as conn:

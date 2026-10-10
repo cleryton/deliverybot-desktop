@@ -4,9 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fila de preparo — {{ fila|length }} pedido(s)</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="csrf-token" content="{{ csrf }}">
 <style>
   :root {
     --tinta: #15201c;
@@ -210,7 +208,7 @@
     {% endfor %}
   </div>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     (function () {
       const TITULOS = { AGUARDANDO: 'Iniciar preparo', EM_PREPARO: 'Marcar como pronto', PRONTO: 'Marcar como retirado/entregue' };
 
@@ -276,7 +274,7 @@
         try {
           const resp = await fetch('/cozinha/avancar/' + pedidoId, {
             method: 'POST',
-            headers: { 'X-Requested-With': 'fetch' },
+            headers: { 'X-Requested-With': 'fetch', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content },
           });
           if (resp.ok) {
             await buscarEAtualizar();

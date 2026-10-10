@@ -19,6 +19,9 @@ data/deliverybot.db-shm
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
+*.dbot
+*.dbot-local
+restaurar.tmp
 data/whatsapp/
 data/backups/
 *.pem

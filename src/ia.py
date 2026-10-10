@@ -197,7 +197,8 @@ def _mensagens_atualizadas(telefone: str, texto: str) -> list[dict]:
     mensagens = _historico_mensagens(telefone)
     if not mensagens or mensagens[-1]["role"] != "user":
         mensagens.append({"role": "user", "content": texto})
-    return mensagens
+    from .privacidade import reduzir_para_ia
+    return [{"role": m["role"], "content": reduzir_para_ia(telefone, m["content"])} for m in mensagens]
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +213,7 @@ def _responder_anthropic(telefone: str, texto: str) -> str:
 
     cliente = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     mensagens = _mensagens_atualizadas(telefone, texto)
+    links_privados = {}
 
     try:
         resposta = cliente.messages.create(
@@ -222,13 +224,17 @@ def _responder_anthropic(telefone: str, texto: str) -> str:
             messages=mensagens,
         )
 
-        while resposta.stop_reason == "tool_use":
+        for _ in range(4):
+            if resposta.stop_reason != "tool_use":
+                break
             blocos_tool = [b for b in resposta.content if b.type == "tool_use"]
             resultados = []
             for bloco in blocos_tool:
                 if bloco.name == _NOME_FERRAMENTA:
                     link = gerar_link_pedido(telefone)
-                    resultado = {"link": link}
+                    marcador = f"[LINK_PEDIDO_{len(links_privados)+1}]"
+                    links_privados[marcador] = link
+                    resultado = {"link": marcador}
                 else:
                     resultado = {"erro": f"ferramenta desconhecida: {bloco.name}"}
                 resultados.append(
@@ -254,6 +260,11 @@ def _responder_anthropic(telefone: str, texto: str) -> str:
         texto_final = "".join(
             bloco.text for bloco in resposta.content if bloco.type == "text"
         ).strip()
+        for marcador, link in links_privados.items():
+            if marcador in texto_final:
+                texto_final = texto_final.replace(marcador, link)
+            else:
+                texto_final += "\nFaça seu pedido: " + link
         return texto_final or "Desculpa, pode repetir? Não entendi bem."
     except IAIndisponivel:
         raise
@@ -282,12 +293,12 @@ def _chamar_ollama(payload_mensagens: list, tentativas: int = 2) -> dict:
     ultimo_erro: Exception | None = None
     for tentativa in range(1, tentativas + 1):
         try:
-            resp = _http.post(url, json=corpo, timeout=config.OLLAMA_TIMEOUT_SEGUNDOS)
+            resp = _http.post(url, json=corpo, timeout=config.OLLAMA_TIMEOUT_SEGUNDOS, allow_redirects=False)
             if resp.status_code == 404:
                 raise IAIndisponivel(
                     f"Modelo '{config.OLLAMA_MODEL}' não encontrado no Ollama. "
                     f"Rode 'ollama list' e coloque o nome exato em OLLAMA_MODEL no .env "
-                    f"(ou 'ollama pull {config.OLLAMA_MODEL}'). Resposta: {resp.text}"
+                    f"(ou 'ollama pull {config.OLLAMA_MODEL}')."
                 )
             resp.raise_for_status()
             return resp.json()
@@ -361,6 +372,7 @@ def aquecer_ollama() -> None:
                 "keep_alive": config.OLLAMA_KEEP_ALIVE,
             },
             timeout=config.OLLAMA_TIMEOUT_SEGUNDOS,
+            allow_redirects=False,
         )
         resp.raise_for_status()
         logger.info("Modelo aquecido em %.1fs.", time.monotonic() - inicio)
@@ -379,6 +391,12 @@ def responder(telefone: str, texto: str) -> str:
     motivo -- o chamador deve tratar isso caindo de volta no menu fixo.
     """
     provedor = config.IA_PROVIDER
+    from .conexoes import url_local
+    externo = provedor == "ANTHROPIC" or (provedor == "OLLAMA" and not url_local(config.OLLAMA_URL))
+    if externo and config.LGPD_IA_EXTERNA != "SIM":
+        raise IAIndisponivel("Envio a IA externa desativado. Revise as opções de privacidade.")
+    if provedor == "OLLAMA" and externo and not config.OLLAMA_URL.startswith("https://"):
+        raise IAIndisponivel("O servidor externo de IA precisa usar HTTPS.")
 
     if provedor == "ANTHROPIC":
         return _responder_anthropic(telefone, texto)

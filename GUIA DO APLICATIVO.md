@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.2
+# DeliveryBot Desktop 2.3
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -63,11 +63,23 @@ A IA é opcional. Quando indisponível, o bot continua pelo menu. Anthropic requ
 
 Os dados ficam em **%LOCALAPPDATA%\DeliveryBot**, fora da pasta do programa. A instalação de uma nova versão e a desinstalação preservam essa pasta.
 
-Use **Criar backup** na Visão geral. O arquivo `.db` contém produtos, estoque, clientes, pedidos e configurações, inclusive credenciais. Copie-o para um local seguro fora desse computador. **Abrir pasta de dados** ajuda a localizar o arquivo.
+Use **Criar backup** na Visão geral e escolha uma senha com pelo menos 12 caracteres. O arquivo `.dbot` contém produtos, estoque, clientes, pedidos e configurações, protegido com criptografia autenticada. Credenciais dos serviços são excluídas dessa cópia. Copie-o para um local seguro fora desse computador e guarde a senha separadamente: ela não fica salva no aplicativo. **Abrir pasta de dados** ajuda a localizar o arquivo.
 
-O backup `.db` não inclui a autenticação nem a caixa de entrada do componente WhatsApp. Em outro computador, reconecte pelo QR Code. Para preservar mensagens que ainda não chegaram ao servidor do aplicativo, copie também a pasta `whatsapp`, com o aplicativo fechado. Essa pasta contém dados privados da sessão; mantenha-a protegida.
+O backup `.dbot` não inclui a autenticação nem a caixa de entrada do componente WhatsApp. Em outro computador, reconecte pelo QR Code e informe novamente as credenciais necessárias. A pasta `whatsapp` contém dados privados da sessão e mensagens ainda não entregues ao servidor; não envie essa pasta a outras pessoas. Planeje a migração com o atendimento pausado e a fila concluída.
 
-Para recuperar, use **Restaurar backup**, selecione um `.db` do DeliveryBot e confirme. O aplicativo cria uma cópia dos dados atuais, fecha e aplica o backup na próxima abertura. Essa função também permite importar um banco de uma versão anterior. Os produtos antigos entram sem controle de estoque; habilite-o e informe o saldo inicial.
+Para recuperar, use **Restaurar backup**, informe a senha, selecione um `.dbot` e confirme. O aplicativo cria uma cópia protegida dos dados atuais, fecha e aplica o backup na próxima abertura. Senha incorreta ou arquivo alterado não substituem o banco atual. A função também importa um `.db` de versões anteriores; nesse caso, a senha escolhida protege a cópia de segurança dos dados atuais. Cópias automáticas `.dbot-local` só podem ser abertas pela conta Windows que as criou. Os produtos antigos entram sem controle de estoque; habilite-o e informe o saldo inicial.
+
+## Privacidade e LGPD
+
+Antes de atender clientes, abra **Privacidade e LGPD**, informe a empresa responsável e o contato para solicitações e revise a descrição da retenção dos pedidos. O formulário de compra e o primeiro atendimento incluem o aviso; o cliente pode digitar **PRIVACIDADE** no WhatsApp.
+
+Após verificar a identidade e a solicitação do cliente, use **Exportar dados**, **Corrigir cadastro** ou **Remover identificação**. A remoção bloqueia pedidos e envios em andamento; preserva os itens e totais das vendas. A exportação contém dados pessoais e deve ser entregue apenas ao titular. Essas operações abrangem o banco atual; revise também backups, exportações, sessões e provedores externos.
+
+O prazo operacional das conversas começa em 30 dias e pode ser ajustado. **Limpar histórico fora do prazo** remove mensagens antigas de conversas concluídas e links expirados, preservando atendimentos pendentes. Execute a limpeza conforme sua política; não existe remoção automática dos pedidos ou das cópias de backup.
+
+O envio a IA externa fica desligado por padrão. Ollama neste computador funciona normalmente. Para usar Anthropic ou Ollama em outro servidor, revise o compartilhamento e habilite essa opção na área de privacidade. A redução de dados no texto não garante anonimização de tudo que um cliente escrever.
+
+No Windows, a pasta de dados fica restrita à conta atual e SYSTEM; segredos das configurações usam a proteção da conta Windows. O banco em uso continua SQLite e não é criptografado integralmente. Proteja a conta, bloqueie a tela e use criptografia de disco para proteção contra acesso físico. Veja [PRIVACIDADE E SEGURANÇA.md](PRIVACIDADE%20E%20SEGURAN%C3%87A.md) para procedimentos e limites das medidas.
 
 Fotos antigas armazenadas em `web/static/produtos` não fazem parte do backup do banco. Preserve esses arquivos separadamente ao transferir um projeto antigo. O novo cadastro usa nome, descrição e categoria sem exigir fotos.
 

@@ -145,13 +145,15 @@ def test_api_autenticacao_csrf_e_pedido_pelo_formulario(monkeypatch):
     resposta = cliente.post("/gestao/api/simular", json={"telefone": "5547999990000", "texto": "2"}, headers=headers).json
     caminho = resposta["caminho"]
     assert b'Notebook' in cliente.get(caminho).data
-    r = cliente.post(caminho, data={"nome": "Ana", "forma_pagamento": "Pix", f'qtd_{p["id"]}': 1})
+    r = cliente.post(caminho, data={"nome": "Ana", "forma_pagamento": "Pix", "csrf_token": csrf, f'qtd_{p["id"]}': 1})
     assert r.status_code == 200
     assert cliente.post(caminho, data={f'qtd_{p["id"]}': 1}).status_code == 410
-    backup = cliente.post("/gestao/api/backup", json={}, headers=headers).json["caminho"]
+    backup = cliente.post("/gestao/api/backup", json={"senha": "senha-de-backup-teste"}, headers=headers).json["caminho"]
+    from src.backups import abrir_arquivo
+    dados = abrir_arquivo(backup, "senha-de-backup-teste")
     from desktop import validar_backup
-    validar_backup(backup)
-    with closing(sqlite3.connect(backup)) as copia:
+    with closing(sqlite3.connect(':memory:')) as copia:
+        copia.deserialize(dados)
         assert copia.execute("SELECT estoque FROM produtos").fetchone()[0] == 0
 
 
@@ -198,9 +200,10 @@ def test_restauracao_preserva_copia_anterior(tmp_path, monkeypatch):
     assert not (pasta / 'restaurar.db').exists()
     with closing(sqlite3.connect(pasta / 'deliverybot.db')) as conn:
         assert conn.execute('SELECT estoque FROM produtos').fetchone()[0] == 9
-    copia = next((pasta / 'backups').glob('antes-restauracao-*.db'))
-    validar_backup(copia)
-    with closing(sqlite3.connect(copia)) as conn:
+    copia = next((pasta / 'backups').glob('antes-restauracao-*.dbot-local'))
+    from src.backups import abrir_arquivo
+    with closing(sqlite3.connect(':memory:')) as conn:
+        conn.deserialize(abrir_arquivo(copia, ''))
         assert conn.execute('SELECT estoque FROM produtos').fetchone()[0] == 5
     invalido = tmp_path / 'outro.db'
     with sqlite3.connect(invalido) as conn:

@@ -131,3 +131,12 @@ def gerar_segredo_sugerido() -> str:
     """Usado só pelo utilitário de linha de comando (ver gerar_segredos.py)
     para sugerir valores fortes ao preencher o .env."""
     return _secrets_module.token_urlsafe(24)
+
+
+# Privacidade: prazos operacionais configuráveis; não definem obrigações fiscais.
+LGPD_RESPONSAVEL = os.getenv("LGPD_RESPONSAVEL", "")
+LGPD_CONTATO = os.getenv("LGPD_CONTATO", "")
+LGPD_RETENCAO_PEDIDOS = os.getenv("LGPD_RETENCAO_PEDIDOS", "A loja conserva registros de pedidos durante os prazos necessários à operação e às obrigações legais aplicáveis. Consulte o responsável para conhecer o prazo adotado.")
+LGPD_MENSAGENS_DIAS = int(os.getenv("LGPD_MENSAGENS_DIAS", "30"))
+LGPD_IA_EXTERNA = os.getenv("LGPD_IA_EXTERNA", "NAO")
+ADMIN_PERMITIR_REMOTO = _env_bool("ADMIN_PERMITIR_REMOTO", False)

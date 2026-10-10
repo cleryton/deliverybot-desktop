@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 from . import config
 from .db import get_conn
 from .estoque import dinheiro, inteiro, texto, invalidar_catalogo
+from .seguranca import proteger_segredo, revelar_segredo
 
 TEXTOS = {
     "NOME_RESTAURANTE": 160, "TELEFONE_RESTAURANTE": 40,
@@ -13,10 +14,11 @@ TEXTOS = {
     "WAHA_WEBHOOK_BASE_URL": 500,
     "WHATSAPP_PHONE_NUMBER_ID": 80, "OLLAMA_URL": 500, "OLLAMA_MODEL": 100,
     "ANTHROPIC_MODEL": 100,
+    "LGPD_RESPONSAVEL": 160, "LGPD_CONTATO": 200, "LGPD_RETENCAO_PEDIDOS": 1000,
 }
 SEGREDOS = {"WAHA_API_KEY", "WHATSAPP_TOKEN", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "WEBHOOK_SECRET", "ANTHROPIC_API_KEY"}
-ENUMS = {"WHATSAPP_PROVIDER": {"TESTE", "LOCAL", "WAHA", "META"}, "IA_PROVIDER": {"", "OLLAMA", "ANTHROPIC"}}
-CAMPOS = set(TEXTOS) | SEGREDOS | set(ENUMS) | {"TAXA_ENTREGA", "TEMPO_PREPARO_MIN"}
+ENUMS = {"WHATSAPP_PROVIDER": {"TESTE", "LOCAL", "WAHA", "META"}, "IA_PROVIDER": {"", "OLLAMA", "ANTHROPIC"}, "LGPD_IA_EXTERNA": {"NAO", "SIM"}}
+CAMPOS = set(TEXTOS) | SEGREDOS | set(ENUMS) | {"TAXA_ENTREGA", "TEMPO_PREPARO_MIN", "LGPD_MENSAGENS_DIAS"}
 
 
 def aplicar(valores):
@@ -24,7 +26,7 @@ def aplicar(valores):
         if chave in CAMPOS:
             if chave == "TAXA_ENTREGA":
                 valor = float(valor)
-            elif chave == "TEMPO_PREPARO_MIN":
+            elif chave in {"TEMPO_PREPARO_MIN", "LGPD_MENSAGENS_DIAS"}:
                 valor = int(valor)
             setattr(config, chave, valor)
     config.MODO_TESTE = config.WHATSAPP_PROVIDER == "TESTE" or (
@@ -36,6 +38,16 @@ def aplicar(valores):
 def carregar():
     with get_conn() as conn:
         valores = {r["chave"]: r["valor"] for r in conn.execute("SELECT * FROM configuracoes")}
+        for chave in SEGREDOS & valores.keys():
+            armazenado = valores[chave]
+            try:
+                valores[chave] = revelar_segredo(armazenado)
+            except ValueError:
+                # Uma conta Windows diferente não consegue usar a credencial antiga.
+                valores[chave] = ""
+            protegido = proteger_segredo(valores[chave])
+            if valores[chave] and protegido != armazenado and not armazenado.startswith("dpapi:v1:"):
+                conn.execute("UPDATE configuracoes SET valor=? WHERE chave=?", (protegido, chave))
     aplicar(valores)
 
 
@@ -63,6 +75,10 @@ def salvar(dados):
                 raise ValueError(f"{chave}: opção inválida.")
         elif chave == "TAXA_ENTREGA":
             valor = dinheiro(valor, "Taxa de entrega")
+        elif chave == "LGPD_MENSAGENS_DIAS":
+            valor = inteiro(valor, "Retenção de conversas", 1)
+            if valor > 365:
+                raise ValueError("Retenção de conversas: use de 1 a 365 dias.")
         else:
             valor = inteiro(valor, "Tempo estimado", 1)
         valores[chave] = valor
@@ -73,6 +89,7 @@ def salvar(dados):
         raise ValueError("Preencha a chave da Anthropic para ativar a IA.")
     with get_conn() as conn:
         for chave, valor in valores.items():
-            conn.execute("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor", (chave, str(valor)))
+            armazenado = proteger_segredo(str(valor)) if chave in SEGREDOS else str(valor)
+            conn.execute("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor", (chave, armazenado))
     aplicar(valores)
     return obter()

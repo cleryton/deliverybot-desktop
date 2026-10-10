@@ -5,7 +5,8 @@ import QRCode from 'qrcode';
 import makeWASocket, {useMultiFileAuthState, makeCacheableSignalKeyStore, normalizeMessageContent, DisconnectReason, Browsers} from '@whiskeysockets/baileys';
 import pino from 'pino';
 
-const logger=pino({level:'warn'});
+// A biblioteca pode incluir contatos e corpos de mensagens em seus diagnósticos.
+const logger=pino({level:'silent'});
 export async function atomicJSON(path,value){
   const temporary=path+'.tmp';
   await writeFile(temporary,JSON.stringify(value),{mode:0o600});

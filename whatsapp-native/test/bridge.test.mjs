@@ -40,7 +40,10 @@ test('API local exige chave e Host local, sem CORS',async t=>{
   assert.equal((await fetch(url+'/api/sendText',{method:'POST',headers,body:JSON.stringify({chatId:'5511@c.us',text:'Oi'})})).status,400);
 });
 test('gera QR e preserva sessão pausada entre aberturas',async t=>{
-  const bridge=await fixture(t);await bridge.start();await new Promise(r=>setTimeout(r,90));
+  const bridge=await fixture(t);await bridge.start();
+  // A geração do PNG pode variar entre computadores; aguarda o estado com prazo limitado.
+  const limit=Date.now()+3000;
+  while(bridge.status!=='SCAN_QR_CODE'&&Date.now()<limit)await new Promise(r=>setTimeout(r,10));
   assert.equal(bridge.status,'SCAN_QR_CODE');assert.equal(bridge.qr.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
   await bridge.stop();await bridge.close();
   const second=new WhatsAppBridge({directory:bridge.directory,callback:bridge.callback,...fakeDependencies()});

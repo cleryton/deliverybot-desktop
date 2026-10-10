@@ -64,7 +64,7 @@ def _lembrar_chat_id(telefone: str, chat_id: str, sessao: str | None) -> None:
                 (telefone, chat_id, sessao),
             )
     except Exception:
-        logger.warning("Não foi possível persistir chat_id para %s", telefone, exc_info=True)
+        logger.warning("Não foi possível persistir a rota de atendimento")
 
 
 def _chat_id_conhecido(telefone: str) -> str | None:
@@ -95,7 +95,7 @@ def enviar_mensagem(
     telefone: str, texto: str, chat_id: str | None = None, session: str | None = None
 ) -> dict:
     if config.MODO_TESTE:
-        print(f"[MODO TESTE] enviaria para {telefone}:\n{texto}\n{'-' * 40}")
+        logger.info("Modo de teste: envio simulado, conteúdo omitido por privacidade")
         return {"modo_teste": True}
 
     if config.WHATSAPP_PROVIDER in {"WAHA", "LOCAL"}:
@@ -124,14 +124,14 @@ def _enviar_via_waha(
     elif config.WAHA_API_KEY:
         headers["X-Api-Key"] = config.WAHA_API_KEY
 
-    resp = _http.post(f"{endereco}/api/sendText", json=payload, headers=headers, timeout=30)
+    from .seguranca import transporte_seguro
+    transporte_seguro(endereco)
+
+    resp = _http.post(f"{endereco}/api/sendText", json=payload, headers=headers, timeout=30, allow_redirects=False)
     try:
         resp.raise_for_status()
     except requests.HTTPError:
-        logger.error(
-            "Erro ao enviar via WAHA para %s (chatId=%s, session=%s): %s",
-            telefone, chat_id_final, sessao_final, resp.text,
-        )
+        logger.error("Falha no envio WhatsApp, HTTP %s", resp.status_code)
         raise
     return resp.json() if resp.content else {}
 
@@ -147,11 +147,11 @@ def _enviar_via_meta(telefone: str, texto: str) -> dict:
         "Authorization": f"Bearer {config.WHATSAPP_TOKEN}",
         "Content-Type": "application/json",
     }
-    resp = _http.post(config.WHATSAPP_API_URL, json=payload, headers=headers, timeout=10)
+    resp = _http.post(config.WHATSAPP_API_URL, json=payload, headers=headers, timeout=10, allow_redirects=False)
     try:
         resp.raise_for_status()
     except requests.HTTPError:
-        logger.error("Erro ao enviar via Meta para %s: %s", telefone, resp.text)
+        logger.error("Falha no envio Meta, HTTP %s", resp.status_code)
         raise
     return resp.json()
 

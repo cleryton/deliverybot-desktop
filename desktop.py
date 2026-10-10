@@ -15,6 +15,9 @@ import threading
 
 def validar_backup(caminho):
     with closing(sqlite3.connect(Path(caminho).resolve().as_uri() + "?mode=ro", uri=True)) as conn:
+        conn.execute("PRAGMA trusted_schema=OFF")
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type IN ('trigger','view')").fetchone():
+            raise ValueError("O arquivo possui estruturas que não fazem parte do backup do DeliveryBot.")
         if conn.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
             raise ValueError("O arquivo de backup está corrompido.")
         tabelas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -30,6 +33,16 @@ def validar_backup(caminho):
 def preparar_dados(pasta):
     pasta.mkdir(parents=True, exist_ok=True)
     banco = pasta / "deliverybot.db"
+    # Configurar antes de importar módulos do aplicativo.
+    os.environ["DATABASE_PATH"] = str(banco)
+    os.environ["SEED_CATALOGO"] = "false"
+    os.environ["DELIVERYBOT_ENV_FILE"] = str(pasta / ".env")
+    for chave, valor in {"NOME_RESTAURANTE": "Minha loja", "TELEFONE_RESTAURANTE": "",
+                         "ENDERECO_RESTAURANTE": "", "HORARIO_FUNCIONAMENTO": "Informe o horário da loja",
+                         "FLASK_DEBUG": "false"}.items():
+        os.environ.setdefault(chave, valor)
+    from src import seguranca
+    seguranca.proteger_pasta(pasta)
     pendente = pasta / "restaurar.db"
     if pendente.exists():
         validar_backup(pendente)
@@ -37,22 +50,16 @@ def preparar_dados(pasta):
             from datetime import datetime
             copias = pasta / "backups"
             copias.mkdir(exist_ok=True)
-            with closing(sqlite3.connect(banco)) as origem, closing(sqlite3.connect(copias / ("antes-restauracao-" + datetime.now().strftime("%Y%m%d-%H%M%S-%f") + ".db"))) as copia:
-                origem.backup(copia)
+            from src.backups import criar_local
+            criar_local(banco, copias / ("antes-restauracao-" + datetime.now().strftime("%Y%m%d-%H%M%S-%f") + ".dbot-local"))
         # Conexões estão fechadas: os sidecars antigos não podem acompanhar o banco novo.
         for sufixo in ("-wal", "-shm"):
             banco.with_name(banco.name + sufixo).unlink(missing_ok=True)
         os.replace(pendente, banco)
-    os.environ["DATABASE_PATH"] = str(banco)
-    os.environ["SEED_CATALOGO"] = "false"
-    os.environ["DELIVERYBOT_ENV_FILE"] = str(pasta / ".env")
-    # Novas instalações começam com uma loja genérica; ajustes ficam no banco.
-    for chave, valor in {"NOME_RESTAURANTE": "Minha loja", "TELEFONE_RESTAURANTE": "",
-                         "ENDERECO_RESTAURANTE": "", "HORARIO_FUNCIONAMENTO": "Informe o horário da loja",
-                         "FLASK_DEBUG": "false"}.items():
-        os.environ.setdefault(chave, valor)
-    logging.basicConfig(filename=str(pasta / "deliverybot.log"), level=logging.INFO,
-                        format="%(asctime)s %(levelname)s [%(name)s] %(message)s", encoding="utf-8")
+    from logging.handlers import RotatingFileHandler
+    logging.basicConfig(handlers=[RotatingFileHandler(pasta / "deliverybot.log", maxBytes=1024*1024, backupCount=3, encoding="utf-8")], level=logging.INFO,
+                        format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+    seguranca.configurar_logs()
     return banco
 
 
@@ -89,7 +96,10 @@ def smoke_test(destino, janela=False):
             thread.start()
             os.environ["DELIVERYBOT_PORT"] = str(servidor.effective_port)
             whatsapp_local.iniciar(teste=True)
-            window = webview.create_window("DeliveryBot · Verificação", f"http://127.0.0.1:{servidor.effective_port}/gestao?acesso={token}", hidden=True)
+            class APITeste:
+                def verificar(self):
+                    return {"ok": True}
+            window = webview.create_window("DeliveryBot · Verificação", f"http://127.0.0.1:{servidor.effective_port}/gestao?acesso={token}", hidden=True, js_api=APITeste())
             def verificar():
                 try:
                     if not window.events.loaded.wait(30):
@@ -123,6 +133,15 @@ def smoke_test(destino, janela=False):
                     window.evaluate_js("document.querySelector('[data-page=bot]').click(); const f=document.querySelector('#bot-form'); f.elements.texto.value='4'; f.querySelector('.primary').click();")
                     esperar("document.querySelector('#chat').textContent.includes('Caderno UI')")
                     resultado["formularios"] = ["cadastro", "reposicao", "configuracoes", "catalogo_bot"]
+                    window.evaluate_js("document.querySelector('[data-page=privacidade]').click()")
+                    esperar("!document.querySelector('#page-privacidade').hidden && document.querySelector('[name=LGPD_MENSAGENS_DIAS]').value === '30'")
+                    window.evaluate_js("const f=document.querySelector('#privacy-settings');f.elements.LGPD_RESPONSAVEL.value='Loja UI';f.elements.LGPD_CONTATO.value='privacidade@example.com';f.querySelector('button[type=submit]').click();")
+                    esperar("document.querySelector('#privacy-note').textContent.includes('Responsável e contato configurados')")
+                    window.evaluate_js("document.querySelector('[data-page=inicio]').click();document.querySelector('[data-action=backup]').click();const f=document.querySelector('#backup-form');f.elements.senha.value='senha-ficticia-para-backup';f.elements.confirmacao.value='senha-ficticia-para-backup';f.querySelector('button[type=submit]').click();")
+                    esperar("!document.querySelector('#backup-dialog').open && document.querySelector('#backup-result').textContent.includes('.dbot')")
+                    window.evaluate_js("window.pywebview.api.verificar().then(r=>document.body.dataset.apiNative=r.ok?'ok':'erro')")
+                    esperar("document.body.dataset.apiNative === 'ok'")
+                    resultado["privacidade"] = ["configuracao_responsavel", "backup_criptografado", "api_nativa_com_csp"]
                     window.evaluate_js("document.querySelector('[data-page=conexoes]').click()")
                     esperar("document.querySelector('#wa-badge').textContent === 'Disponível'")
                     window.evaluate_js("document.querySelector('#wa-connect').click()")
@@ -192,31 +211,57 @@ def main():
         token = secrets.token_urlsafe(32)
         app.config["DESKTOP_TOKEN"] = token
         port = int(os.getenv("DELIVERYBOT_PORT", "5000"))
-        servidor = create_server(app, host="0.0.0.0", port=port, threads=8)
+        servidor = create_server(app, host="127.0.0.1", port=port, threads=8)
         thread = threading.Thread(target=servidor.run, name="DeliveryBot-HTTP", daemon=True)
         thread.start()
         processamento.iniciar()
         if config.WHATSAPP_PROVIDER == "LOCAL":
             conexoes.iniciar_tarefa("whatsapp", lambda progresso: whatsapp_local.iniciar(progresso))
         class API:
+            def _verificar(self):
+                from urllib.parse import urlsplit
+                url = urlsplit(window.get_current_url())
+                if url.netloc != f"127.0.0.1:{port}" or url.path != "/gestao":
+                    raise ValueError("Reabra o painel administrativo para realizar esta operação.")
             def abrir_pasta(self):
+                self._verificar()
                 os.startfile(str(pasta))
-            def restaurar_backup(self):
-                arquivos = window.create_file_dialog(webview.FileDialog.OPEN, allow_multiple=False, file_types=("Backup DeliveryBot (*.db)",))
+            def salvar_exportacao(self, relatorio):
+                self._verificar()
+                arquivos = window.create_file_dialog(webview.FileDialog.SAVE, save_filename="dados-do-titular.json", file_types=("Relatório JSON (*.json)",))
+                if not arquivos:
+                    return {"cancelado": True}
+                arquivo = arquivos[0] if isinstance(arquivos, (tuple, list)) else arquivos
+                with open(arquivo, "w", encoding="utf-8") as saida:
+                    json.dump(relatorio, saida, ensure_ascii=False, indent=2)
+                return {"ok": True}
+            def restaurar_backup(self, senha):
+                self._verificar()
+                arquivos = window.create_file_dialog(webview.FileDialog.OPEN, allow_multiple=False, file_types=("Backup DeliveryBot (*.dbot;*.dbot-local;*.db)",))
                 if not arquivos:
                     return {"cancelado": True}
                 try:
-                    validar_backup(arquivos[0])
-                    criar_backup()
                     temporario = pasta / "restaurar.tmp"
+                    from src import backups
+                    arquivo = Path(arquivos[0])
+                    if arquivo.suffix != ".db":
+                        dados = backups.abrir_arquivo(arquivo, senha)
+                        with closing(sqlite3.connect(":memory:")) as origem, closing(sqlite3.connect(temporario)) as copia:
+                            origem.deserialize(dados)
+                            origem.backup(copia)
+                    else:
+                        validar_backup(arquivo)
+                        with closing(sqlite3.connect(arquivo.resolve().as_uri() + "?mode=ro", uri=True)) as origem, closing(sqlite3.connect(temporario)) as copia:
+                            origem.backup(copia)
+                    validar_backup(temporario)
+                    criar_backup(senha)
                     # SQLite backup também funciona se o arquivo escolhido estiver em WAL.
-                    with closing(sqlite3.connect(Path(arquivos[0]).resolve().as_uri() + "?mode=ro", uri=True)) as origem, closing(sqlite3.connect(temporario)) as copia:
-                        origem.backup(copia)
                     os.replace(temporario, pasta / "restaurar.db")
                     window.destroy()
                     return {"ok": True}
                 except Exception as exc:
-                    return {"erro": str(exc)}
+                    temporario.unlink(missing_ok=True)
+                    return {"erro": "Não foi possível restaurar. Confira a senha, o formato do backup e a conta Windows da cópia de recuperação."}
         window = webview.create_window("DeliveryBot — Gestão da loja", f"http://127.0.0.1:{port}/gestao?acesso={token}",
                                        js_api=API(), width=1280, height=850, min_size=(850,600), background_color="#f6f8f7")
         webview.start(gui="edgechromium", private_mode=True)

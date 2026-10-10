@@ -1,5 +1,21 @@
 # Histórico de versões
 
+## 2.3.0 — 2026-10-10
+
+- Área Privacidade e LGPD com identificação do responsável, canal de contato, aviso público, exportação, correção e remoção da identificação do cadastro.
+- Retenção configurável das conversas, limpeza manual do histórico concluído e auditoria sem conteúdo pessoal.
+- Backups portáveis com AES-256-GCM, senha derivada por scrypt e detecção de alteração; credenciais dos serviços excluídas da cópia portável. Cópias de recuperação automáticas protegidas pela conta Windows.
+- Segredos das configurações protegidos com DPAPI no Windows; permissões da pasta de dados restritas à conta atual e SYSTEM.
+- Servidor Desktop restrito ao computador; acesso administrativo remoto desligado por padrão; limitação de tentativas de senha e proteção CSRF também na cozinha e no pedido.
+- Cabeçalhos contra exposição em cache, referências externas e execução de scripts não autorizados. Fontes externas removidas da cozinha.
+- Dados pessoais reduzidos em logs e no histórico enviado à IA; envio a IA externa desligado por padrão e HTTPS exigido para serviços externos com dados ou credenciais.
+- Aviso de privacidade no formulário de compra e no primeiro atendimento; comando PRIVACIDADE disponível sem depender de IA.
+- Atualização das versões de Flask, Requests, python-dotenv, pytest, setuptools e wheel para corrigir avisos públicos de vulnerabilidades; utilitário de consulta ao PyPI disponível em `packaging/auditar_dependencias.py`.
+
+Validação: 67 testes Python e 10 testes Node aprovados; janela, cadastro de privacidade, backup criptografado e API nativa verificados no executável. Consultas ao PyPI (49 pacotes fixados) e npm audit sem avisos conhecidos. Conexões simuladas, sem contas ou mensagens reais.
+
+As medidas técnicas apoiam a proteção de dados. A loja continua responsável pela política de retenção, bases legais, identidade dos solicitantes, provedores e tratamento de incidentes; veja `PRIVACIDADE E SEGURANÇA.md`.
+
 ## 2.2.0 — 2026-10-10
 
 Primeira versão registrada neste repositório, reunindo o aplicativo Windows já desenvolvido.

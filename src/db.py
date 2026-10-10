@@ -1,4 +1,5 @@
 import json
+import hashlib
 import logging
 import os
 import sqlite3
@@ -47,6 +48,8 @@ def _connect() -> sqlite3.Connection:
     # o webhook do WhatsApp e serve a página do pedido ao mesmo tempo.
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA busy_timeout = 5000")
+    conn.execute("PRAGMA secure_delete = ON")
+    conn.execute("PRAGMA trusted_schema = OFF")
     return conn
 
 
@@ -77,6 +80,9 @@ def _aplicar_migracoes(conn: sqlite3.Connection) -> None:
                 conn.execute(f"ALTER TABLE {tabela} ADD COLUMN {nome_coluna} {tipo_coluna}")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_produtos_sku ON produtos(sku) WHERE sku != ''")
     conn.execute("UPDATE itens_pedido SET nome_produto = (SELECT nome FROM produtos WHERE id = produto_id) WHERE nome_produto IS NULL")
+    # O identificador de um evento pode conter o telefone. Mantém a deduplicação sem guardá-lo em texto.
+    for row in conn.execute("SELECT id, chave FROM tarefas_bot WHERE chave NOT LIKE 'sha256:%'").fetchall():
+        conn.execute("UPDATE tarefas_bot SET chave=? WHERE id=?", ("sha256:" + hashlib.sha256(row["chave"].encode()).hexdigest(), row["id"]))
 
 
 def init_db(seed_cardapio: bool | None = None, forcar: bool = False) -> bool:

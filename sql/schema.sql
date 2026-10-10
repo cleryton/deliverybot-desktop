@@ -125,3 +125,11 @@ CREATE TABLE IF NOT EXISTS tarefas_bot (
     UNIQUE(origem, chave)
 );
 CREATE INDEX IF NOT EXISTS idx_tarefas_estado ON tarefas_bot(estado, id);
+
+-- Auditoria sem telefone, conteúdo de conversa, credenciais ou endereço.
+CREATE TABLE IF NOT EXISTS auditoria_privacidade (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    acao TEXT NOT NULL,
+    cliente_id INTEGER,
+    criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
