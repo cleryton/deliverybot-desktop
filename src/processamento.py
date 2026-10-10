@@ -25,6 +25,8 @@ def invalidar_conexao():
 
 
 def _servico_pronto():
+    if config.WHATSAPP_PROVIDER=='META':
+        return bool(config.WHATSAPP_TOKEN and config.WHATSAPP_PHONE_NUMBER_ID)
     global _status_ate, _pronto
     with _status_lock:
         if time.monotonic() >= _status_ate:
@@ -62,7 +64,7 @@ def recuperar_interrompidas():
 
 
 def processar_proxima():
-    if config.WHATSAPP_PROVIDER not in {"WAHA", "LOCAL"} or config.MODO_TESTE:
+    if config.WHATSAPP_PROVIDER not in {"WAHA", "LOCAL", "META"} or config.MODO_TESTE:
         return False
     if not _servico_pronto():
         return False
@@ -87,6 +89,10 @@ def processar_proxima():
         resposta = tarefa["resposta"]
         if resposta is None:
             resposta = bot.processar_mensagem(tarefa["telefone"], tarefa["texto"])
+            if resposta is None:
+                with get_conn() as conn:
+                    conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', atualizado_em=datetime('now') WHERE id=?", (tarefa['id'],))
+                return True
             with get_conn() as conn:
                 conn.execute("UPDATE tarefas_bot SET resposta=? WHERE id=?", (resposta, tarefa["id"]))
         if _parar.is_set():

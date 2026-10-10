@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.6.0
+# DeliveryBot Desktop 2.7.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -30,6 +30,8 @@ As quantidades são **inteiras**. Para vendas fracionadas, cadastre embalagens (
 - Desmarcar o controle permite vender sem quantidade limitada. Use apenas quando apropriado para seu negócio.
 
 ## Pedidos
+
+Em **Atendimento humano**, abra uma solicitação ou informe um telefone e clique em **Assumir e pausar bot**. O cliente também pode digitar **ATENDENTE** ou **10**. Leia as últimas mensagens, escreva sua resposta e confirme o envio. A mensagem entra na fila persistente: falhas e envios incertos precisam ser conferidos em WhatsApp e IA antes de tentar novamente. O modo de teste não envia. Use **Retomar bot** ao terminar; envios manuais pendentes bloqueiam a retomada. Mensagens recebidas durante a pausa ficam no histórico e não recebem resposta automática retroativa.
 
 O painel oferece **Recebido → Em separação → Pronto → Entregue/Retirado**. É possível cancelar pedidos em andamento. Pedidos concluídos não podem ser cancelados nesse fluxo.
 
@@ -81,7 +83,7 @@ Antes de atender clientes, abra **Privacidade e LGPD**, informe a empresa respon
 
 Após verificar a identidade e a solicitação do cliente, use **Exportar dados**, **Corrigir cadastro** ou **Remover identificação**. A remoção bloqueia pedidos e envios em andamento; preserva os itens e totais das vendas. A exportação contém dados pessoais e deve ser entregue apenas ao titular. Essas operações abrangem o banco atual; revise também backups, exportações, sessões e provedores externos.
 
-O prazo operacional das conversas começa em 30 dias e pode ser ajustado. **Limpar histórico fora do prazo** remove mensagens antigas de conversas concluídas e links expirados, preservando atendimentos pendentes. Execute a limpeza conforme sua política; não existe remoção automática dos pedidos ou das cópias de backup.
+O prazo operacional das conversas começa em 30 dias e pode ser ajustado. **Limpar histórico fora do prazo** remove mensagens antigas de conversas concluídas e links expirados, preservando atendimentos pendentes. Execute ou agende a limpeza conforme sua política; não existe remoção automática dos pedidos ou das cópias de backup.
 
 O envio a IA externa fica desligado por padrão. Ollama neste computador funciona normalmente. Para usar Anthropic ou Ollama em outro servidor, revise o compartilhamento e habilite essa opção na área de privacidade. A redução de dados no texto não garante anonimização de tudo que um cliente escrever.
 

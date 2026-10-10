@@ -70,3 +70,28 @@ def test_backup_automatico_verificado_rotacao_e_segredo(tmp_path):
         assert c.execute('SELECT senha,backup_ativo,pasta FROM rotinas').fetchone()==('',0,'')
     finally:
         c.close()
+
+
+def test_atendimento_humano_pausa_envio_e_retoma(cliente,monkeypatch):
+    from src import humano,bot,processamento,whatsapp
+    from unittest.mock import Mock
+    t='5511999990011'
+    assert 'humano' in bot.processar_mensagem(t,'ATENDENTE')
+    assert bot.processar_mensagem(t,'4') is None
+    humano.controlar(t,'assumir')
+    with pytest.raises(ValueError):
+        humano.responder({'telefone':t,'mensagem':'Olá'})
+    tarefa=humano.responder({'telefone':t,'mensagem':'Olá, sou da loja','confirmar_envio':True})
+    with pytest.raises(ValueError):
+        humano.controlar(t,'retomar')
+    config.WHATSAPP_PROVIDER='LOCAL'
+    config.MODO_TESTE=False
+    monkeypatch.setattr(processamento,'_servico_pronto',lambda:True)
+    envio=Mock()
+    monkeypatch.setattr(whatsapp,'enviar_mensagem',envio)
+    processamento._parar.clear()
+    assert processamento.processar_proxima()
+    envio.assert_called_once()
+    assert envio.call_args.args[1]=='Olá, sou da loja'
+    humano.controlar(t,'retomar')
+    assert not humano.pausado(t)

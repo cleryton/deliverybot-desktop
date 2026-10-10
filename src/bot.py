@@ -33,7 +33,8 @@ MENU_TEXTO = (
     "6 - Promoções 💰\n"
     "7 - Taxa de entrega 🛵\n"
     "8 - Endereço 📍\n"
-    "9 - Privacidade e seus dados 🔒"
+    "9 - Privacidade e seus dados 🔒\n"
+    "10 - Falar com atendente ☏"
 )
 
 _ultima_chamada_ia: dict[str, float] = {}
@@ -86,6 +87,12 @@ def _processar_mensagem_menu_fixo(telefone: str, texto_limpo: str) -> str:
 
 
 def processar_mensagem(telefone: str, texto: str) -> str:
+    from . import humano
+    if humano.pausado(telefone):
+        return None
+    if texto.strip().casefold() in {'atendente','humano','falar com atendente','10'}:
+        humano.solicitar(telefone)
+        return 'Recebemos seu pedido de atendimento humano. Aguarde a equipe; o bot ficará pausado nesta conversa.'
     """Recebe o texto do cliente e devolve a resposta do bot."""
     resposta = _processar(telefone, texto)
     from .db import get_conn

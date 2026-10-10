@@ -163,6 +163,8 @@ def receber_webhook():
 
     try:
         resposta = bot.processar_mensagem(telefone, texto)
+        if resposta is None:
+            return jsonify(status='atendimento_humano'),200
         whatsapp.enviar_mensagem(telefone, resposta)
         pedidos.registrar_mensagem(telefone, "SAIDA", resposta)
     except Exception:
@@ -230,7 +232,8 @@ def api_processar_mensagem(segredo):
     except Exception:
         logger.error("Falha ao processar mensagem via API interna")
         return jsonify({"erro": "falha ao processar mensagem"}), 500
-    pedidos.registrar_mensagem(telefone, "SAIDA", resposta)
+    if resposta is not None:
+        pedidos.registrar_mensagem(telefone, "SAIDA", resposta)
 
     return jsonify({"telefone": telefone, "resposta": resposta})
 
@@ -248,6 +251,8 @@ def api_processar_mensagem(segredo):
 def testar_localmente():
     telefone_teste = request.args.get("telefone", "5547999990000")
     resposta = bot.processar_mensagem(telefone_teste, "2")
+    if resposta is None:
+        return 'Conversa em atendimento humano. Retome o bot antes de testar.',409
     pedidos.registrar_mensagem(telefone_teste, "SAIDA", resposta)
     link = resposta.replace("Faça o seu pedido em ", "").strip()
     token = link.rsplit("/", 1)[-1]

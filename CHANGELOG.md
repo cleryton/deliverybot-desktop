@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.7.0 — 2026-10-10
+
+Atendimento humano por conversa: comando ATENDENTE, leitura do histórico, pausa e retomada do bot, respostas manuais confirmadas pela fila persistente e proteção contra retomada com envios pendentes. Validado com serviços simulados.
+
 ## 2.6.0 — 2026-10-10
 
 Backups automáticos portáteis criptografados, senha protegida no Windows, verificação de recuperação, destino e rotação configuráveis. Limpeza diária opcional da retenção, alertas de atraso e recuperação de horários perdidos. Testes de rotação e ausência da senha na cópia aprovados.

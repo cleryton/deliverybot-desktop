@@ -183,6 +183,21 @@ def criar_backup(senha):
     return backups.criar(senha)
 
 
+@bp.route('/gestao/api/humano',methods=['GET','POST'])
+@protegido
+def humano_api():
+    from . import humano
+    if request.method=='GET':
+        if request.args.get('telefone'):
+            return jsonify(humano.conversa(request.args['telefone']))
+        return jsonify(humano.listar())
+    d=dados_json()
+    if d.get('acao')=='responder':
+        return jsonify(humano.responder(d))
+    humano.controlar(d.get('telefone',''),d.get('acao'))
+    return jsonify(ok=True)
+
+
 @bp.route('/gestao/api/rotinas', methods=['GET','PUT','POST'])
 @protegido
 def rotinas_api():

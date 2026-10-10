@@ -74,7 +74,7 @@ def remover_identificacao(dados):
             raise ValueError("Conclua ou cancele os pedidos em andamento antes de remover a identificação.")
         if conn.execute("SELECT 1 FROM tarefas_bot WHERE telefone=? AND estado IN ('PROCESSANDO','ENVIANDO')", (telefone,)).fetchone():
             raise ValueError("Aguarde o atendimento em processamento antes de remover os dados.")
-        for tabela in ("mensagens", "links_pedido", "sessoes_bot", "tarefas_bot"):
+        for tabela in ("mensagens", "links_pedido", "sessoes_bot", "tarefas_bot", "atendimentos_humanos"):
             conn.execute(f"DELETE FROM {tabela} WHERE telefone=?", (telefone,))
         if cliente:
             conn.execute("UPDATE clientes SET nome='Cliente sem identificação', telefone=?, cep='', endereco='', chat_id=NULL, waha_session=NULL WHERE id=?",

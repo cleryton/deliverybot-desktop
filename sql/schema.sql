@@ -148,3 +148,8 @@ CREATE TABLE IF NOT EXISTS rotinas (
     limpar INTEGER NOT NULL DEFAULT 0, ultima_copia TEXT, ultima_limpeza TEXT, erro TEXT
 );
 INSERT OR IGNORE INTO rotinas(id) VALUES(1);
+
+CREATE TABLE IF NOT EXISTS atendimentos_humanos (
+    telefone TEXT PRIMARY KEY, estado TEXT NOT NULL,
+    solicitado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
