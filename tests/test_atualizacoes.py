@@ -20,7 +20,7 @@ def loja(tmp_path,monkeypatch):
 
 def release(exe=b'instalador ficticio'):
     soma=hashlib.sha256(exe).hexdigest()
-    manifesto=(soma+'  Instalar DeliveryBot.exe\n').encode()
+    manifesto=(soma+'  '+atualizacoes.INSTALADOR+'\n').encode()
     return {'tag_name':'v2.10.0','html_url':atualizacoes.REPOSITORIO+'/releases/tag/v2.10.0','assets':[{'name':nome,'size':len(dados),'browser_download_url':atualizacoes.REPOSITORIO+'/releases/download/v2.10.0/'+quote(nome)} for nome,dados in [(atualizacoes.INSTALADOR,exe),('SHA256SUMS.txt',manifesto)]]},manifesto
 
 
@@ -82,3 +82,15 @@ def test_consulta_optativa_e_intervalo(loja,monkeypatch):
     atualizacoes.configurar({'automatica':True})
     atualizacoes.rotina();atualizacoes.rotina()
     consulta.assert_called_once()
+
+
+def test_nome_normalizado_pelo_github_e_manifesto_legacy(loja,monkeypatch):
+    exe=b'instalador ficticio';r,manifesto=release(exe)
+    r['assets'][0]['name']='Instalar.DeliveryBot.exe'
+    r['assets'][0]['browser_download_url']=atualizacoes.REPOSITORIO+'/releases/download/v2.10.0/Instalar.DeliveryBot.exe'
+    atualizacoes._estado.update(atualizacoes.validar_release(r))
+    manifesto=manifesto.replace(atualizacoes.INSTALADOR.encode(),b'Instalar DeliveryBot.exe')
+    monkeypatch.setattr(atualizacoes,'_abrir',lambda u:resposta(manifesto if u.endswith('.txt') else exe))
+    monkeypatch.setattr(atualizacoes,'assinatura',lambda _:False)
+    atualizacoes.baixar('senha-ficticia-para-backup')
+    assert Path(atualizacoes.situacao()['download']['caminho']).read_bytes()==exe

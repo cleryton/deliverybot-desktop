@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.10.1 — 2026-10-10
+
+Padronização do instalador como Instalar-DeliveryBot.exe e compatibilidade com nomes normalizados pelo GitHub nas versões anteriores, mantendo validação de origem, tamanho, hash e backup.
+
 ## 2.10.0 — 2026-10-10
 
 Consulta opcional de releases, download com origem e SHA-256 verificados, backup antes de atualizar e instalação condicionada à assinatura confiável. Preparação de distribuição e assinatura digital, com correções da integração do atendimento humano.

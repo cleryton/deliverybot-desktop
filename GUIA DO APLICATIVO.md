@@ -1,10 +1,10 @@
-# DeliveryBot Desktop 2.10.0
+# DeliveryBot Desktop 2.10.1
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
 ## Instalar e abrir
 
-1. Abra **dist/Instalar DeliveryBot.exe** e clique em **Instalar**.
+1. Abra **dist/Instalar-DeliveryBot.exe** e clique em **Instalar**.
 2. Use o atalho **DeliveryBot** na área de trabalho ou no menu Iniciar.
 3. Em **Configurações**, informe o nome da loja, contato, horário, formas de pagamento, taxa de entrega e tempo estimado.
 4. Em **Produtos e estoque**, clique em **Cadastrar produto**. Cadastre nome, código opcional, categoria, descrição, preço, unidade, saldo inicial e alerta de estoque mínimo.

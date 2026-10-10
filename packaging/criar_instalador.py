@@ -20,6 +20,6 @@ def compilar(source, output, resources=()):
     args.extend("/resource:"+str(path)+","+name for path,name in resources)
     subprocess.run(args+[str(source)],check=True,cwd=root)
 compilar(packaging / "Desinstalador.cs", uninstaller)
-compilar(packaging / "Instalador.cs",root / "dist/Instalar DeliveryBot.exe",
+compilar(packaging / "Instalador.cs",root / "dist/Instalar-DeliveryBot.exe",
          [(root / "dist/DeliveryBot.exe","aplicativo"),(uninstaller,"desinstalador"),(packaging/"DeliveryBot.ico","icone")])
-print("Instalador criado: dist/Instalar DeliveryBot.exe")
+print("Instalador criado: dist/Instalar-DeliveryBot.exe")

@@ -3,7 +3,7 @@ import hashlib
 from pathlib import Path
 
 root=Path(__file__).resolve().parent.parent
-arquivos=[root/'dist/Instalar DeliveryBot.exe',root/'dist/DeliveryBot.exe']
+arquivos=[root/'dist/Instalar-DeliveryBot.exe',root/'dist/DeliveryBot.exe']
 linhas=[]
 for arquivo in arquivos:
     with arquivo.open('rb') as f:

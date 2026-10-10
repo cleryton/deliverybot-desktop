@@ -16,7 +16,8 @@ from .db import get_conn
 
 REPOSITORIO='https://github.com/cleryton/deliverybot-desktop'
 API='https://api.github.com/repos/cleryton/deliverybot-desktop/releases/latest'
-INSTALADOR='Instalar DeliveryBot.exe'
+INSTALADOR='Instalar-DeliveryBot.exe'
+NOMES_INSTALADOR={INSTALADOR,'Instalar DeliveryBot.exe','Instalar.DeliveryBot.exe'}
 LIMITE=256*1024*1024
 _raiz=Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parent.parent))
 _lock=threading.RLock()
@@ -69,14 +70,15 @@ def validar_release(r):
         raise ValueError('Distribuição sem arquivos válidos.')
     encontrados={}
     for nome in [INSTALADOR,'SHA256SUMS.txt']:
-        lista=[a for a in assets if isinstance(a,dict) and a.get('name')==nome]
+        permitidos=NOMES_INSTALADOR if nome==INSTALADOR else {nome}
+        lista=[a for a in assets if isinstance(a,dict) and a.get('name') in permitidos]
         if len(lista)!=1:
             raise ValueError('A versão ainda não contém instalador e manifesto de integridade.')
         a=lista[0]
         limite=LIMITE if nome==INSTALADOR else 16384
         if type(a.get('size')) is not int or not 0<a['size']<=limite:
             raise ValueError('Tamanho do arquivo inválido.')
-        encontrados[nome]={'url':_url_arquivo(a.get('browser_download_url'),tag,nome),'size':a['size']}
+        encontrados[nome]={'url':_url_arquivo(a.get('browser_download_url'),tag,a['name']),'size':a['size']}
     return {'versao':tag[1:],'url':r['html_url'],'arquivos':encontrados,'nova':versao(tag)>versao(atual())}
 
 
@@ -143,7 +145,7 @@ def baixar(senha,progresso=lambda *_:None):
                 if len(manifest)>16384:
                     raise ValueError('Manifesto acima do limite.')
         linhas=manifest.decode('utf-8').splitlines()
-        hashes=[m.group(1).lower() for linha in linhas if (m:=re.fullmatch(r'([a-fA-F0-9]{64})  \*?Instalar DeliveryBot\.exe',linha))]
+        hashes=[m.group(1).lower() for linha in linhas if (m:=re.fullmatch(r'([a-fA-F0-9]{64})  \*?Instalar(?:-|\.| )DeliveryBot\.exe',linha))]
         if len(hashes)!=1:
             raise ValueError('Manifesto sem hash único do instalador.')
         total=0;inicio=time.monotonic()
