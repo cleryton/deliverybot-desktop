@@ -183,6 +183,17 @@ def criar_backup(senha):
     return backups.criar(senha)
 
 
+@bp.route('/gestao/api/rotinas', methods=['GET','PUT','POST'])
+@protegido
+def rotinas_api():
+    from . import rotinas
+    if request.method=='PUT':
+        return jsonify(rotinas.configurar(dados_json()))
+    if request.method=='POST':
+        return jsonify(conexoes.iniciar_tarefa('rotinas', lambda progresso: progresso('Rotinas verificadas.' if rotinas.executar(True) else 'Confira o aviso das rotinas.'))),202
+    return jsonify(rotinas.situacao())
+
+
 @bp.route("/gestao/api/backup", methods=["POST"])
 @protegido
 def backup():

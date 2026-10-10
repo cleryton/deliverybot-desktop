@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.5.0
+# DeliveryBot Desktop 2.6.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -62,6 +62,10 @@ A conexão por QR Code usa Baileys, uma biblioteca comunitária de WhatsApp Web,
 A IA é opcional. Quando indisponível, o bot continua pelo menu. Anthropic requer uma chave de API e tem custo conforme o uso. Os limites e créditos do Codex são separados do atendimento Ollama local.
 
 ## Dados, backups e atualização
+
+Em **Proteção automática**, habilite backups, escolha uma senha, intervalo, número de cópias e uma pasta de destino. A senha do agendamento é guardada com DPAPI; guarde-a também separadamente para recuperar em outro computador. Cada cópia é decifrada em memória e verificada antes da rotação. Só arquivos `automatico-DeliveryBot-*.dbot` nessa pasta são removidos pela retenção. Não escolha uma pasta usada por outra loja. Trocar a senha não altera backups antigos. A cópia portável desativa o agendamento ao restaurar e não leva sua senha nem o destino.
+
+**Limpar diariamente** é opcional e aplica a retenção das conversas definida em Privacidade e LGPD, preservando pendências. As rotinas funcionam enquanto o app estiver em execução; horários perdidos são recuperados na próxima abertura. Confira o status e mantenha uma cópia fora do computador.
 
 Os dados ficam em **%LOCALAPPDATA%\DeliveryBot**, fora da pasta do programa. A instalação de uma nova versão e a desinstalação preservam essa pasta.
 

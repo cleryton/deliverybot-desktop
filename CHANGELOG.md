@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.6.0 — 2026-10-10
+
+Backups automáticos portáteis criptografados, senha protegida no Windows, verificação de recuperação, destino e rotação configuráveis. Limpeza diária opcional da retenção, alertas de atraso e recuperação de horários perdidos. Testes de rotação e ausência da senha na cópia aprovados.
+
 ## 2.5.0 — 2026-10-10
 
 Atendimento em segundo plano com ícone na área do relógio, opções de reabrir e encerrar, preservando os serviços ao fechar a janela. Validado o ciclo real da bandeja Windows, sem contas ou dados reais.

@@ -216,6 +216,8 @@ def main():
         thread = threading.Thread(target=servidor.run, name="DeliveryBot-HTTP", daemon=True)
         thread.start()
         processamento.iniciar()
+        from src import rotinas
+        rotinas.iniciar()
         if config.WHATSAPP_PROVIDER == "LOCAL":
             conexoes.iniciar_tarefa("whatsapp", lambda progresso: whatsapp_local.iniciar(progresso))
         class API:
@@ -287,6 +289,8 @@ def main():
         if bandeja:
             bandeja.parar()
         if servidor:
+            from src import rotinas
+            rotinas.encerrar()
             servidor.close()
             from src import processamento
             processamento.encerrar()

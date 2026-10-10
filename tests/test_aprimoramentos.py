@@ -52,3 +52,21 @@ def test_fechar_esconde_e_sair_encerra():
     b.sair()
     janela.destroy.assert_called_once()
     assert b.ao_fechar() is True
+
+
+def test_backup_automatico_verificado_rotacao_e_segredo(tmp_path):
+    from src import rotinas, backups
+    from pathlib import Path
+    r=rotinas.configurar({'backup_ativo':True,'limpar':False,'horas':24,'quantidade':2,'senha':'senha-ficticia-separada','pasta':str(tmp_path/'copias')})
+    assert 'senha' not in r and r['senha_configurada']
+    for _ in range(3):
+        assert rotinas.executar(True)
+    arquivos=list((tmp_path/'copias').glob('*.dbot'))
+    assert len(arquivos)==2 and not rotinas.situacao()['atrasado']
+    import sqlite3
+    c=sqlite3.connect(':memory:')
+    try:
+        c.deserialize(backups.abrir_arquivo(arquivos[0],'senha-ficticia-separada'))
+        assert c.execute('SELECT senha,backup_ativo,pasta FROM rotinas').fetchone()==('',0,'')
+    finally:
+        c.close()

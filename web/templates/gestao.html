@@ -22,7 +22,7 @@
       <button data-page="bot"><span>☏</span> Testar atendimento</button>
       <button data-page="configuracoes"><span>⚙</span> Configurações</button>
     </nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.5.0</small><button id="app-exit">Sair do aplicativo</button></div>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.6.0</small><button id="app-exit">Sair do aplicativo</button></div>
   </aside>
   <main>
     <header class="topbar"><span id="breadcrumb">Sua operação, em um só lugar</span><div><span id="connection" class="badge">Modo de teste</span><button id="refresh" class="icon-button" title="Atualizar dados" aria-label="Atualizar dados">↻</button></div></header>
@@ -37,6 +37,7 @@
         </div>
         <article class="card backup-row"><div><h2>Uma cópia protegida dos seus dados</h2><p>O backup é criptografado com sua senha. Guarde a senha separadamente; ela será necessária para restaurar. Credenciais dos serviços devem ser configuradas novamente.</p><small id="backup-result"></small></div><div class="button-row"><button data-action="backup">Criar backup</button><button data-action="pasta">Abrir pasta de dados</button><button data-action="restaurar">Restaurar backup</button></div></article>
         <div id="daily-note" class="notice"></div>
+        <form id="routines-form" class="card"><h2>Proteção automática</h2><p id="routines-status" aria-live="polite"></p><div class="settings-grid"><label class="check"><input name="backup_ativo" type="checkbox"> Ativar backup automático</label><label>Intervalo em horas<input name="horas" type="number" min="1" max="168" required value="24"></label><label>Cópias automáticas para manter<input name="quantidade" type="number" min="2" max="90" required value="7"></label><label>Senha (vazio mantém a atual)<input name="senha" type="password" maxlength="256" autocomplete="new-password"></label><label class="wide">Pasta de destino (vazio = pasta de dados)<input name="pasta" maxlength="1000" placeholder="Ex.: E:\BackupsDeliveryBot"></label><label class="check wide"><input name="limpar" type="checkbox"> Limpar diariamente as conversas concluídas fora do prazo configurado</label></div><p>A senha do agendamento é protegida pela sua conta Windows. Guarde uma cópia da senha separadamente para recuperar em outro computador. Rotinas funcionam enquanto o app estiver em execução.</p><div class="button-row"><button type="submit" class="primary">Salvar rotinas</button><button id="routines-run" type="button">Executar agora</button></div></form>
       </section>
       <section id="page-produtos" class="page" hidden>
         <div class="page-heading"><div><p class="eyebrow">CATÁLOGO</p><h1>Produtos e estoque</h1><p>O bot apresenta os produtos ativos com disponibilidade.</p></div><button class="primary" data-action="novo">+ Cadastrar produto</button></div>

@@ -140,3 +140,11 @@ CREATE TABLE IF NOT EXISTS testes_publicos (
     expira_em TEXT NOT NULL,
     recebido_em TEXT
 );
+
+CREATE TABLE IF NOT EXISTS rotinas (
+    id INTEGER PRIMARY KEY CHECK(id=1), backup_ativo INTEGER NOT NULL DEFAULT 0,
+    horas INTEGER NOT NULL DEFAULT 24, quantidade INTEGER NOT NULL DEFAULT 7,
+    senha TEXT NOT NULL DEFAULT '', pasta TEXT NOT NULL DEFAULT '',
+    limpar INTEGER NOT NULL DEFAULT 0, ultima_copia TEXT, ultima_limpeza TEXT, erro TEXT
+);
+INSERT OR IGNORE INTO rotinas(id) VALUES(1);
