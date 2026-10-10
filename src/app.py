@@ -321,10 +321,11 @@ def enviar_pedido(token):
 
     itens = []
     for chave, valor in request.form.items():
-        if chave.startswith("qtd_") and valor and len(valor) <= 6 and valor.isascii() and valor.isdigit() and int(valor) > 0:
+        if chave.startswith("qtd_") and valor and len(valor) <= 10 and valor.isascii():
             produto_id_str = chave.replace("qtd_", "")
             if len(produto_id_str) <= 10 and produto_id_str.isascii() and produto_id_str.isdigit():
-                itens.append({"produto_id": int(produto_id_str), "quantidade": int(valor)})
+                if valor not in {'0','0.000','0.0',''}:
+                    itens.append({"produto_id": int(produto_id_str), "quantidade": valor})
 
     if not itens:
         produtos = cardapio.listar_produtos_ativos()

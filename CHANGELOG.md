@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.8.0 — 2026-10-10
+
+Estoque fracionado com precisão de três casas, famílias e variações, importação CSV com prévia e transação integral, custos históricos e relatórios por período. Validados 33 testes de catálogo, pedidos e aprimoramentos, incluindo cancelamento e ausência de importação parcial.
+
 ## 2.7.0 — 2026-10-10
 
 Atendimento humano por conversa: comando ATENDENTE, leitura do histórico, pausa e retomada do bot, respostas manuais confirmadas pela fila persistente e proteção contra retomada com envios pendentes. Validado com serviços simulados.

@@ -19,7 +19,11 @@ def listar_produtos_ativos():
             "SELECT * FROM produtos "
             "WHERE ativo = 1 AND (estoque IS NULL OR estoque > 0) ORDER BY categoria, nome"
         ).fetchall()
-    return [dict(r) for r in rows]
+    from .estoque import nome_completo
+    resultado=[dict(r) for r in rows]
+    for p in resultado:
+        p['nome']=nome_completo(p)
+    return resultado
 
 
 def agrupar_por_categoria(produtos):

@@ -183,6 +183,20 @@ def criar_backup(senha):
     return backups.criar(senha)
 
 
+@bp.post('/gestao/api/produtos/importar')
+@protegido
+def importar_catalogo():
+    from .catalogo_avancado import importar
+    return jsonify(importar(dados_json()))
+
+
+@bp.get('/gestao/api/relatorios')
+@protegido
+def relatorios_api():
+    from .catalogo_avancado import relatorio
+    return jsonify(relatorio(request.args.get('inicio'),request.args.get('fim')))
+
+
 @bp.route('/gestao/api/humano',methods=['GET','POST'])
 @protegido
 def humano_api():

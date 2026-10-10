@@ -1,5 +1,6 @@
 """Catálogo genérico e movimentações de estoque em transações SQLite."""
 import sqlite3
+from contextlib import nullcontext
 from decimal import Decimal, InvalidOperation
 
 from .db import get_conn
@@ -29,6 +30,28 @@ def dinheiro(valor, campo="Preço"):
         raise ValueError(f"{campo}: informe um valor válido com até duas casas decimais.") from None
 
 
+def medida(valor,campo='Quantidade',fracionado=False,minimo=0):
+    if not fracionado:
+        return inteiro(valor,campo,minimo)
+    try:
+        if isinstance(valor,bool):
+            raise ValueError
+        n=Decimal(str(valor).replace(',','.'))
+        if not n.is_finite() or not Decimal(str(minimo))<=n<=999999 or n!=n.quantize(Decimal('0.001')):
+            raise ValueError
+        return float(n)
+    except (ValueError,InvalidOperation):
+        raise ValueError(f'{campo}: use até três casas decimais e respeite o limite de quantidade.') from None
+
+
+def somar(a,b):
+    return float((Decimal(str(a))+Decimal(str(b))).quantize(Decimal('0.001')))
+
+
+def nome_completo(p):
+    return p['nome']+(' · '+p['variacao'] if p.get('variacao') else '')
+
+
 def texto(valor, campo, limite=160, obrigatorio=False):
     if not isinstance(valor, str):
         raise ValueError(f"{campo}: informe um texto.")
@@ -55,22 +78,30 @@ def registrar_movimento(conn, produto_id, tipo, quantidade, saldo, motivo, pedid
     )
 
 
-def salvar_produto(dados, produto_id=None):
+def salvar_produto(dados, produto_id=None, _conn=None):
     nome = texto(dados.get("nome", ""), "Nome", obrigatorio=True)
     categoria = texto(dados.get("categoria", ""), "Categoria", obrigatorio=True)
     descricao = texto(dados.get("descricao", ""), "Descrição", 2000)
     sku = texto(dados.get("sku", ""), "Código", 80)
     unidade = texto(dados.get("unidade", "un"), "Unidade", 20, True)
+    fracionado=dados.get('fracionado',False)
+    if type(fracionado) not in (bool,int) or fracionado not in (0,1):
+        raise ValueError('Informe se a quantidade é fracionada.')
+    fracionado=bool(fracionado)
+    familia=texto(dados.get('familia',''),'Família',160)
+    variacao=texto(dados.get('variacao',''),'Variação',160)
+    custo=dinheiro(dados['custo'],'Custo') if dados.get('custo') not in ('',None) else None
     preco = dinheiro(dados.get("preco"))
     for campo in ("ativo", "controlar_estoque"):
         if campo in dados and not isinstance(dados[campo], bool):
             raise ValueError(f"{campo}: informe verdadeiro ou falso.")
     ativo = int(dados.get("ativo", True))
-    saldo = inteiro(dados.get("estoque", 0), "Estoque") if dados.get("controlar_estoque", True) else None
-    minimo = inteiro(dados.get("estoque_minimo", 0), "Estoque mínimo")
+    saldo = medida(dados.get("estoque", 0), "Estoque",fracionado) if dados.get("controlar_estoque", True) else None
+    minimo = medida(dados.get("estoque_minimo", 0), "Estoque mínimo",fracionado)
     try:
-        with get_conn() as conn:
-            conn.execute("BEGIN IMMEDIATE")
+        with (get_conn() if _conn is None else nullcontext(_conn)) as conn:
+            if _conn is None:
+                conn.execute("BEGIN IMMEDIATE")
             anterior = None
             if produto_id is not None:
                 anterior = conn.execute("SELECT * FROM produtos WHERE id = ?", (produto_id,)).fetchone()
@@ -79,6 +110,7 @@ def salvar_produto(dados, produto_id=None):
                 if anterior["estoque"] is not None and saldo is not None:
                     # Edição de descrição/preço não sobrescreve vendas feitas enquanto o formulário estava aberto.
                     saldo = anterior["estoque"]
+                    medida(saldo,'Saldo atual',fracionado)
                 conn.execute(
                     "UPDATE produtos SET nome=?, categoria=?, descricao=?, preco=?, sku=?, unidade=?, ativo=?, estoque=?, estoque_minimo=? WHERE id=?",
                     (nome, categoria, descricao, preco, sku, unidade, ativo, saldo, minimo, produto_id),
@@ -92,6 +124,7 @@ def salvar_produto(dados, produto_id=None):
                 registrar_movimento(conn, produto_id, "CADASTRO" if anterior is None else "AJUSTE",
                                      (saldo or 0) - ((anterior["estoque"] or 0) if anterior else 0), saldo,
                                      "Cadastro inicial" if anterior is None else "Saldo alterado no cadastro")
+            conn.execute('UPDATE produtos SET fracionado=?,familia=?,variacao=?,custo=? WHERE id=?',(fracionado,familia,variacao,custo,produto_id))
             produto = dict(conn.execute("SELECT * FROM produtos WHERE id=?", (produto_id,)).fetchone())
     except sqlite3.IntegrityError as exc:
         raise ValueError("Já existe um produto com esse código. Use um código diferente.") from exc
@@ -101,21 +134,16 @@ def salvar_produto(dados, produto_id=None):
 
 def ajustar_estoque(produto_id, quantidade, motivo):
     # Delta, nunca um saldo calculado no navegador: duas entradas simultâneas se somam.
-    if isinstance(quantidade, bool):
-        raise ValueError("Quantidade inválida.")
-    try:
-        delta = int(quantidade)
-        if str(delta) != str(quantidade).strip() or not delta or abs(delta) > 999999:
-            raise ValueError
-    except (ValueError, TypeError, OverflowError):
-        raise ValueError("Informe uma quantidade inteira diferente de zero, até 999999.") from None
     motivo = texto(motivo, "Motivo", 300, True)
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
         produto = conn.execute("SELECT * FROM produtos WHERE id=?", (produto_id,)).fetchone()
         if produto is None or produto["estoque"] is None:
             raise ValueError("Produto não encontrado ou sem controle de estoque.")
-        saldo = produto["estoque"] + delta
+        delta=medida(quantidade,'Movimento',bool(produto['fracionado']),-999999)
+        if not delta:
+            raise ValueError('Informe uma quantidade diferente de zero.')
+        saldo = somar(produto["estoque"],delta)
         if not 0 <= saldo <= 999999:
             raise ValueError("A movimentação deixaria o estoque fora do limite permitido.")
         conn.execute("UPDATE produtos SET estoque=? WHERE id=?", (saldo, produto_id))

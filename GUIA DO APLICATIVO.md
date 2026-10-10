@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.7.0
+# DeliveryBot Desktop 2.8.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -20,7 +20,11 @@ Na Visão geral, **Prepare sua loja, passo a passo** reúne os atalhos das confi
 
 Cadastre roupas, acessórios, alimentos, eletrônicos, materiais, cosméticos ou outros produtos. Cada tamanho, cor ou embalagem pode ter seu próprio código e saldo. As categorias são livres.
 
-As quantidades são **inteiras**. Para vendas fracionadas, cadastre embalagens (por exemplo, pacote de 500 g) como unidades. O campo de unidade descreve a medida; não faz conversão de peso, volume ou embalagem.
+As quantidades são inteiras por padrão. Habilite **Permitir quantidades fracionadas** para vender por peso, volume ou comprimento, com até três casas decimais. Preço e custo são por unidade cadastrada: 0,250 kg de um produto a R$ 20/kg custa R$ 5. Não há conversão automática entre kg, g, litros e embalagens. Os produtos antigos continuam inteiros. Use **Família** para agrupar produtos e **Variação** para tamanho/cor; cada variação mantém seu SKU e saldo próprios e aparece identificada ao cliente.
+
+Em **Importar catálogo CSV**, selecione um arquivo, confira a prévia e confirme. O limite é 1000 produtos/500 KB. A importação cria novos cadastros e é transacional: erro ou SKU duplicado cancela o arquivo inteiro. Modelo: `nome;categoria;preco;sku;unidade;estoque;estoque_minimo;fracionado;familia;variacao;custo`. Nome, categoria e preço são obrigatórios; use `sim`/`nao` para as opções. Um leitor de códigos que funciona como teclado pode preencher o SKU ou a busca.
+
+Em **Relatórios**, consulte vendas por período (datas UTC), produtos vendidos, custos registrados e margem parcial. O custo é opcional e fica congelado nos itens dos novos pedidos; pedidos antigos sem custo são indicados. Cancelados ficam fora do relatório. Margem parcial não é lucro líquido: faltam despesas, impostos, taxas e custos não cadastrados.
 
 - **Movimentar** registra reposições e perdas com motivo, sem sobrescrever compras simultâneas.
 - Produtos inativos ou com saldo zero ficam fora do catálogo público e das ofertas do bot.

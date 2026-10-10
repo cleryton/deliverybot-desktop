@@ -26,8 +26,12 @@ _MIGRACOES_COLUNAS = {
         ("unidade", "TEXT NOT NULL DEFAULT 'un'"),
         ("estoque", "INTEGER DEFAULT NULL"),
         ("estoque_minimo", "INTEGER NOT NULL DEFAULT 0"),
+        ("fracionado", "INTEGER NOT NULL DEFAULT 0"),
+        ("familia", "TEXT NOT NULL DEFAULT ''"),
+        ("variacao", "TEXT NOT NULL DEFAULT ''"),
+        ("custo", "REAL"),
     ],
-    "itens_pedido": [("nome_produto", "TEXT")],
+    "itens_pedido": [("nome_produto", "TEXT"), ("custo_unitario", "REAL")],
     "tarefas_bot": [("entrada_registrada", "INTEGER NOT NULL DEFAULT 0")],
 }
 

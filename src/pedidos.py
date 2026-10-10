@@ -1,10 +1,10 @@
 import random
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timezone
 
 from . import config
 from .db import get_conn
-from .estoque import inteiro, registrar_movimento, invalidar_catalogo
+from .estoque import inteiro, registrar_movimento, invalidar_catalogo, medida, somar, nome_completo
 
 
 def gerar_numero_pedido() -> str:
@@ -62,8 +62,10 @@ def criar_pedido(
             if not isinstance(item, dict):
                 raise ValueError("Item inválido.")
             produto_id = inteiro(item.get("produto_id"), "Produto", 1)
-            quantidade = inteiro(item.get("quantidade", 1), "Quantidade", 1)
-            quantidades[produto_id] = quantidades.get(produto_id, 0) + quantidade
+            atual=conn.execute('SELECT fracionado FROM produtos WHERE id=?',(produto_id,)).fetchone()
+            fracionado=bool(atual and atual['fracionado'])
+            quantidade = medida(item.get("quantidade", 1), "Quantidade",fracionado,0.001 if fracionado else 1)
+            quantidades[produto_id] = somar(quantidades.get(produto_id, 0),quantidade)
             if quantidades[produto_id] > 999999:
                 raise ValueError("Quantidade acima do limite permitido.")
         total_itens = Decimal("0.00")
@@ -76,15 +78,16 @@ def criar_pedido(
                 raise ValueError("Um produto selecionado não está mais disponível. Atualize o catálogo.")
             if produto["estoque"] is not None and quantidade > produto["estoque"]:
                 raise ValueError(f"Estoque insuficiente para {produto['nome']}. Disponível: {produto['estoque']} {produto['unidade']}.")
-            subtotal = Decimal(str(produto["preco"])) * quantidade
+            subtotal = (Decimal(str(produto["preco"])) * Decimal(str(quantidade))).quantize(Decimal('0.01'),rounding=ROUND_HALF_UP)
             total_itens += subtotal
             itens_resolvidos.append(
                 {
                     "produto_id": produto["id"],
-                    "nome": produto["nome"],
+                    "nome": nome_completo(dict(produto)),
                     "quantidade": quantidade,
                     "preco_unitario": produto["preco"],
                     "subtotal": subtotal,
+                    "custo": produto['custo'],
                 }
             )
 
@@ -127,13 +130,13 @@ def criar_pedido(
 
         for item in itens_resolvidos:
             conn.execute(
-                "INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unitario, nome_produto) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (pedido_id, item["produto_id"], item["quantidade"], item["preco_unitario"], item["nome"]),
+                "INSERT INTO itens_pedido (pedido_id, produto_id, quantidade, preco_unitario, nome_produto,custo_unitario) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (pedido_id, item["produto_id"], item["quantidade"], item["preco_unitario"], item["nome"],item['custo']),
             )
             produto = conn.execute("SELECT estoque FROM produtos WHERE id=?", (item["produto_id"],)).fetchone()
             if produto["estoque"] is not None:
-                saldo = produto["estoque"] - item["quantidade"]
+                saldo = somar(produto["estoque"],-item["quantidade"])
                 conn.execute("UPDATE produtos SET estoque=? WHERE id=?", (saldo, item["produto_id"]))
                 registrar_movimento(conn, item["produto_id"], "VENDA", -item["quantidade"], saldo, numero_pedido, pedido_id)
 
@@ -198,7 +201,7 @@ def cancelar_pedido(pedido_id):
         for movimento in conn.execute("SELECT * FROM movimentos_estoque WHERE pedido_id=? AND tipo='VENDA'", (pedido_id,)).fetchall():
             produto = conn.execute("SELECT estoque FROM produtos WHERE id=?", (movimento["produto_id"],)).fetchone()
             quantidade = -movimento["quantidade"]
-            saldo = produto["estoque"] + quantidade if produto["estoque"] is not None else None
+            saldo = somar(produto["estoque"],quantidade) if produto["estoque"] is not None else None
             conn.execute("UPDATE produtos SET estoque=? WHERE id=?", (saldo, movimento["produto_id"]))
             registrar_movimento(conn, movimento["produto_id"], "ESTORNO", quantidade, saldo, "Pedido cancelado", pedido_id)
         conn.execute("UPDATE pedidos SET status='CANCELADO', atualizado_em=datetime('now') WHERE id=?", (pedido_id,))

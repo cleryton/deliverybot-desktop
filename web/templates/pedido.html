@@ -288,7 +288,7 @@
             {% if item.estoque is not none %}<div class="desc">Disponível: {{ item.estoque }} {{ item.unidade }}</div>{% endif %}
             <div class="linha-inferior">
               <div class="preco">R$ {{ "%.2f"|format(item.preco) }}</div>
-              <div class="stepper" data-preco="{{ item.preco }}">
+              <div class="stepper" data-preco="{{ item.preco }}" data-passo="{{ 0.001 if item.fracionado else 1 }}">
                 <button type="button" class="menos" aria-label="Diminuir quantidade de {{ item.nome }}">−</button>
                 <span class="qtd">0</span>
                 <button type="button" class="mais" aria-label="Aumentar quantidade de {{ item.nome }}">+</button>
@@ -358,7 +358,7 @@
         let totalItens = 0;
         let totalReais = 0;
         form.querySelectorAll('.stepper').forEach(function (stepper) {
-          const qtd = parseInt(stepper.querySelector('.qtd').textContent, 10) || 0;
+          const qtd = parseFloat(stepper.querySelector('.qtd').textContent) || 0;
           const preco = parseFloat(stepper.dataset.preco) || 0;
           totalItens += qtd;
           totalReais += qtd * preco;
@@ -378,21 +378,21 @@
       form.querySelectorAll('.stepper').forEach(function (stepper) {
         const input = stepper.parentElement.querySelector('input[type=number]');
         const span = stepper.querySelector('.qtd');
-        const max = parseInt(input.max, 10) || 20;
+        const max = parseFloat(input.max) || 20; const passo = Number(stepper.dataset.passo); input.step = passo; input.hidden = false; input.min = 0; input.addEventListener('input',()=>{span.textContent=input.value;atualizarResumo();});
 
         stepper.querySelector('.mais').addEventListener('click', function () {
-          const atual = parseInt(span.textContent, 10) || 0;
-          if (atual < max) {
-            span.textContent = atual + 1;
-            input.value = atual + 1;
+          const atual = parseFloat(span.textContent) || 0;
+          if (atual + passo <= max) {
+            span.textContent = Number((atual + passo).toFixed(3));
+            input.value = Number((atual + passo).toFixed(3));
             atualizarResumo();
           }
         });
         stepper.querySelector('.menos').addEventListener('click', function () {
-          const atual = parseInt(span.textContent, 10) || 0;
+          const atual = parseFloat(span.textContent) || 0;
           if (atual > 0) {
-            span.textContent = atual - 1;
-            input.value = atual - 1;
+            span.textContent = Math.max(0,Number((atual - passo).toFixed(3)));
+            input.value = Math.max(0,Number((atual - passo).toFixed(3)));
             atualizarResumo();
           }
         });

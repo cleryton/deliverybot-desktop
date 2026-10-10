@@ -95,3 +95,43 @@ def test_atendimento_humano_pausa_envio_e_retoma(cliente,monkeypatch):
     assert envio.call_args.args[1]=='Olá, sou da loja'
     humano.controlar(t,'retomar')
     assert not humano.pausado(t)
+
+
+def test_fracionados_cancelamento_e_custo_historico():
+    from src import estoque,pedidos,catalogo_avancado
+    from datetime import date
+    p=estoque.salvar_produto({'nome':'Tecido','categoria':'Materiais','preco':10,'custo':4,'unidade':'m','fracionado':True,'estoque':1.5,'variacao':'Azul','familia':'Tecidos'})
+    pedido=pedidos.criar_pedido('5511999990033','Cliente fictício',[{'produto_id':p['id'],'quantidade':'0.250'}],'Dinheiro')
+    assert pedido['total_pedido']==2.5
+    assert estoque.listar_produtos()[0]['estoque']==1.25
+    assert pedido['itens'][0]['produto_nome']=='Tecido · Azul'
+    estoque.salvar_produto({**p,'custo':8,'ativo':True,'controlar_estoque':True},p['id'])
+    hoje=date.today().isoformat()
+    r=catalogo_avancado.relatorio(hoje,hoje)
+    assert r['custos_registrados']==1 and r['margem_parcial']==1.5
+    pedidos.cancelar_pedido(pedido['id'])
+    assert estoque.listar_produtos()[0]['estoque']==1.5
+    assert catalogo_avancado.relatorio(hoje,hoje)['pedidos']==0
+
+
+def test_csv_conferencia_atomicidade_e_duplicados():
+    from src import estoque,catalogo_avancado
+    csv='nome;categoria;preco;sku;estoque\nCaderno;Papelaria;12.50;CAD;3\n'
+    assert not catalogo_avancado.importar({'csv':csv})['importado']
+    assert not estoque.listar_produtos()
+    assert catalogo_avancado.importar({'csv':csv,'confirmar':True})['quantidade']==1
+    with pytest.raises(ValueError):
+        catalogo_avancado.importar({'csv':csv.replace('CAD','OUTRO')+ 'Duplicado;Papelaria;10;CAD;1\n','confirmar':True})
+    assert len(estoque.listar_produtos())==1
+
+
+def test_formulario_publico_compra_fracionada(cliente):
+    from src import estoque
+    from src.links import gerar_link_pedido
+    p=estoque.salvar_produto({'nome':'Tecido','categoria':'Materiais','preco':10,'unidade':'m','fracionado':True,'estoque':2})
+    c,h=cliente
+    caminho='/m/'+gerar_link_pedido('5511999990044').rsplit('/',1)[-1]
+    c.get(caminho)
+    r=c.post(caminho,data={'csrf_token':h['X-CSRF-Token'],'nome':'Cliente fictício','forma_pagamento':'Dinheiro','forma_entrega':'RETIRADA BALCAO','qtd_'+str(p['id']):'0.5'})
+    assert r.status_code==200
+    assert estoque.listar_produtos()[0]['estoque']==1.5
