@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.8.0
+# DeliveryBot Desktop 2.9.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -106,3 +106,12 @@ O código continua compatível com `python -m src.app` e com as integrações an
 Execute **Compilar aplicativo.ps1** com Python 3.12 e Node.js 20 ou mais recente instalados na máquina de compilação. O script cria um ambiente virtual, instala as versões verificadas em `requirements-desktop.lock.txt` e `whatsapp-native/package-lock.json`, roda os testes, inclui o runtime Node e suas licenças e gera o executável e o instalador em `dist`. O usuário final recebe todos esses componentes no programa.
 
 Arquivos principais: `desktop.py`, `src/estoque.py`, `src/gestao.py`, `src/preferencias.py`, `web/templates/gestao.html`, `web/static/gestao.js`, `DeliveryBot.spec` e `packaging/`.
+
+
+## Funcionários e permissões
+
+Em **Funcionários e auditoria**, crie primeiro sua conta administradora com senha de pelo menos 12 caracteres. Crie contas individuais para os atendentes. Eles podem consultar produtos, avançar pedidos e responder no atendimento humano. Preços, custos, relatórios, conexões, exportações, backups e configurações ficam restritos ao administrador, inclusive pelas APIs. Use **Trocar funcionário** ao encerrar seu turno.
+
+Ao desativar uma conta, trocar sua senha ou mudar seu perfil, todas as suas sessões são revogadas. O último administrador ativo não pode ser desativado ou rebaixado. Outro administrador pode redefinir senhas; mantenha acesso seguro a pelo menos uma conta administradora. A auditoria registra até 100 ações na tela, com conta, ação, identificador e horário, sem copiar mensagens ou senhas. Os registros anteriores permanecem no banco.
+
+As senhas são guardadas como hashes scrypt e acompanham os backups criptografados. As permissões do aplicativo dependem também da proteção do computador: quem controla a conta Windows ou altera diretamente o banco pode contornar controles locais. Proteja o acesso ao Windows e aos backups. As contas do aplicativo não substituem essa proteção.

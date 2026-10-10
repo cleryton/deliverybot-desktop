@@ -153,3 +153,13 @@ CREATE TABLE IF NOT EXISTS atendimentos_humanos (
     telefone TEXT PRIMARY KEY, estado TEXT NOT NULL,
     solicitado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS operadores (
+    id INTEGER PRIMARY KEY, nome TEXT NOT NULL, login TEXT NOT NULL UNIQUE,
+    senha_hash TEXT NOT NULL, perfil TEXT NOT NULL, ativo INTEGER NOT NULL DEFAULT 1,
+    versao TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS auditoria_operadores (
+    id INTEGER PRIMARY KEY, operador_id INTEGER, acao TEXT NOT NULL, objeto TEXT,
+    criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);

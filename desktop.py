@@ -222,13 +222,15 @@ def main():
             conexoes.iniciar_tarefa("whatsapp", lambda progresso: whatsapp_local.iniciar(progresso))
         class API:
             def sair_aplicativo(self):
-                self._verificar()
+                self._verificar(administrador=False)
                 bandeja.sair()
-            def _verificar(self):
+            def _verificar(self, administrador=True):
                 from urllib.parse import urlsplit
                 url = urlsplit(window.get_current_url())
                 if url.netloc != f"127.0.0.1:{port}" or url.path != "/gestao":
                     raise ValueError("Reabra o painel administrativo para realizar esta operação.")
+                from src.operadores import validar_sessao_nativa
+                validar_sessao_nativa(app,window,administrador)
             def abrir_pasta(self):
                 self._verificar()
                 os.startfile(str(pasta))

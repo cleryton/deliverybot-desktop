@@ -4,6 +4,51 @@ from src import config, preferencias
 from src.db import init_db, get_conn
 
 
+def test_permissoes_auditoria_e_revogacao(cliente):
+    c,h=cliente
+    admin={'nome':'Administrador fictício','login':'admin','senha':'senha-admin-ficticia','perfil':'ADMIN'}
+    assert c.post('/gestao/api/operadores',json={**admin,'perfil':'ATENDENTE'},headers=h).status_code==400
+    uid=c.post('/gestao/api/operadores',json=admin,headers=h).json['id']
+    assert c.put(f'/gestao/api/operadores/{uid}',json={'ativo':False,'perfil':'ADMIN'},headers=h).status_code==400
+    funcionario=c.post('/gestao/api/operadores',json={**admin,'login':'vendas','perfil':'ATENDENTE'},headers=h).json['id']
+    assert c.post('/gestao/api/produtos',json={'nome':'Caderno','categoria':'Papelaria','preco':10,'custo':4},headers=h).status_code==201
+    contas=c.get('/gestao/api/operadores').json
+    assert all('senha_hash' not in u and 'versao' not in u for u in contas)
+    c.post('/gestao/sair',headers=h)
+    assert c.get('/gestao/api/produtos').status_code==401
+    assert c.post('/gestao/login',data={'login':'vendas','senha':admin['senha'],'csrf_token':h['X-CSRF-Token']}).status_code==302
+    assert c.get('/gestao/api/produtos').status_code==200
+    assert 'custo' not in c.get('/gestao/api/produtos').json[0]
+    for caminho in ['configuracoes','backup','operadores','relatorios','privacidade','rotinas','preparacao']:
+        assert c.get('/gestao/api/'+caminho).status_code in {403,405}
+    assert c.post('/gestao/api/produtos',json={},headers=h).status_code==403
+    assert c.get('/gestao/api/humano').status_code==200
+    c.post('/gestao/sair',headers=h)
+    assert c.post('/gestao/login',data={'login':'admin','senha':admin['senha'],'csrf_token':h['X-CSRF-Token']}).status_code==302
+    assert c.put(f'/gestao/api/operadores/{funcionario}',json={'ativo':False,'perfil':'ATENDENTE'},headers=h).status_code==200
+    assert any(a['operador_id']==uid and a['acao']=='gestao.produtos' for a in c.get('/gestao/api/operadores/auditoria').json)
+
+
+def test_ponte_nativa_exige_cookie_assinado_e_perfil(cliente):
+    from src.app import app
+    from src import operadores
+    from http.cookies import SimpleCookie
+    from unittest.mock import Mock
+    c,h=cliente
+    c.post('/gestao/api/operadores',json={'nome':'Responsável','login':'admin','senha':'senha-ficticia-123','perfil':'ADMIN'},headers=h)
+    janela=Mock()
+    janela.get_cookies.return_value=[SimpleCookie('session='+c.get_cookie('session').value)]
+    operadores.validar_sessao_nativa(app,janela)
+    janela.get_cookies.return_value=[SimpleCookie('session=adulterado')]
+    with pytest.raises(ValueError):
+        operadores.validar_sessao_nativa(app,janela)
+    c.post('/gestao/sair',headers=h)
+    janela.get_cookies.return_value=[SimpleCookie('session='+c.get_cookie('session').value)]
+    with pytest.raises(ValueError):
+        operadores.validar_sessao_nativa(app,janela)
+    operadores.validar_sessao_nativa(app,janela,administrador=False)
+
+
 @pytest.fixture(autouse=True)
 def banco(tmp_path, monkeypatch):
     monkeypatch.setattr(config, 'DATABASE_PATH', str(tmp_path/'loja.db'))

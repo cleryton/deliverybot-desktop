@@ -10,7 +10,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
 from . import conexoes, processamento
-from . import seguranca, privacidade, backups
+from . import seguranca, privacidade, backups, operadores
 
 bp = Blueprint("gestao", __name__)
 
@@ -20,7 +20,7 @@ def _local():
     return seguranca.local()
 
 
-def autorizado():
+def acesso_base():
     from .app import _exigir_autenticacao_cozinha
     token = current_app.config.get("DESKTOP_TOKEN")
     if token:
@@ -28,6 +28,10 @@ def autorizado():
     if not seguranca.acesso_administrativo():
         return False
     return _exigir_autenticacao_cozinha()
+
+
+def autorizado():
+    return acesso_base() and (not operadores.existem() or operadores.usuario() is not None)
 
 
 def protegido(view):
@@ -38,7 +42,13 @@ def protegido(view):
         if request.method != "GET":
             if not seguranca.csrf_valido():
                 return jsonify(erro="Sessão expirada. Reabra o painel."), 403
-        return view(*args, **kwargs)
+        if not operadores.permitido(request.path,request.method):
+            return jsonify(erro='Seu perfil não permite esta operação.'),403
+        ator=operadores.usuario()
+        resultado=view(*args, **kwargs)
+        if request.method!='GET' and current_app.make_response(resultado).status_code<400:
+            operadores.auditar(request.endpoint, next(iter(kwargs.values()),None),usuario_id=ator['id'] if ator else None)
+        return resultado
     return wrapper
 
 
@@ -74,9 +84,58 @@ def painel():
         session.permanent = True
         return redirect(url_for("gestao.painel"))
     if not autorizado():
+        if acesso_base():
+            return render_template('operadores_login.html',csrf=seguranca.csrf())
         return "Abra o aplicativo DeliveryBot ou entre com a conta administrativa.", 401, {"WWW-Authenticate": 'Basic realm="DeliveryBot"'}
     session.setdefault("csrf", secrets.token_urlsafe(32))
-    return render_template("gestao.html", csrf=session["csrf"])
+    return render_template("gestao.html", csrf=session["csrf"],administrador=operadores.admin())
+
+
+@bp.post('/gestao/login')
+def login_operador():
+    if not acesso_base() or not seguranca.csrf_valido():
+        return 'Reabra o painel para entrar.',403
+    if seguranca.login_bloqueado():
+        return 'Muitas tentativas. Aguarde cinco minutos.',429
+    ok=operadores.entrar(request.form.get('login'),request.form.get('senha'))
+    seguranca.registrar_login(ok)
+    if not ok:
+        return render_template('operadores_login.html',csrf=seguranca.csrf(),erro='Login ou senha inválidos.'),401
+    return redirect('/gestao')
+
+
+@bp.post('/gestao/sair')
+def sair_operador():
+    if not autorizado() or not seguranca.csrf_valido():
+        return 'Sessão inválida.',403
+    operadores.auditar('SAIR')
+    session.pop('operador_id',None);session.pop('operador_versao',None)
+    return redirect('/gestao')
+
+
+@bp.route('/gestao/api/operadores',methods=['GET','POST'])
+@protegido
+def operadores_api():
+    return jsonify(operadores.listar() if request.method=='GET' else operadores.criar(dados_json()))
+
+
+@bp.put('/gestao/api/operadores/<int:uid>')
+@protegido
+def alterar_operador(uid):
+    operadores.alterar(uid,dados_json())
+    return jsonify(ok=True)
+
+
+@bp.get('/gestao/api/operadores/me')
+@protegido
+def operador_atual():
+    return jsonify(usuario=operadores.usuario(),administrador=operadores.admin(),contas_ativas=operadores.existem())
+
+
+@bp.get('/gestao/api/operadores/auditoria')
+@protegido
+def auditoria_operadores():
+    return jsonify(operadores.auditoria())
 
 
 @bp.route("/gestao/api/resumo")
@@ -86,6 +145,8 @@ def resumo():
     with get_conn() as conn:
         total = dict(conn.execute(
             "SELECT COUNT(*) AS pedidos, COALESCE(SUM(total_pedido),0) AS vendas FROM pedidos WHERE status != 'CANCELADO'").fetchone())
+    if not operadores.admin():
+        total['vendas']=0
     return jsonify(produtos=len(produtos), ativos=sum(p["ativo"] for p in produtos),
                    baixos=sum(p["ativo"] and p["estoque"] is not None and p["estoque"] <= p["estoque_minimo"] for p in produtos),
                    pendentes=len(fila.listar_fila()), **total, nome=config.NOME_RESTAURANTE,
@@ -106,7 +167,11 @@ def _webhook_exibicao():
 @protegido
 def produtos():
     if request.method == "GET":
-        return jsonify(estoque.listar_produtos())
+        produtos=estoque.listar_produtos()
+        if not operadores.admin():
+            for p in produtos:
+                p.pop('custo',None)
+        return jsonify(produtos)
     return jsonify(estoque.salvar_produto(dados_json())), 201
 
 
@@ -135,7 +200,12 @@ def movimentos():
 def listar_pedidos():
     with get_conn() as conn:
         ids = [r["id"] for r in conn.execute("SELECT id FROM pedidos ORDER BY id DESC LIMIT 200")]
-    return jsonify([pedidos.obter_pedido(i) for i in ids])
+    resultado=[pedidos.obter_pedido(i) for i in ids]
+    if not operadores.admin():
+        for p in resultado:
+            for item in p['itens']:
+                item.pop('custo_unitario',None)
+    return jsonify(resultado)
 
 
 @bp.route("/gestao/api/pedidos/<int:pedido_id>/avancar", methods=["POST"])

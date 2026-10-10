@@ -8,9 +8,9 @@ async function preparacao(){
 $('#preparation-check').addEventListener('click',e=>run(e.target,preparacao));
 $('#preparation-test').addEventListener('click',e=>run(e.target,async()=>{const r=await api('preparacao/testar','POST',{});$('#preparation-link').value=r.url;$('#preparation-link').hidden=false;}));
 $('#preparation-link').addEventListener('click',e=>e.target.select());
-preparacao().catch(e=>toast(e.message,true));
+if(isAdmin)preparacao().catch(e=>toast(e.message,true));
 $('#app-exit').addEventListener('click',e=>run(e.target,async()=>{if(!window.pywebview?.api?.sair_aplicativo)throw new Error('Use o aplicativo Desktop para encerrar.');if(confirm('Encerrar o aplicativo e interromper o atendimento?'))await window.pywebview.api.sair_aplicativo();}));
 async function rotinasStatus(){const r=await api('rotinas'),f=$('#routines-form');for(const k of ['horas','quantidade','pasta'])f.elements[k].value=r[k];for(const k of ['backup_ativo','limpar'])f.elements[k].checked=!!r[k];$('#routines-status').textContent=r.erro||(r.executando?'Rotinas em execução.':r.backup_ativo?(r.atrasado?'Atenção: backup automático ainda ausente ou atrasado. ':'' )+'Último backup verificado: '+date(r.ultima_copia?.split('.')[0]):'Backup automático desativado. Configure uma cópia fora deste computador.');}
 $('#routines-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const d=Object.fromEntries(new FormData(e.target));for(const k of ['backup_ativo','limpar'])d[k]=e.target.elements[k].checked;await api('rotinas','PUT',d);e.target.elements.senha.value='';await rotinasStatus();toast('Rotinas salvas.');});});
 $('#routines-run').addEventListener('click',e=>run(e.target,async()=>{await api('rotinas','POST',{});toast('Rotinas iniciadas. Verifique o resultado em instantes.');setTimeout(()=>rotinasStatus().catch(e=>toast(e.message,true)),3000);}));
-rotinasStatus().catch(e=>toast(e.message,true));
+if(isAdmin)rotinasStatus().catch(e=>toast(e.message,true));
