@@ -131,6 +131,12 @@ def smoke_test(destino, janela=False):
                                 return
                             time.sleep(.1)
                         raise RuntimeError("Verificação da interface falhou: " + expressao)
+                    window.evaluate_js("const s=document.querySelector('[data-theme-picker]');s.value='escuro';s.dispatchEvent(new Event('change'))")
+                    esperar("document.documentElement.dataset.theme === 'dark' && !document.querySelector('[data-theme-picker]').disabled")
+                    cores = window.evaluate_js("({fundo:getComputedStyle(document.body).backgroundColor,card:getComputedStyle(document.querySelector('.card')).backgroundColor,tema:document.documentElement.dataset.theme})")
+                    assert cores == {'fundo':'rgb(17, 27, 23)','card':'rgb(27, 42, 35)','tema':'dark'}, f'Cores do tema escuro: {cores}'
+                    window.evaluate_js("location.reload()")
+                    esperar("document.readyState === 'complete' && document.documentElement.dataset.themeChoice === 'escuro' && document.documentElement.dataset.theme === 'dark' && document.querySelector('#loja-nome')?.textContent === 'Minha loja' && document.querySelectorAll('#product-list tr').length === 1")
                     window.evaluate_js("document.querySelector('[data-action=novo]').click(); const f=document.querySelector('#product-form'); f.elements.nome.value='Caderno UI'; f.elements.categoria.value='Papelaria'; f.elements.preco.value='12.50'; f.elements.estoque.value='4'; f.querySelector('button[type=submit]').click();")
                     esperar("!document.querySelector('#product-dialog').open && document.querySelectorAll('#product-list tr').length === 2")
                     window.evaluate_js("document.querySelector('[data-page=produtos]').click()")
@@ -182,17 +188,29 @@ def smoke_test(destino, janela=False):
                     esperar("document.querySelector('#operator-list').textContent.includes('Atendente UI')")
                     window.evaluate_js("document.querySelector('#operator-logout').click()")
                     esperar("document.querySelector('form[action=\"/gestao/login\"]') !== null")
-                    window.evaluate_js("const f=document.querySelector('form');f.elements.login.value='vendas.ui';f.elements.senha.value='senha-ficticia-ui-123';f.querySelector('button').click();")
+                    esperar("document.documentElement.dataset.theme === 'dark' && getComputedStyle(document.querySelector('.login-card')).backgroundColor === 'rgb(27, 42, 35)'")
+                    window.evaluate_js("const f=document.querySelector('form');f.elements.login.value='vendas.ui';f.elements.senha.value='senha-ficticia-ui-123';f.querySelector('button[type=submit]').click();")
                     esperar("document.body.dataset.admin === 'false' && document.querySelector('#product-list')?.textContent.includes('Caderno UI')")
                     assert window.evaluate_js("getComputedStyle(document.querySelector('[data-page=configuracoes]')).display === 'none'")
                     window.evaluate_js("window.pywebview.api.verificar().then(()=>document.body.dataset.permissao='permitido',()=>document.body.dataset.permissao='negado')")
                     esperar("document.body.dataset.permissao === 'negado'")
                     window.evaluate_js("fetch('/gestao/api/configuracoes').then(r=>document.body.dataset.httpPermissao=String(r.status))")
                     esperar("document.body.dataset.httpPermissao === '403'")
+                    window.evaluate_js("const s=document.querySelector('[data-theme-picker]');s.value='claro';s.dispatchEvent(new Event('change'))")
+                    esperar("document.documentElement.dataset.theme === 'light' && !document.querySelector('[data-theme-picker]').disabled")
+                    assert window.evaluate_js("getComputedStyle(document.body).backgroundColor === 'rgb(246, 248, 247)'")
+                    window.evaluate_js("const s=document.querySelector('[data-theme-picker]');s.value='sistema';s.dispatchEvent(new Event('change'))")
+                    esperar("document.documentElement.dataset.themeChoice === 'sistema' && !document.querySelector('[data-theme-picker]').disabled")
+                    assert window.evaluate_js("document.documentElement.dataset.theme === (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')")
+                    resultado['aparencia']=['escuro','claro','seguir_windows','preferencia_apos_reabrir_pagina','login_escuro','atendente_pode_alterar']
                     resultado['funcionarios']=['cadastro_admin','cadastro_atendente','troca_de_conta','permissoes_http','permissoes_nativas']
                     resultado['atualizacoes']=['versao_embutida','instalacao_sem_assinatura_bloqueada']
                 except Exception as exc:
-                    resultado.update(ok=False, erro=str(exc))
+                    resultado.update(ok=False, erro=str(exc) or type(exc).__name__)
+                    try:
+                        resultado['diagnostico_janela'] = window.evaluate_js("({url:location.pathname,carregamento:document.readyState,tema:document.documentElement.dataset.theme,escolha:document.documentElement.dataset.themeChoice,fundo:document.body?getComputedStyle(document.body).backgroundColor:null})")
+                    except Exception:
+                        pass
                 finally:
                     window.destroy()
             try:

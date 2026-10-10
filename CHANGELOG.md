@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.12.0 — 2026-10-10
+
+Modo claro, escuro e automático conforme o Windows, com preferência persistida na instalação, tela de login e contraste adaptado no painel. Verificações de acesso, CSRF e funcionamento na janela nativa.
+
 ## 2.11.1 — 2026-10-10
 
 - Remoção dos iniciadores, configurações e manual do fluxo antigo com Docker/n8n/ngrok.

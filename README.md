@@ -4,7 +4,7 @@ Aplicativo Windows para cadastrar produtos de qualquer categoria, controlar esto
 
 ## Instalar e usar
 
-Dentro de `dist/`, abra a pasta da versão indicada em `VERSION` (por exemplo, `v2.11.1`). Execute `Instalar-DeliveryBot.exe` para instalar ou `DeliveryBot.exe` para usar diretamente. O usuário final não precisa instalar Docker, Node.js ou Python. Para IA local, configure o Ollama em **WhatsApp e IA**.
+Dentro de `dist/`, abra a pasta da versão indicada em `VERSION` (por exemplo, `v2.12.0`). Execute `Instalar-DeliveryBot.exe` para instalar ou `DeliveryBot.exe` para usar diretamente. O usuário final não precisa instalar Docker, Node.js ou Python. Para IA local, configure o Ollama em **WhatsApp e IA**. O seletor **Tema** permite usar modo claro, escuro ou acompanhar o Windows; a preferência continua após reabrir o aplicativo.
 
 Use o [guia do aplicativo](GUIA%20DO%20APLICATIVO.md) para configurar a loja, cadastrar produtos, conectar o WhatsApp e iniciar a página de pedidos. Os procedimentos de proteção dos dados estão em [Privacidade e segurança](PRIVACIDADE%20E%20SEGURAN%C3%87A.md).
 

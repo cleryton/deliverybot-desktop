@@ -31,6 +31,34 @@ def test_permissoes_auditoria_e_revogacao(cliente):
     assert any(a['operador_id']==uid and a['acao']=='gestao.produtos' for a in c.get('/gestao/api/operadores/auditoria').json)
 
 
+def test_tema_persistente_com_acesso_csrf_e_login(cliente):
+    from src.app import app
+    from src import aparencia
+    c, h = cliente
+    outro = app.test_client()
+    assert outro.get('/gestao/api/aparencia').status_code == 401
+    assert outro.put('/gestao/api/aparencia', json={'tema':'escuro'}, headers=h).status_code == 401
+    assert c.get('/gestao/api/aparencia').json == {'tema':'sistema'}
+    assert c.put('/gestao/api/aparencia', json={'tema':'escuro'}).status_code == 403
+    assert c.put('/gestao/api/aparencia', json={'tema':'escuro'}, headers={**h,'Origin':'https://outro.example'}).status_code == 403
+    for invalido in ['dark', '<script>', None, 1, ['escuro']]:
+        assert c.put('/gestao/api/aparencia', json={'tema':invalido}, headers=h).status_code == 400
+    assert aparencia.tema() == 'sistema'
+    assert c.put('/gestao/api/aparencia', json={'tema':'escuro'}, headers=h).json == {'tema':'escuro'}
+    assert 'data-theme-choice="escuro"' in c.get('/gestao').text
+    # Nova conexão lê a preferência gravada, sem depender do armazenamento do navegador.
+    resposta = outro.get('/gestao?acesso=preparacao-ficticia', follow_redirects=True)
+    assert resposta.status_code == 200 and 'data-theme-choice="escuro"' in resposta.text
+    c.post('/gestao/api/operadores', json={'nome':'Responsável','login':'admin','senha':'senha-ficticia-123','perfil':'ADMIN'}, headers=h)
+    c.post('/gestao/sair', headers=h)
+    assert 'data-theme-choice="escuro"' in c.get('/gestao').text
+    assert c.put('/gestao/api/aparencia', json={'tema':'claro'}, headers=h).status_code == 200
+    assert 'data-theme-choice="claro"' in c.get('/gestao').text
+    with get_conn() as conn:
+        conn.execute("UPDATE configuracoes SET valor='valor-antigo' WHERE chave='APARENCIA_TEMA'")
+    assert aparencia.tema() == 'sistema'
+
+
 def test_ponte_nativa_exige_cookie_assinado_e_perfil(cliente):
     from src.app import app
     from src import operadores

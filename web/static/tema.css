@@ -1,0 +1,66 @@
+:root { color-scheme: light; --surface: #fff; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #edf5f1;
+  --muted: #afc2ba;
+  --green: #72d5b3;
+  --light: #203d33;
+  --line: #3d554c;
+  --bg: #111b17;
+  --surface: #1b2a23;
+}
+.theme-picker { flex-direction: row; align-items: center; gap: 8px; margin: 0; font-size: 12px; }
+.theme-picker select { width: auto; padding: 8px; font-size: 12px; }
+.topbar { flex-wrap: wrap; height: auto; min-height: 76px; gap: 8px; padding-block: 12px; }
+.theme-feedback { flex-basis: 100%; font-size: 12px; color: var(--ink); }
+.login-page main { margin-left: 0; padding: 18px; }
+.login-card { max-width: 500px; margin: 8vh auto; }
+.login-card .theme-picker { justify-content: flex-end; margin-bottom: 24px; }
+dialog { background: var(--surface); }
+:root[data-theme="dark"] button,
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .metric,
+:root[data-theme="dark"] .assistant,
+:root[data-theme="dark"] .button-link,
+:root[data-theme="dark"] .qr-area { background: var(--surface); border-color: var(--line); }
+:root[data-theme="dark"] button:hover,
+:root[data-theme="dark"] .button-link:hover { background: #2a4035; }
+:root[data-theme="dark"] button.primary { background: var(--green); color: #10261e; border-color: var(--green); }
+:root[data-theme="dark"] button.primary:hover { background: #92e5c7; }
+:root[data-theme="dark"] button.danger { color: #ffb6bb; }
+:root[data-theme="dark"] input:disabled { background: #202f29; color: #afc2ba; }
+:root[data-theme="dark"] input:focus,
+:root[data-theme="dark"] select:focus,
+:root[data-theme="dark"] textarea:focus,
+:root[data-theme="dark"] button:focus-visible { outline-color: #92e5c7; }
+:root[data-theme="dark"] .topbar { background: #17231d; }
+:root[data-theme="dark"] .brand-icon { background: #187d64; color: #fff; }
+:root[data-theme="dark"] .store-label,
+:root[data-theme="dark"] .sidebar-bottom,
+:root[data-theme="dark"] th { color: var(--muted); }
+:root[data-theme="dark"] .welcome { background: linear-gradient(125deg,#203a2e,#1b2a23); }
+:root[data-theme="dark"] .pill,
+:root[data-theme="dark"] .customer { background: #254535; }
+:root[data-theme="dark"] .steps button,
+:root[data-theme="dark"] .connection-steps { background: #21342a; }
+:root[data-theme="dark"] .connection-steps b { color: var(--green); }
+:root[data-theme="dark"] .product-avatar { background: #2b4034; color: #c0dacf; }
+:root[data-theme="dark"] .notice,
+:root[data-theme="dark"] .job-message { background: #203d30; border-color: #486654; color: #c4e4d1; }
+:root[data-theme="dark"] .badge.warning { background: #46371a; color: #ffdd96; }
+:root[data-theme="dark"] .badge.gray { background: #303c37; color: #c6d2cc; }
+:root[data-theme="dark"] .badge.red,
+:root[data-theme="dark"] .job-message.error { background: #4a272e; color: #ffbdc4; }
+:root[data-theme="dark"] th { background: #223329; }
+:root[data-theme="dark"] .empty-icon { color: #92c8af; }
+:root[data-theme="dark"] dialog::backdrop { background: #0009; }
+/* O QR mantém uma área branca para preservar a leitura pelo celular. */
+:root[data-theme="dark"] .qr-area img { background: #fff; padding: 12px; border-radius: 8px; }
+@media(max-width:760px) {
+  .topbar>div { flex-wrap: wrap; gap: 8px; }
+  .theme-picker { flex-wrap: wrap; }
+}

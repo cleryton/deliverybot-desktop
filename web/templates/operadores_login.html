@@ -1,1 +1,22 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Entrar — DeliveryBot</title><link rel="stylesheet" href="/static/gestao.css"></head><body><main><article class="card" style="max-width:500px;margin:8vh auto"><h1>Entrar no DeliveryBot</h1><p>Use sua conta de administrador ou atendente.</p>{% if erro %}<p role="alert">{{ erro }}</p>{% endif %}<form action="/gestao/login" method="post"><input type="hidden" name="csrf_token" value="{{ csrf }}"><label>Login<input name="login" maxlength="80" required autocomplete="username"></label><label>Senha<input name="senha" type="password" maxlength="256" required autocomplete="current-password"></label><button class="primary">Entrar</button></form><p>Se esqueceu a senha, peça a outro administrador para redefini-la. Contas e senha do Windows são separadas.</p></article></main></body></html>
+<!doctype html>
+<html lang="pt-BR" data-theme-choice="{{ tema }}">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf }}"><title>Entrar — DeliveryBot</title>
+  <script src="{{ url_for('static', filename='tema.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='gestao.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='tema.css') }}">
+</head>
+<body class="login-page"><main><article class="card login-card">
+  <label class="theme-picker">Tema<select data-theme-picker aria-label="Tema do aplicativo"><option value="sistema">Seguir o Windows</option><option value="claro">Claro</option><option value="escuro">Escuro</option></select></label>
+  <p id="theme-status" class="theme-feedback" role="status" hidden></p>
+  <h1>Entrar no DeliveryBot</h1><p>Use sua conta de administrador ou atendente.</p>
+  {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
+  <form action="/gestao/login" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <label>Login<input name="login" maxlength="80" required autocomplete="username"></label>
+    <label>Senha<input name="senha" type="password" maxlength="256" required autocomplete="current-password"></label>
+    <button type="submit" class="primary">Entrar</button>
+  </form>
+  <p>Se esqueceu a senha, peça a outro administrador para redefini-la. Contas e senha do Windows são separadas.</p>
+</article></main></body></html>

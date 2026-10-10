@@ -9,7 +9,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
-from . import conexoes, processamento, publicacao
+from . import conexoes, processamento, publicacao, aparencia
 from . import seguranca, privacidade, backups, operadores
 
 bp = Blueprint("gestao", __name__)
@@ -88,15 +88,28 @@ def painel():
             return pagina_login()
         return "Abra o aplicativo DeliveryBot ou entre com a conta administrativa.", 401, {"WWW-Authenticate": 'Basic realm="DeliveryBot"'}
     session.setdefault("csrf", secrets.token_urlsafe(32))
-    return render_template("gestao.html", csrf=session["csrf"],administrador=operadores.admin())
+    return render_template("gestao.html", csrf=session["csrf"],administrador=operadores.admin(),tema=aparencia.tema())
 
 
 def pagina_login(erro=None,status=200):
-    response=current_app.make_response((render_template('operadores_login.html',csrf=seguranca.csrf(),erro=erro),status))
+    response=current_app.make_response((render_template('operadores_login.html',csrf=seguranca.csrf(),erro=erro,tema=aparencia.tema()),status))
     # Formulários nativos com no-referrer podem enviar Origin:null. Esta página
     # preserva a origem local, sem enviar referer para outros sites.
     response.headers['Referrer-Policy']='same-origin'
     return response
+
+
+@bp.route('/gestao/api/aparencia', methods=['GET', 'PUT'])
+def aparencia_api():
+    # Disponível também na tela de login: exige acesso local autenticado ao app.
+    # A preferência é cosmética e não concede acesso às operações da loja.
+    if not acesso_base():
+        return jsonify(erro='Acesso restrito ao aplicativo.'), 401
+    if request.method == 'PUT':
+        if not seguranca.csrf_valido():
+            return jsonify(erro='Sessão expirada. Reabra o painel.'), 403
+        aparencia.salvar(dados_json().get('tema'))
+    return jsonify(tema=aparencia.tema())
 
 
 @bp.post('/gestao/login')

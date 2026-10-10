@@ -1,10 +1,12 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme-choice="{{ tema }}">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="csrf-token" content="{{ csrf }}"><title>DeliveryBot • Gestão da loja</title>
+  <script src="{{ url_for('static', filename='tema.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='gestao.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='conexoes.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='tema.css') }}">
   <script defer src="{{ url_for('static', filename='gestao.js') }}"></script>
   <script defer src="{{ url_for('static', filename='primeiros_passos.js') }}"></script>
   <script defer src="{{ url_for('static', filename='humano.js') }}"></script>
@@ -29,10 +31,10 @@
       <button data-page="humano"><span>☏</span> Atendimento humano</button>
       <button data-admin-only data-page="configuracoes"><span>⚙</span> Configurações</button>
     <button data-admin-only data-page="operadores">♙ Funcionários e auditoria</button><button data-admin-only data-page="atualizacoes">↻ Atualizações</button></nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.11.1</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.12.0</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
   </aside>
   <main>
-    <header class="topbar"><span id="breadcrumb">Sua operação, em um só lugar</span><div><span id="connection" class="badge">Modo de teste</span><button id="refresh" class="icon-button" title="Atualizar dados" aria-label="Atualizar dados">↻</button></div></header>
+    <header class="topbar"><span id="breadcrumb">Sua operação, em um só lugar</span><div><label class="theme-picker">Tema<select data-theme-picker aria-label="Tema do aplicativo"><option value="sistema">Seguir o Windows</option><option value="claro">Claro</option><option value="escuro">Escuro</option></select></label><span id="connection" class="badge">Modo de teste</span><button id="refresh" class="icon-button" title="Atualizar dados" aria-label="Atualizar dados">↻</button></div><span id="theme-status" class="theme-feedback" role="status" hidden></span></header>
     <div class="content">
       <section id="page-inicio" class="page">
         <div class="page-heading"><div><p class="eyebrow">PAINEL DA LOJA</p><h1>Seu dia começa aqui.</h1><p>Acompanhe seus produtos, vendas e atendimento.</p></div><button data-admin-only class="primary" data-action="novo">+ Cadastrar produto</button></div>
