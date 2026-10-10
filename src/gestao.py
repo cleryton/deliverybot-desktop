@@ -69,7 +69,7 @@ def cabecalhos(response):
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
     return response
 
 
@@ -85,10 +85,18 @@ def painel():
         return redirect(url_for("gestao.painel"))
     if not autorizado():
         if acesso_base():
-            return render_template('operadores_login.html',csrf=seguranca.csrf())
+            return pagina_login()
         return "Abra o aplicativo DeliveryBot ou entre com a conta administrativa.", 401, {"WWW-Authenticate": 'Basic realm="DeliveryBot"'}
     session.setdefault("csrf", secrets.token_urlsafe(32))
     return render_template("gestao.html", csrf=session["csrf"],administrador=operadores.admin())
+
+
+def pagina_login(erro=None,status=200):
+    response=current_app.make_response((render_template('operadores_login.html',csrf=seguranca.csrf(),erro=erro),status))
+    # Formulários nativos com no-referrer podem enviar Origin:null. Esta página
+    # preserva a origem local, sem enviar referer para outros sites.
+    response.headers['Referrer-Policy']='same-origin'
+    return response
 
 
 @bp.post('/gestao/login')
@@ -100,7 +108,7 @@ def login_operador():
     ok=operadores.entrar(request.form.get('login'),request.form.get('senha'))
     seguranca.registrar_login(ok)
     if not ok:
-        return render_template('operadores_login.html',csrf=seguranca.csrf(),erro='Login ou senha inválidos.'),401
+        return pagina_login('Login ou senha inválidos.',401)
     return redirect('/gestao')
 
 
@@ -130,6 +138,26 @@ def alterar_operador(uid):
 @protegido
 def operador_atual():
     return jsonify(usuario=operadores.usuario(),administrador=operadores.admin(),contas_ativas=operadores.existem())
+
+
+@bp.route('/gestao/api/atualizacoes',methods=['GET','PUT','POST'])
+@protegido
+def atualizacoes_api():
+    from . import atualizacoes
+    if request.method=='PUT':
+        atualizacoes.configurar(dados_json())
+    elif request.method=='POST':
+        d=dados_json()
+        if d.get('acao')=='consultar':
+            funcao=atualizacoes.consultar
+        elif d.get('acao')=='baixar':
+            senha=d.get('senha')
+            backups._chave(senha,b'0'*16)
+            funcao=lambda progresso:atualizacoes.baixar(senha,progresso)
+        else:
+            raise ValueError('Operação de atualização inválida.')
+        return jsonify(conexoes.iniciar_tarefa('atualizacoes',funcao)),202
+    return jsonify(**atualizacoes.situacao(),tarefa=conexoes.status_jobs().get('atualizacoes'))
 
 
 @bp.get('/gestao/api/operadores/auditoria')

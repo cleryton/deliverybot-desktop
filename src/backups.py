@@ -73,6 +73,14 @@ def criar_local(banco, destino):
     Path(destino).write_bytes(LOCAL_MAGIC + _dpapi(dados, False))
 
 
+def verificar_arquivo(arquivo, senha):
+    dados=abrir_arquivo(arquivo,senha)
+    with closing(sqlite3.connect(':memory:')) as c:
+        c.deserialize(dados)
+        if c.execute('PRAGMA integrity_check').fetchone()[0]!='ok':
+            raise ValueError('O backup não passou na verificação de recuperação.')
+
+
 def _serializar(conn):
     dados = bytearray(conn.serialize())
     # sqlite3_deserialize exige o cabeçalho de rollback journal (SQLite, bytes 18/19).

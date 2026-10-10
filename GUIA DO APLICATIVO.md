@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.9.0
+# DeliveryBot Desktop 2.10.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -115,3 +115,16 @@ Em **Funcionários e auditoria**, crie primeiro sua conta administradora com sen
 Ao desativar uma conta, trocar sua senha ou mudar seu perfil, todas as suas sessões são revogadas. O último administrador ativo não pode ser desativado ou rebaixado. Outro administrador pode redefinir senhas; mantenha acesso seguro a pelo menos uma conta administradora. A auditoria registra até 100 ações na tela, com conta, ação, identificador e horário, sem copiar mensagens ou senhas. Os registros anteriores permanecem no banco.
 
 As senhas são guardadas como hashes scrypt e acompanham os backups criptografados. As permissões do aplicativo dependem também da proteção do computador: quem controla a conta Windows ou altera diretamente o banco pode contornar controles locais. Proteja o acesso ao Windows e aos backups. As contas do aplicativo não substituem essa proteção.
+
+
+## Distribuições e atualizações
+
+Baixe o instalador em [Releases do DeliveryBot](https://github.com/cleryton/deliverybot-desktop/releases). O instalador por usuário mantém o banco existente; encerre o aplicativo pela bandeja antes de instalar. Não exige Docker, Python ou Node.js no computador do usuário.
+
+Em **Atualizações**, consulte a última versão publicada. A consulta automática é opcional, ocorre uma vez por dia enquanto o app está aberto e usa a API pública do GitHub. Nenhum dado dos clientes é enviado; o GitHub recebe os dados normais de uma conexão de internet, como endereço IP. O download confere tamanho, origem e SHA-256 conforme o manifesto da release, e cria um backup portátil criptografado e verificado com sua senha. Isso verifica a integridade conforme a publicação; não substitui a confiança na conta do editor no GitHub.
+
+A instalação automática exige uma assinatura Authenticode válida e o certificado do editor fixado na distribuição. A distribuição atual ainda não possui certificado comercial; o botão de instalar automaticamente permanece bloqueado. O instalador manual e o manifesto continuam disponíveis no GitHub. Para voltar aos dados anteriores, encerre o app, abra uma versão compatível e use **Restaurar backup** com a senha guardada. A restauração substitui alterações posteriores à cópia. Não há reversão automática do executável.
+
+### Preparação de uma distribuição assinada
+
+O mantenedor deve obter um certificado confiável de assinatura de código, manter a chave privada no repositório de certificados Windows e configurar apenas seu thumbprint público em `packaging/assinatura.json` **antes** de reconstruir o aplicativo. Não inclua certificados com chave privada no Git. Use `packaging/assinar.ps1 -Arquivo caminho -SignTool caminho-do-signtool.exe` para assinar o aplicativo, compile o instalador para incorporar o aplicativo assinado e assine também o instalador. Execute `packaging/gerar_hashes.py` por último. Publique o instalador e `SHA256SUMS.txt` na mesma release, sem substituir assets de uma versão já publicada. Consulte a [documentação de assinatura da Microsoft](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature) e a [API de releases do GitHub](https://docs.github.com/en/rest/releases/releases).

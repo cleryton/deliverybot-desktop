@@ -163,3 +163,9 @@ CREATE TABLE IF NOT EXISTS auditoria_operadores (
     id INTEGER PRIMARY KEY, operador_id INTEGER, acao TEXT NOT NULL, objeto TEXT,
     criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS atualizacoes (
+    id INTEGER PRIMARY KEY CHECK(id=1), automatica INTEGER NOT NULL DEFAULT 0,
+    ultima_consulta REAL NOT NULL DEFAULT 0
+);
+INSERT OR IGNORE INTO atualizacoes(id) VALUES(1);

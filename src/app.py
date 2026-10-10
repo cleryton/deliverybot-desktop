@@ -324,7 +324,7 @@ def enviar_pedido(token):
         if chave.startswith("qtd_") and valor and len(valor) <= 10 and valor.isascii():
             produto_id_str = chave.replace("qtd_", "")
             if len(produto_id_str) <= 10 and produto_id_str.isascii() and produto_id_str.isdigit():
-                if valor not in {'0','0.000','0.0',''}:
+                if valor not in {'0','0.000','0.00','0.0',''}:
                     itens.append({"produto_id": int(produto_id_str), "quantidade": valor})
 
     if not itens:

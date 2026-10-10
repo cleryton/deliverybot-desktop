@@ -36,7 +36,10 @@ class Instalador : Form {
         string tmp = arquivo + ".novo";
         using (Stream input = Assembly.GetExecutingAssembly().GetManifestResourceStream(recurso))
         using (FileStream output = File.Create(tmp)) { input.CopyTo(output); }
-        try { if(File.Exists(arquivo)) File.Delete(arquivo); File.Move(tmp,arquivo); }
+        try {
+            if(File.Exists(arquivo)) File.Replace(tmp,arquivo,arquivo+".anterior",true);
+            else File.Move(tmp,arquivo);
+        }
         catch { if(File.Exists(tmp))File.Delete(tmp); throw; }
     }
     static void Atalho(string caminho, string executavel) {
@@ -61,7 +64,7 @@ class Instalador : Form {
             Atalho(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"DeliveryBot.lnk"),exe);
             Atalho(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"DeliveryBot.lnk"),exe);
             using(RegistryKey key = Registry.CurrentUser.CreateSubKey(Registro)) {
-                key.SetValue("DisplayName","DeliveryBot"); key.SetValue("DisplayVersion","2.9.0");
+                key.SetValue("DisplayName","DeliveryBot"); key.SetValue("DisplayVersion","2.10.0");
                 key.SetValue("Publisher","DeliveryBot"); key.SetValue("InstallLocation",Destino);
                 key.SetValue("DisplayIcon",Path.Combine(Destino,"DeliveryBot.ico"));
                 key.SetValue("UninstallString","\"" + Path.Combine(Destino,"Desinstalar.exe") + "\"");

@@ -98,6 +98,8 @@ def smoke_test(destino, janela=False):
             whatsapp_local.iniciar(teste=True)
             class APITeste:
                 def verificar(self):
+                    from src.operadores import validar_sessao_nativa
+                    validar_sessao_nativa(app,window)
                     return {"ok": True}
             window = webview.create_window("DeliveryBot · Verificação", f"http://127.0.0.1:{servidor.effective_port}/gestao?acesso={token}", hidden=True, js_api=APITeste())
             def verificar():
@@ -154,6 +156,23 @@ def smoke_test(destino, janela=False):
                     assert config.IA_PROVIDER == "OLLAMA"
                     assert config.WHATSAPP_PROVIDER == "LOCAL"
                     resultado["conexoes_simuladas"] = ["componente_integrado_sem_docker", "configurar_webhook", "exibir_qr", "iniciar_e_ativar_ollama"]
+                    window.evaluate_js("document.querySelector('[data-page=atualizacoes]').click()")
+                    esperar("!document.querySelector('#page-atualizacoes').hidden && document.querySelector('#update-current').textContent !== '' && document.querySelector('#update-install').disabled")
+                    window.evaluate_js("document.querySelector('[data-page=operadores]').click();const f=document.querySelector('#operator-form');f.elements.nome.value='Administrador UI';f.elements.login.value='admin.ui';f.elements.senha.value='senha-ficticia-ui-123';f.querySelector('button').click();")
+                    esperar("document.querySelector('#operator-list').textContent.includes('Administrador UI')")
+                    window.evaluate_js("const f=document.querySelector('#operator-form');f.elements.nome.value='Atendente UI';f.elements.login.value='vendas.ui';f.elements.senha.value='senha-ficticia-ui-123';f.elements.perfil.value='ATENDENTE';f.querySelector('button').click();")
+                    esperar("document.querySelector('#operator-list').textContent.includes('Atendente UI')")
+                    window.evaluate_js("document.querySelector('#operator-logout').click()")
+                    esperar("document.querySelector('form[action=\"/gestao/login\"]') !== null")
+                    window.evaluate_js("const f=document.querySelector('form');f.elements.login.value='vendas.ui';f.elements.senha.value='senha-ficticia-ui-123';f.querySelector('button').click();")
+                    esperar("document.body.dataset.admin === 'false' && document.querySelector('#product-list')?.textContent.includes('Caderno UI')")
+                    assert window.evaluate_js("getComputedStyle(document.querySelector('[data-page=configuracoes]')).display === 'none'")
+                    window.evaluate_js("window.pywebview.api.verificar().then(()=>document.body.dataset.permissao='permitido',()=>document.body.dataset.permissao='negado')")
+                    esperar("document.body.dataset.permissao === 'negado'")
+                    window.evaluate_js("fetch('/gestao/api/configuracoes').then(r=>document.body.dataset.httpPermissao=String(r.status))")
+                    esperar("document.body.dataset.httpPermissao === '403'")
+                    resultado['funcionarios']=['cadastro_admin','cadastro_atendente','troca_de_conta','permissoes_http','permissoes_nativas']
+                    resultado['atualizacoes']=['versao_embutida','instalacao_sem_assinatura_bloqueada']
                 except Exception as exc:
                     resultado.update(ok=False, erro=str(exc))
                 finally:
@@ -221,6 +240,11 @@ def main():
         if config.WHATSAPP_PROVIDER == "LOCAL":
             conexoes.iniciar_tarefa("whatsapp", lambda progresso: whatsapp_local.iniciar(progresso))
         class API:
+            def instalar_atualizacao(self):
+                self._verificar()
+                from src import atualizacoes
+                atualizacoes.instalar()
+                bandeja.sair()
             def sair_aplicativo(self):
                 self._verificar(administrador=False)
                 bandeja.sair()

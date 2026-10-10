@@ -54,11 +54,7 @@ def configurar(d):
 
 
 def verificar_arquivo(arquivo,senha):
-    dados=backups.abrir_arquivo(arquivo,senha)
-    with closing(sqlite3.connect(':memory:')) as c:
-        c.deserialize(dados)
-        if c.execute('PRAGMA integrity_check').fetchone()[0]!='ok':
-            raise ValueError('O backup não passou na verificação de recuperação.')
+    backups.verificar_arquivo(arquivo,senha)
 
 
 def executar(forcar=False):
@@ -112,6 +108,8 @@ def iniciar():
     def rotina():
         while not _parar.is_set():
             executar()
+            from . import atualizacoes
+            atualizacoes.rotina()
             _parar.wait(60)
     _thread=threading.Thread(target=rotina,name='Rotinas-DeliveryBot',daemon=True)
     _thread.start()

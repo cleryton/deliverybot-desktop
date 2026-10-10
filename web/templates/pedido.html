@@ -360,7 +360,7 @@
         form.querySelectorAll('.stepper').forEach(function (stepper) {
           const qtd = parseFloat(stepper.querySelector('.qtd').textContent) || 0;
           const preco = parseFloat(stepper.dataset.preco) || 0;
-          totalItens += qtd;
+          totalItens += qtd > 0 ? 1 : 0;
           totalReais += qtd * preco;
         });
 
@@ -370,7 +370,7 @@
 
         resumoItens.textContent = totalItens === 0
           ? 'Nenhum item selecionado'
-          : totalItens + (totalItens === 1 ? ' item' : ' itens');
+          : totalItens + (totalItens === 1 ? ' produto selecionado' : ' produtos selecionados');
         resumoTotal.textContent = formatarReais(totalReais);
         botaoConfirmar.disabled = totalItens === 0;
       }

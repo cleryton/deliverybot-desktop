@@ -88,13 +88,16 @@ def _processar_mensagem_menu_fixo(telefone: str, texto_limpo: str) -> str:
 
 def processar_mensagem(telefone: str, texto: str) -> str:
     from . import humano
-    if humano.pausado(telefone):
+    comando=(texto or '').strip().casefold()
+    privacidade=comando in {'9','privacidade','lgpd','meus dados'}
+    if humano.pausado(telefone) and not privacidade:
         return None
-    if texto.strip().casefold() in {'atendente','humano','falar com atendente','10'}:
+    if comando in {'atendente','humano','falar com atendente','10'}:
         humano.solicitar(telefone)
-        return 'Recebemos seu pedido de atendimento humano. Aguarde a equipe; o bot ficará pausado nesta conversa.'
+        resposta='Recebemos seu pedido de atendimento humano. Aguarde a equipe; o bot ficará pausado nesta conversa.'
+    else:
+        resposta = _processar(telefone, texto)
     """Recebe o texto do cliente e devolve a resposta do bot."""
-    resposta = _processar(telefone, texto)
     from .db import get_conn
     with get_conn() as conn:
         novo = conn.execute("INSERT OR IGNORE INTO sessoes_bot (telefone, estado) VALUES (?, 'AVISO_PRIVACIDADE')", (telefone,)).rowcount

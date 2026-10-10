@@ -16,6 +16,8 @@ def test_permissoes_auditoria_e_revogacao(cliente):
     assert all('senha_hash' not in u and 'versao' not in u for u in contas)
     c.post('/gestao/sair',headers=h)
     assert c.get('/gestao/api/produtos').status_code==401
+    assert c.get('/gestao').headers['Referrer-Policy']=='same-origin'
+    assert c.post('/gestao/login',data={'login':'vendas','senha':admin['senha'],'csrf_token':h['X-CSRF-Token']},headers={'Origin':'null'}).status_code==403
     assert c.post('/gestao/login',data={'login':'vendas','senha':admin['senha'],'csrf_token':h['X-CSRF-Token']}).status_code==302
     assert c.get('/gestao/api/produtos').status_code==200
     assert 'custo' not in c.get('/gestao/api/produtos').json[0]
@@ -99,6 +101,21 @@ def test_fechar_esconde_e_sair_encerra():
     assert b.ao_fechar() is True
 
 
+def test_resposta_antiga_nao_atravessa_pausa_humana(cliente,monkeypatch):
+    from src import processamento,humano,whatsapp
+    from unittest.mock import Mock
+    config.WHATSAPP_PROVIDER='LOCAL';config.MODO_TESTE=False
+    monkeypatch.setattr(processamento,'_servico_pronto',lambda:True)
+    enviar=Mock();monkeypatch.setattr(whatsapp,'enviar_mensagem',enviar)
+    telefone='5511999990077'
+    with get_conn() as c:
+        c.execute("INSERT INTO tarefas_bot(chave,telefone,texto,origem,resposta,estado) VALUES(?,?,?,?,?,'PENDENTE')",('ficticia',telefone,'4','WAHA','Catálogo antigo'))
+    humano.controlar(telefone,'assumir')
+    processamento._parar.clear()
+    assert processamento.processar_proxima()
+    enviar.assert_not_called()
+
+
 def test_backup_automatico_verificado_rotacao_e_segredo(tmp_path):
     from src import rotinas, backups
     from pathlib import Path
@@ -123,6 +140,7 @@ def test_atendimento_humano_pausa_envio_e_retoma(cliente,monkeypatch):
     t='5511999990011'
     assert 'humano' in bot.processar_mensagem(t,'ATENDENTE')
     assert bot.processar_mensagem(t,'4') is None
+    assert 'privacidade' in bot.processar_mensagem(t,'PRIVACIDADE').casefold()
     humano.controlar(t,'assumir')
     with pytest.raises(ValueError):
         humano.responder({'telefone':t,'mensagem':'Olá'})

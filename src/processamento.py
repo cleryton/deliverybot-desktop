@@ -86,6 +86,13 @@ def processar_proxima():
             conn.execute("UPDATE tarefas_bot SET entrada_registrada=1 WHERE id=?", (tarefa["id"],))
         conn.execute("UPDATE tarefas_bot SET estado='PROCESSANDO', tentativas=tentativas+1, atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))
     try:
+        # Uma resposta automática preparada antes da pausa não pode atravessar
+        # um atendimento humano ao ser reenviada após uma falha.
+        from . import humano
+        if tarefa['origem']!='HUMANO' and tarefa['resposta'] is not None and humano.pausado(tarefa['telefone']):
+            with get_conn() as conn:
+                conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', atualizado_em=datetime('now') WHERE id=?",(tarefa['id'],))
+            return True
         resposta = tarefa["resposta"]
         if resposta is None:
             resposta = bot.processar_mensagem(tarefa["telefone"], tarefa["texto"])

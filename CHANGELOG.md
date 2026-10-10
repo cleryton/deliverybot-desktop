@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.10.0 — 2026-10-10
+
+Consulta opcional de releases, download com origem e SHA-256 verificados, backup antes de atualizar e instalação condicionada à assinatura confiável. Preparação de distribuição e assinatura digital, com correções da integração do atendimento humano.
+
 ## 2.9.0 — 2026-10-10
 
 Contas individuais de administradores e atendentes, permissões verificadas no servidor e na ponte nativa, senhas scrypt, revogação de sessões e auditoria sem conteúdo de mensagens.
