@@ -108,6 +108,11 @@ def processar_proxima():
             return True
         with get_conn() as conn:
             conn.execute("UPDATE tarefas_bot SET estado='ENVIANDO', atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))
+        if tarefa['origem'] != 'HUMANO':
+            from .links import atualizar_resposta
+            resposta = atualizar_resposta(resposta, tarefa['telefone'])
+            with get_conn() as conn:
+                conn.execute("UPDATE tarefas_bot SET resposta=? WHERE id=?", (resposta, tarefa['id']))
         whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"])
         with get_conn() as conn:
             conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', erro=NULL, atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))

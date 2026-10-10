@@ -51,6 +51,8 @@ def criar(senha):
         from .preferencias import SEGREDOS
         copia.execute("PRAGMA secure_delete=ON")
         copia.executemany("DELETE FROM configuracoes WHERE chave=?", [(k,) for k in SEGREDOS])
+        # O token do túnel não acompanha a cópia portátil: reativar só após configurar.
+        copia.execute("UPDATE configuracoes SET valor='NAO' WHERE chave='TUNEL_AUTOMATICO'")
         if copia.execute("SELECT 1 FROM sqlite_master WHERE name='rotinas'").fetchone():
             copia.execute("UPDATE rotinas SET senha='',backup_ativo=0,pasta=''")
         dados = _serializar(copia)

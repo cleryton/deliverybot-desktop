@@ -30,14 +30,15 @@ def url_local(url):
 
 
 def url_webhook():
+    from .publicacao import endereco
     if config.WHATSAPP_PROVIDER in {"LOCAL", "TESTE"}:
         return f"http://127.0.0.1:{os.getenv('DELIVERYBOT_PORT', '5000')}/webhook/waha/{config.WEBHOOK_SECRET}"
     base = config.WAHA_WEBHOOK_BASE_URL
     if not base:
         if url_local(config.WAHA_URL):
             base = f"http://host.docker.internal:{os.getenv('DELIVERYBOT_PORT', '5000')}"
-        elif not url_local(config.BASE_URL):
-            base = config.BASE_URL
+        elif endereco() and not url_local(endereco()):
+            base = endereco()
         else:
             raise ValueError("Para um WAHA remoto, informe o endereço público da loja ou o endereço do aplicativo visto pelo WAHA nas configurações.")
     return base.rstrip("/") + "/webhook/waha/" + config.WEBHOOK_SECRET

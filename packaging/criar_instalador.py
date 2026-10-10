@@ -1,10 +1,14 @@
 """Compila um instalador Windows por usuário, usando o compilador .NET do sistema."""
 import os
+import argparse
 from pathlib import Path
 import subprocess
 
 root = Path(__file__).resolve().parent.parent
 packaging = root / "packaging"
+parser = argparse.ArgumentParser()
+parser.add_argument('--distpath', type=Path, default=root / 'dist')
+distribuicao = parser.parse_args().distpath.resolve()
 compiler = Path(os.environ.get("WINDIR", "C:/Windows")) / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
 if not compiler.exists():
     compiler = Path(os.environ.get("WINDIR", "C:/Windows")) / "Microsoft.NET/Framework/v4.0.30319/csc.exe"
@@ -20,6 +24,6 @@ def compilar(source, output, resources=()):
     args.extend("/resource:"+str(path)+","+name for path,name in resources)
     subprocess.run(args+[str(source)],check=True,cwd=root)
 compilar(packaging / "Desinstalador.cs", uninstaller)
-compilar(packaging / "Instalador.cs",root / "dist/Instalar-DeliveryBot.exe",
-         [(root / "dist/DeliveryBot.exe","aplicativo"),(uninstaller,"desinstalador"),(packaging/"DeliveryBot.ico","icone")])
-print("Instalador criado: dist/Instalar-DeliveryBot.exe")
+compilar(packaging / "Instalador.cs",distribuicao / "Instalar-DeliveryBot.exe",
+         [(distribuicao / "DeliveryBot.exe","aplicativo"),(uninstaller,"desinstalador"),(packaging/"DeliveryBot.ico","icone")])
+print("Instalador criado: " + str(distribuicao / "Instalar-DeliveryBot.exe"))

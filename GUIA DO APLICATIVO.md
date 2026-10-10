@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.10.1
+# DeliveryBot Desktop 2.11.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -16,7 +16,7 @@ A janela usa o Microsoft Edge WebView2 Runtime, normalmente presente no Windows.
 
 ## Produtos de qualquer categoria
 
-Na Visão geral, **Prepare sua loja, passo a passo** reúne os atalhos das configurações essenciais. Para validar o endereço público, configure um domínio ou túnel HTTPS, gere o teste e abra o endereço no celular pelos dados móveis. Volte ao app e clique em **Verificar preparação**. O teste expira em 30 minutos; uma abertura recebida só é evidência do aparelho que o abriu, não uma garantia de disponibilidade permanente. Não envia mensagens pelo WhatsApp nem cria hospedagem.
+Na Visão geral, **Prepare sua loja, passo a passo** reúne os atalhos das configurações essenciais. Para validar o endereço público, inicie o túnel em **Página de pedidos**, gere o teste e abra o endereço no celular pelos dados móveis. Volte ao app e clique em **Verificar preparação**. O teste expira em 30 minutos; uma abertura recebida só é evidência do aparelho que o abriu, não uma garantia de disponibilidade permanente. O teste não envia mensagens pelo WhatsApp nem cria pedidos.
 
 Cadastre roupas, acessórios, alimentos, eletrônicos, materiais, cosméticos ou outros produtos. Cada tamanho, cor ou embalagem pode ter seu próprio código e saldo. As categorias são livres.
 
@@ -48,7 +48,7 @@ O aplicativo começa em **modo de teste** e não envia mensagens reais. Para rec
 - **Conexão integrada (recomendada):** abra **WhatsApp e IA → Conectar WhatsApp**. No celular, abra **WhatsApp → Aparelhos conectados → Conectar um aparelho** e escaneie o QR Code exibido no aplicativo. Ele é atualizado automaticamente enquanto aguarda o celular. O componente inicia em segundo plano e não abre outro programa. Ao atualizar de uma versão com Docker local, o aplicativo seleciona a conexão integrada e será necessário escanear um novo QR Code uma vez. Os demais dados são preservados.
 - **Servidor WAHA externo (opcional):** para quem já utiliza um servidor próprio, selecione WAHA em Configurações e salve endereço, sessão e chave. Em um servidor remoto, preencha o endereço público da loja ou **Endereço visto pelo WAHA externo**. Depois clique em **Conectar WhatsApp**. Para voltar ao modo integrado, use **Usar conexão integrada** no painel.
 - **Meta:** preencha as credenciais da WhatsApp Cloud API, incluindo o **App Secret** do aplicativo Meta, e configure a URL pública `/webhook` e o token de verificação no serviço. O App Secret permite verificar a assinatura das mensagens recebidas.
-- **Endereço público da loja:** precisa apontar para o servidor deste computador, na porta 5000, por um domínio/túnel configurado à parte. `localhost` não abre no celular de outro usuário. O aplicativo não cria hospedagem nem túnel automaticamente.
+- **Endereço público da loja:** use **Página de pedidos** para iniciar o túnel incluído no aplicativo. O bot usa automaticamente o endereço da conexão atual. Para manter um ngrok ou serviço externo, pare o túnel integrado e mantenha seu `BASE_URL` em Configurações.
 
 Mantenha o computador ligado, conectado e o aplicativo em execução durante o atendimento. Fechar a janela mantém o bot em segundo plano, com um ícone perto do relógio. Clique duas vezes no ícone ou use **Abrir DeliveryBot** para voltar ao painel. Para encerrar o servidor e o WhatsApp, use **Sair do aplicativo** no painel ou **Sair e interromper atendimento** no ícone. Desligar ou suspender o computador interrompe o atendimento. O Ollama pode continuar ativo em segundo plano. Depois de conectar, envie uma mensagem de outro número para confirmar o recebimento.
 
@@ -57,6 +57,22 @@ A sessão WhatsApp fica salva em **%LOCALAPPDATA%\DeliveryBot\whatsapp**. A cone
 As mensagens recebidas são preservadas localmente e processadas em segundo plano. O componente mantém uma caixa de entrada em disco até o servidor do aplicativo confirmar o recebimento. Repetições do mesmo evento são ignoradas. O atendimento preserva a ordem das mensagens de cada cliente e pode atender dois clientes em paralelo. Falhas aparecem em **Recebimento de mensagens**: confira no celular se a resposta chegou antes de clicar em **Tentar novamente**. A resposta já preparada é reutilizada. **Marcar como resolvida** libera a conversa quando a resposta já foi recebida ou a falha foi resolvida manualmente.
 
 A conexão por QR Code usa Baileys, uma biblioteca comunitária de WhatsApp Web, e pode precisar de atualizações quando o WhatsApp mudar. A API oficial da Meta continua disponível como alternativa nas configurações.
+
+## Página de pedidos pela internet
+
+Em **Página de pedidos**, clique em **Iniciar página de pedidos**. O conector Cloudflare incluído no executável trabalha em segundo plano, sem instalação separada ou janela de terminal. Marque **Iniciar a página junto com o aplicativo** para retomar automaticamente nas próximas aberturas. Salvar ou iniciar grava essa preferência. A atualização deixa o início automático desligado até você habilitá-lo; não substitui o domínio manual existente.
+
+**Temporário:** cria um endereço HTTPS sem conta. Serve para começar e testar; o domínio muda a cada novo túnel. Links já enviados deixam de abrir após essa mudança: o cliente deve digitar `2` novamente. Uma resposta automática ainda na fila passa a usar o domínio atual quando enviada; respostas manuais não são alteradas. [Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) não oferecem garantia de disponibilidade e têm limite de 200 requisições simultâneas, sem suporte a SSE.
+
+**Domínio fixo:** recomendado para a rotina da loja. Exige uma conta Cloudflare e um domínio sob seu controle. [Crie um túnel remoto](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/) no painel Cloudflare One, adicione o hostname de pedidos como aplicação publicada e use serviço **HTTP** com destino **http://127.0.0.1:5051** (ou a porta indicada no aplicativo). Salve o domínio HTTPS e **somente o token** do conector no app, selecione domínio fixo e inicie. O app substitui a execução manual do conector; não cria sua conta, domínio ou configuração DNS. A confirmação de conector ligado indica conexão com a Cloudflare; valide também a rota do domínio pelo teste no celular. Não aponte o túnel para a porta administrativa 5000. Se a porta pública estiver ocupada, o modo temporário escolhe outra automaticamente; no modo fixo, altere a porta no app e o destino na Cloudflare.
+
+O servidor público separado libera apenas compra, privacidade, diagnóstico, imagens de produtos e webhooks autenticados. Gestão, cozinha, testes internos, exportações e arquivos do painel ficam bloqueados nessa porta, mesmo com cabeçalhos de proxy forjados. O token é protegido pela conta Windows, nunca exibido de volta e excluído do backup portátil. A URL temporária fica em memória, sem sobrescrever `BASE_URL`. O aviso de privacidade informa o uso da Cloudflare quando o túnel integrado está ativo.
+
+Use **Gerar link de teste**, copie o endereço e abra no celular com dados móveis. O endereço principal sozinho não é um link de compra: o bot gera um link individual por pedido. Em **Visão geral**, confirme a preparação. Na desconexão, o bot informa a indisponibilidade em vez de enviar `localhost`; o conector tenta novamente com intervalos crescentes. O túnel continua ativo com o app na bandeja e encerra ao sair completamente. Ele depende do computador ligado e conectado; não mantém a loja online com a máquina desligada. Para disponibilidade contínua, use uma máquina sempre ligada ou o modo servidor em hospedagem própria.
+
+### Compilar com o conector incluído
+
+Na máquina de desenvolvimento, prepare o componente WhatsApp conforme o fluxo existente e execute `.venv/Scripts/python.exe packaging/preparar_tunel.py` antes do PyInstaller. O script baixa o binário Windows oficial da versão fixada em `packaging/cloudflared.json`, valida tamanho e SHA-256 e inclui a licença Apache. Arquivos de runtime ficam ignorados pelo Git. Para atualizar o conector, revise uma nova release oficial e altere a versão, tamanho e hash fixados; não use executáveis locais arbitrários. O usuário final recebe tudo no aplicativo.
 
 ## Iniciar Ollama pelo aplicativo
 

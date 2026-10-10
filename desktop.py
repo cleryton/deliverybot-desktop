@@ -92,6 +92,15 @@ def smoke_test(destino, janela=False):
                 progresso("Ollama pronto (serviço simulado).")
             conexoes.iniciar_ollama = ollama_simulado
             servidor = create_server(app, host="127.0.0.1", port=0)
+            from src import publicacao
+            # Interface do túnel simulada; a verificação nativa nunca publica dados.
+            pagina_teste = publicacao.Publicacao(app)
+            publicacao._gerente = pagina_teste
+            def iniciar_pagina_simulada():
+                pagina_teste.ativo = True
+                pagina_teste._status('ONLINE', 'Conector simulado.', 'https://loja-ficticia.trycloudflare.com')
+                return pagina_teste.situacao()
+            pagina_teste.iniciar = iniciar_pagina_simulada
             thread = threading.Thread(target=servidor.run, daemon=True)
             thread.start()
             os.environ["DELIVERYBOT_PORT"] = str(servidor.effective_port)
@@ -156,6 +165,15 @@ def smoke_test(destino, janela=False):
                     assert config.IA_PROVIDER == "OLLAMA"
                     assert config.WHATSAPP_PROVIDER == "LOCAL"
                     resultado["conexoes_simuladas"] = ["componente_integrado_sem_docker", "configurar_webhook", "exibir_qr", "iniciar_e_ativar_ollama"]
+                    window.evaluate_js("document.querySelector('[data-page=publicacao]').click()")
+                    esperar("!document.querySelector('#page-publicacao').hidden && !document.querySelector('#public-start').disabled")
+                    window.evaluate_js("document.querySelector('#public-auto').checked=true;document.querySelector('#public-start').click()")
+                    esperar("document.querySelector('#public-state').textContent==='Conector ligado' && document.querySelector('#public-url').value.includes('loja-ficticia.trycloudflare.com')")
+                    assert config.TUNEL_AUTOMATICO == 'SIM', 'A preferência de início automático não foi salva.'
+                    window.evaluate_js("document.querySelector('#public-test').click()")
+                    esperar("document.querySelector('#public-test-link').value.includes('/diagnostico/')")
+                    pagina_teste.encerrar()
+                    resultado['pagina_publica'] = ['iniciar_pelo_painel', 'inicio_automatico_salvo', 'endereco_atual', 'teste_no_celular']
                     window.evaluate_js("document.querySelector('[data-page=atualizacoes]').click()")
                     esperar("!document.querySelector('#page-atualizacoes').hidden && document.querySelector('#update-current').textContent !== '' && document.querySelector('#update-install').disabled")
                     window.evaluate_js("document.querySelector('[data-page=operadores]').click();const f=document.querySelector('#operator-form');f.elements.nome.value='Administrador UI';f.elements.login.value='admin.ui';f.elements.senha.value='senha-ficticia-ui-123';f.querySelector('button').click();")
@@ -183,6 +201,8 @@ def smoke_test(destino, janela=False):
                 servidor.close()
                 thread.join(timeout=5)
                 whatsapp_local.encerrar()
+                pagina_teste.encerrar()
+                publicacao._gerente = None
         Path(destino).parent.mkdir(parents=True, exist_ok=True)
         Path(destino).write_text(json.dumps(resultado, ensure_ascii=False, indent=2), encoding="utf-8")
         logging.shutdown()
@@ -234,6 +254,8 @@ def main():
         servidor = create_server(app, host="127.0.0.1", port=port, threads=8)
         thread = threading.Thread(target=servidor.run, name="DeliveryBot-HTTP", daemon=True)
         thread.start()
+        from src import publicacao
+        publicacao.preparar(app)
         processamento.iniciar()
         from src import rotinas
         rotinas.iniciar()
@@ -315,6 +337,9 @@ def main():
         if bandeja:
             bandeja.parar()
         if servidor:
+            from src import publicacao
+            if publicacao._gerente:
+                publicacao._gerente.encerrar()
             from src import rotinas
             rotinas.encerrar()
             servidor.close()

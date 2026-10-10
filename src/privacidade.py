@@ -12,12 +12,14 @@ FINAIS = {"CANCELADO", "ENTREGUE", "RETIRADO"}
 
 def aviso():
     from .conexoes import url_local
+    from .publicacao import situacao
     externa = config.LGPD_IA_EXTERNA == "SIM" and (config.IA_PROVIDER == "ANTHROPIC" or (config.IA_PROVIDER == "OLLAMA" and not url_local(config.OLLAMA_URL)))
     return {"responsavel": config.LGPD_RESPONSAVEL or config.NOME_RESTAURANTE,
             "contato": config.LGPD_CONTATO or config.TELEFONE_RESTAURANTE,
             "mensagens_dias": config.LGPD_MENSAGENS_DIAS,
             "ia_externa": externa,
             "provedor_ia": config.IA_PROVIDER,
+            "tunel_cloudflare": situacao()['ativo'],
             "retencao_pedidos": config.LGPD_RETENCAO_PEDIDOS}
 
 

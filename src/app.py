@@ -280,6 +280,13 @@ def pagina_pedido(token):
     )
 
 
+@app.after_request
+def origem_formulario_pedido(response):
+    if request.endpoint in {'pagina_pedido', 'enviar_pedido'}:
+        response.headers['Referrer-Policy'] = 'same-origin'
+    return response
+
+
 @app.route("/m/<token>", methods=["POST"])
 def enviar_pedido(token):
     ok, mensagem, link = link_valido(token)

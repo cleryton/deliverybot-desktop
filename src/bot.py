@@ -53,13 +53,18 @@ def _dentro_do_rate_limit(telefone: str) -> bool:
 
 
 def _resposta_opcao(opcao: str, telefone: str) -> str | None:
+    from .publicacao import endereco
     if opcao == "9" or opcao.casefold() in {"privacidade", "lgpd", "meus dados"}:
         contato = config.LGPD_CONTATO or config.TELEFONE_RESTAURANTE or "esta conversa com a loja"
-        return f"🔒 Usamos seus dados para atendimento e pedidos. Para acesso, correção ou remoção, fale com o responsável: {contato}. Aviso de privacidade: {config.BASE_URL}/privacidade"
+        aviso = f" Aviso de privacidade: {endereco()}/privacidade" if endereco() else ''
+        return f"🔒 Usamos seus dados para atendimento e pedidos. Para acesso, correção ou remoção, fale com o responsável: {contato}." + aviso
     if opcao == "1":
         return f"⏰ Nosso horário de funcionamento:\n{config.HORARIO_FUNCIONAMENTO}"
     if opcao == "2":
-        link = gerar_link_pedido(telefone)
+        try:
+            link = gerar_link_pedido(telefone)
+        except ValueError:
+            return 'A página de pedidos está temporariamente indisponível. Tente novamente em instantes ou digite ATENDENTE para falar com a loja.'
         return f"Faça o seu pedido em {link}"
     if opcao == "3":
         return "💵 Formas de pagamento aceitas:\n" + "\n".join("• " + p.strip() for p in config.FORMAS_PAGAMENTO.split(","))
@@ -102,7 +107,9 @@ def processar_mensagem(telefone: str, texto: str) -> str:
     with get_conn() as conn:
         novo = conn.execute("INSERT OR IGNORE INTO sessoes_bot (telefone, estado) VALUES (?, 'AVISO_PRIVACIDADE')", (telefone,)).rowcount
     if novo and (texto or "").strip().casefold() not in {"9", "privacidade", "lgpd", "meus dados"}:
-        resposta += f"\n\n🔒 Para saber como usamos seus dados e falar com o responsável, digite PRIVACIDADE ou veja {config.BASE_URL}/privacidade"
+        from .publicacao import endereco
+        aviso = f" ou veja {endereco()}/privacidade" if endereco() else ''
+        resposta += "\n\n🔒 Para saber como usamos seus dados e falar com o responsável, digite PRIVACIDADE" + aviso
     return resposta
 
 

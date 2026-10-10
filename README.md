@@ -1,6 +1,8 @@
+> **Página de pedidos integrada:** inicie o túnel Cloudflare dentro do aplicativo, com opção de início automático e reconexão. Escolha endereço temporário para testes ou domínio fixo para uso diário. Veja o [guia](GUIA%20DO%20APLICATIVO.md#página-de-pedidos-pela-internet). O computador precisa permanecer ligado.
+
 > **Aplicativo Windows:** [baixar o instalador](https://github.com/cleryton/deliverybot-desktop/releases) · [guia de instalação e uso](GUIA%20DO%20APLICATIVO.md). A versão desktop inclui WhatsApp integrado, estoque genérico, atendimento humano, backups criptografados e permissões por funcionário, sem instalação de Docker, Node.js ou Python pelo usuário final.
 
-> **Aplicativo Windows:** comece pelo [GUIA DO APLICATIVO.md](GUIA%20DO%20APLICATIVO.md). Abra `dist/Instalar DeliveryBot.exe` para instalar ou `dist/DeliveryBot.exe` para usar diretamente. O novo painel permite cadastrar produtos de qualquer categoria e controlar estoque.
+> **Aplicativo Windows:** comece pelo [GUIA DO APLICATIVO.md](GUIA%20DO%20APLICATIVO.md). Abra `dist/Instalar-DeliveryBot.exe` para instalar ou `dist/DeliveryBot.exe` para usar diretamente. O novo painel permite cadastrar produtos de qualquer categoria e controlar estoque.
 >
 > **Versão 2.2:** conecte o WhatsApp pelo QR Code em **WhatsApp e IA**, sem instalar Docker ou Node.js. O componente integrado já vem no executável, salva a sessão e mantém uma fila persistente para evitar eventos duplicados. Inicie o Ollama e baixe o modelo pelos botões desse painel; apenas o Ollama precisa de instalação separada para usar IA local.
 >

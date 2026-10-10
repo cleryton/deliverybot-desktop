@@ -16,6 +16,11 @@ _FORMATO_DATA = "%Y-%m-%d %H:%M:%S"
 
 
 def gerar_link_pedido(telefone: str) -> str:
+    from .publicacao import endereco
+    from .conexoes import url_local
+    base = endereco()
+    if not base or (not config.MODO_TESTE and url_local(base)):
+        raise ValueError('A página de pedidos está indisponível. Inicie a página pública no aplicativo.')
     token = secrets.token_urlsafe(32)
     expira_em = (datetime.now(timezone.utc) + timedelta(minutes=config.VALIDADE_LINK_MIN)).strftime(_FORMATO_DATA)
 
@@ -25,13 +30,33 @@ def gerar_link_pedido(telefone: str) -> str:
             (token, telefone, expira_em),
         )
 
-    return f"{config.BASE_URL}/m/{token}"
+    return f"{base}/m/{token}"
 
 
 def obter_link(token: str):
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM links_pedido WHERE token = ?", (token,)).fetchone()
     return dict(row) if row else None
+
+
+def atualizar_resposta(resposta, telefone):
+    """Uma resposta na fila não pode enviar o domínio de um túnel encerrado."""
+    if not resposta.startswith('Faça o seu pedido em '):
+        return resposta
+    import re
+    from .publicacao import endereco
+    from .conexoes import url_local
+    m = re.search(r'https?://[^\s]+/m/([A-Za-z0-9_-]+)', resposta)
+    if not m:
+        return resposta
+    base = endereco()
+    if not base or (not config.MODO_TESTE and url_local(base)):
+        raise ValueError('A página pública está desconectada. Aguarde a conexão antes de reenviar o link.')
+    ok, _, link = link_valido(m[1])
+    if not link or link['telefone'] != telefone:
+        raise ValueError('O link da resposta não pertence a este atendimento.')
+    novo = base + '/m/' + m[1] if ok else gerar_link_pedido(telefone)
+    return resposta[:m.start()] + novo + resposta[m.end():]
 
 
 def link_valido(token: str) -> tuple[bool, str, dict | None]:

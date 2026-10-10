@@ -9,7 +9,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
-from . import conexoes, processamento
+from . import conexoes, processamento, publicacao
 from . import seguranca, privacidade, backups, operadores
 
 bp = Blueprint("gestao", __name__)
@@ -180,7 +180,7 @@ def resumo():
                    pendentes=len(fila.listar_fila()), **total, nome=config.NOME_RESTAURANTE,
                    modo_teste=config.MODO_TESTE, whatsapp=config.WHATSAPP_PROVIDER,
                    privacidade_configurada=bool(config.LGPD_RESPONSAVEL and config.LGPD_CONTATO),
-                   base_url=config.BASE_URL, pasta=str(Path(config.DATABASE_PATH).resolve().parent),
+                   base_url=publicacao.endereco(), pasta=str(Path(config.DATABASE_PATH).resolve().parent),
                    webhook_waha="Endereço privado de recebimento configurado." if config.WEBHOOK_SECRET else "Configure a conexão do WhatsApp.")
 
 
@@ -263,6 +263,30 @@ def configuracoes():
     if request.method == "PUT" and config.WHATSAPP_PROVIDER != "LOCAL":
         conexoes.whatsapp_local.encerrar()
     return jsonify(resultado)
+
+
+@bp.route('/gestao/api/pagina-publica', methods=['GET', 'PUT', 'POST'])
+@protegido
+def pagina_publica():
+    if request.method != 'GET':
+        gerente = publicacao._gerente
+        if gerente is None:
+            raise ValueError('Abra o aplicativo Windows para usar o túnel integrado.')
+        dados = dados_json()
+        if request.method == 'PUT':
+            if gerente.ativo:
+                raise ValueError('Pare a página pública antes de alterar o modo ou a configuração.')
+            preferencias.salvar({k: v for k, v in dados.items() if k.startswith('TUNEL_')})
+        elif dados.get('acao') == 'iniciar':
+            gerente.iniciar()
+        elif dados.get('acao') == 'parar':
+            gerente.encerrar()
+        else:
+            raise ValueError('Ação inválida para a página pública.')
+    return jsonify(**publicacao.situacao(), automatico=config.TUNEL_AUTOMATICO == 'SIM',
+                   dominio=config.TUNEL_URL, modo_configurado=config.TUNEL_MODO,
+                   porta_configurada=config.TUNEL_PORTA,
+                   token_configurado=bool(config.TUNEL_TOKEN))
 
 
 @bp.route("/gestao/api/simular", methods=["POST"])
@@ -357,8 +381,8 @@ def status_conexoes():
                        fila=processamento.situacao(), provedor=config.WHATSAPP_PROVIDER,
                        pode_iniciar_local=bool(_local() and current_app.config.get("DESKTOP_TOKEN")),
                        whatsapp_local=config.WHATSAPP_PROVIDER in {"TESTE", "LOCAL"},
-                       endereco_publico=config.BASE_URL,
-                       links_publicos=not conexoes.url_local(config.BASE_URL))
+                       endereco_publico=publicacao.endereco(),
+                       links_publicos=bool(publicacao.endereco()) and not conexoes.url_local(publicacao.endereco()))
 
 
 @bp.route("/gestao/api/conexoes/qr")

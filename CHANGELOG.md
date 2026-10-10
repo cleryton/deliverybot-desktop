@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 2.11.0 — 2026-10-10
+
+- Página de pedidos com túnel Cloudflare integrado, início pelo painel, opção de início automático e reconexão em segundo plano.
+- Endereço temporário sem conta e opção de domínio fixo com token protegido pela conta Windows.
+- Servidor público separado, com rotas permitidas, bloqueio do painel e preservação de CSRF em compras HTTPS.
+- Bot usa o endereço da sessão, informa indisponibilidade e atualiza links automáticos ainda na fila.
+- Conector oficial incluído na distribuição com versão e SHA-256 fixados; testes com dados fictícios e aviso de privacidade atualizado.
+
 ## 2.10.1 — 2026-10-10
 
 Padronização do instalador como Instalar-DeliveryBot.exe e compatibilidade com nomes normalizados pelo GitHub nas versões anteriores, mantendo validação de origem, tamanho, hash e backup.

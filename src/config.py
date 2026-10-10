@@ -82,6 +82,11 @@ else:
     MODO_TESTE = True
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000").rstrip("/")
+TUNEL_MODO = os.getenv("TUNEL_MODO", "RAPIDO")
+TUNEL_AUTOMATICO = os.getenv("TUNEL_AUTOMATICO", "NAO")
+TUNEL_URL = os.getenv("TUNEL_URL", "").strip().rstrip("/")
+TUNEL_TOKEN = os.getenv("TUNEL_TOKEN", "").strip()
+TUNEL_PORTA = int(os.getenv("TUNEL_PORTA", "5051"))
 
 # --- IA (atendimento "humano", sem menu numerado) ---
 # IA_PROVIDER: "ANTHROPIC" (API paga, melhor qualidade), "OLLAMA" (modelo

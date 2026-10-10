@@ -38,3 +38,4 @@ dist/
 artifacts/
 whatsapp-native/node_modules/
 whatsapp-native/runtime/
+cloudflare/runtime/

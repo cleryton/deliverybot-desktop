@@ -4,6 +4,9 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 root = Path(SPECPATH)
 native = root / 'whatsapp-native'
+conector = root / 'cloudflare/runtime'
+if not (conector / 'cloudflared.exe').exists():
+    raise RuntimeError('Prepare o túnel integrado: python packaging/preparar_tunel.py.')
 if not (native / 'runtime/node.exe').exists() or not (native / 'node_modules/@whiskeysockets/baileys/package.json').exists():
     raise RuntimeError('Prepare o componente integrado: npm ci em whatsapp-native e python packaging/preparar_whatsapp.py.')
 a = Analysis(
@@ -11,6 +14,8 @@ a = Analysis(
     binaries=[],
     datas=[(str(root / 'web'), 'web'), (str(root / 'sql'), 'sql'), (str(root / 'packaging' / 'DeliveryBot.ico'), 'packaging'),
            (str(root / 'VERSION'), '.'),
+           (str(conector), 'cloudflare/runtime'),
+           (str(root / 'packaging/cloudflared.json'), 'packaging'),
            (str(root / 'packaging' / 'assinatura.json'), 'packaging'),
            (str(root / 'packaging' / 'verificar_assinatura.ps1'), 'packaging'),
            (str(root / 'data' / 'cardapio.json'), 'data'),
