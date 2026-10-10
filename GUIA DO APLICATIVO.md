@@ -16,6 +16,8 @@ A janela usa o Microsoft Edge WebView2 Runtime, normalmente presente no Windows.
 
 ## Produtos de qualquer categoria
 
+Na Visão geral, **Prepare sua loja, passo a passo** reúne os atalhos das configurações essenciais. Para validar o endereço público, configure um domínio ou túnel HTTPS, gere o teste e abra o endereço no celular pelos dados móveis. Volte ao app e clique em **Verificar preparação**. O teste expira em 30 minutos; uma abertura recebida só é evidência do aparelho que o abriu, não uma garantia de disponibilidade permanente. Não envia mensagens pelo WhatsApp nem cria hospedagem.
+
 Cadastre roupas, acessórios, alimentos, eletrônicos, materiais, cosméticos ou outros produtos. Cada tamanho, cor ou embalagem pode ter seu próprio código e saldo. As categorias são livres.
 
 As quantidades são **inteiras**. Para vendas fracionadas, cadastre embalagens (por exemplo, pacote de 500 g) como unidades. O campo de unidade descreve a medida; não faz conversão de peso, volume ou embalagem.

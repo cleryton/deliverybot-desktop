@@ -411,6 +411,8 @@ def api_fila():
 
 from .gestao import bp as gestao_bp
 app.register_blueprint(gestao_bp)
+from .primeiros_passos import bp as preparacao_bp
+app.register_blueprint(preparacao_bp)
 
 
 @app.route("/")

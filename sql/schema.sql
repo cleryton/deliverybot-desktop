@@ -133,3 +133,10 @@ CREATE TABLE IF NOT EXISTS auditoria_privacidade (
     cliente_id INTEGER,
     criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS testes_publicos (
+    token_hash TEXT PRIMARY KEY,
+    base_url TEXT NOT NULL,
+    expira_em TEXT NOT NULL,
+    recebido_em TEXT
+);

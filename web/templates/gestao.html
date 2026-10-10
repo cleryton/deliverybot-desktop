@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='gestao.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='conexoes.css') }}">
   <script defer src="{{ url_for('static', filename='gestao.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='primeiros_passos.js') }}"></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -21,7 +22,7 @@
       <button data-page="bot"><span>☏</span> Testar atendimento</button>
       <button data-page="configuracoes"><span>⚙</span> Configurações</button>
     </nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.3.0</small></div>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.4.0</small></div>
   </aside>
   <main>
     <header class="topbar"><span id="breadcrumb">Sua operação, em um só lugar</span><div><span id="connection" class="badge">Modo de teste</span><button id="refresh" class="icon-button" title="Atualizar dados" aria-label="Atualizar dados">↻</button></div></header>
@@ -29,6 +30,7 @@
       <section id="page-inicio" class="page">
         <div class="page-heading"><div><p class="eyebrow">PAINEL DA LOJA</p><h1>Seu dia começa aqui.</h1><p>Acompanhe seus produtos, vendas e atendimento.</p></div><button class="primary" data-action="novo">+ Cadastrar produto</button></div>
         <div id="metrics" class="metrics"></div>
+        <article class="card"><h2>Prepare sua loja, passo a passo</h2><div id="preparation-steps"></div><p id="preparation-status"></p><div class="button-row"><button id="preparation-test">Gerar teste para abrir no celular</button><button id="preparation-check">Verificar preparação</button></div><input id="preparation-link" readonly hidden aria-label="Endereço de teste para copiar no celular"></article>
         <div class="home-grid">
           <article class="card welcome"><span class="pill">PRIMEIROS PASSOS</span><h2>Pronto para vender<br>do seu jeito.</h2><p>Roupas, acessórios, alimentos, eletrônicos ou outros produtos: monte o catálogo da sua loja e deixe o bot apresentar o que você tem disponível.</p><div class="steps"><button data-page="configuracoes"><b>01</b><span>Personalize a loja<small>Nome, horários e pagamento</small></span><span>→</span></button><button data-page="produtos"><b>02</b><span>Cadastre seus produtos<small>Preços, categorias e estoque</small></span><span>→</span></button><button data-page="bot"><b>03</b><span>Experimente o atendimento<small>Simule uma compra antes de conectar</small></span><span>→</span></button></div></article>
           <article class="card"><div class="card-heading"><h2>Atenção ao estoque</h2><span class="badge warning">Reposição</span></div><div id="low-stock"></div></article>

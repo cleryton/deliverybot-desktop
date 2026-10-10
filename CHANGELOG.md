@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.4.0 — 2026-10-10
+
+Configuração inicial guiada com checklist da loja, privacidade, catálogo, WhatsApp, IA e confirmação de abertura do endereço público no celular. Teste temporário vinculado ao endereço configurado, sem expor dados ou segredos.
+
 ## 2.3.0 — 2026-10-10
 
 - Área Privacidade e LGPD com identificação do responsável, canal de contato, aviso público, exportação, correção e remoção da identificação do cadastro.
