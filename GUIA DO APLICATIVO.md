@@ -1,16 +1,16 @@
-# DeliveryBot Desktop 2.11.0
+# DeliveryBot Desktop 2.11.1
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
 ## Instalar e abrir
 
-1. Abra **dist/Instalar-DeliveryBot.exe** e clique em **Instalar**.
+1. Dentro de **dist**, abra a pasta da versão atual (indicada em **VERSION**), execute **Instalar-DeliveryBot.exe** e clique em **Instalar**.
 2. Use o atalho **DeliveryBot** na área de trabalho ou no menu Iniciar.
 3. Em **Configurações**, informe o nome da loja, contato, horário, formas de pagamento, taxa de entrega e tempo estimado.
 4. Em **Produtos e estoque**, clique em **Cadastrar produto**. Cadastre nome, código opcional, categoria, descrição, preço, unidade, saldo inicial e alerta de estoque mínimo.
 5. Experimente **Testar atendimento**. Envie `4` para ver o catálogo ou `2` para abrir uma compra de teste.
 
-Também pode abrir **dist/DeliveryBot.exe** diretamente, sem instalar. O usuário final não precisa instalar Python, Node.js ou Docker nem abrir um terminal. O componente de conexão do WhatsApp já está incluído no executável.
+Também pode abrir **DeliveryBot.exe** nessa pasta diretamente, sem instalar. O usuário final não precisa instalar Python, Node.js ou Docker nem abrir um terminal. O componente de conexão do WhatsApp já está incluído no executável.
 
 A janela usa o Microsoft Edge WebView2 Runtime, normalmente presente no Windows. Se faltar, instale pelo [site da Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/). Os arquivos gerados ainda não possuem assinatura digital de um editor comercial.
 

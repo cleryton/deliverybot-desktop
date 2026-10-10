@@ -1,5 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
+$taskVersion = (Get-Content -LiteralPath 'VERSION' -Raw).Trim()
+if ($taskVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'Versão inválida em VERSION.' }
+$taskDist = Join-Path $PSScriptRoot "dist\v$taskVersion"
 $taskPython = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $taskPython)) {
     python -m venv .venv
@@ -20,8 +23,16 @@ try {
 } finally { Pop-Location }
 & $taskPython packaging\preparar_whatsapp.py
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao incluir o componente WhatsApp.' }
-& $taskPython -m PyInstaller --noconfirm DeliveryBot.spec
+& $taskPython packaging\preparar_tunel.py
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao incluir o túnel da página de pedidos.' }
+& $taskPython -m PyInstaller --clean --noconfirm --distpath $taskDist DeliveryBot.spec
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar o aplicativo.' }
-& $taskPython packaging\criar_instalador.py
+& $taskPython packaging\criar_instalador.py --distpath $taskDist
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar o instalador.' }
-Write-Host 'Aplicativo e instalador disponíveis na pasta dist.'
+& $taskPython packaging\gerar_hashes.py --distpath $taskDist
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar os hashes da distribuição.' }
+Copy-Item -LiteralPath 'GUIA DO APLICATIVO.md' -Destination (Join-Path $taskDist 'Como usar o DeliveryBot.txt') -Force
+Copy-Item -LiteralPath 'PRIVACIDADE E SEGURANÇA.md' -Destination (Join-Path $taskDist 'Privacidade e seguranca.txt') -Force
+Copy-Item -LiteralPath 'whatsapp-native\LICENCAS.txt' -Destination (Join-Path $taskDist 'LICENCAS WhatsApp.txt') -Force
+Copy-Item -LiteralPath 'cloudflare\runtime\LICENSE.txt' -Destination (Join-Path $taskDist 'LICENCA Cloudflare.txt') -Force
+Write-Host "Aplicativo e instalador disponíveis em $taskDist."

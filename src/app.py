@@ -50,7 +50,7 @@ if config.IA_PROVIDER == "OLLAMA" and config.OLLAMA_AQUECER_AO_INICIAR:
 
 # ---------------------------------------------------------------------------
 # Segurança: segredo embutido na URL dos webhooks + HTTP Basic Auth no painel
-# da cozinha. Ver MANUAL.md, seção "Segurança", para como configurar.
+# da cozinha. Ver PRIVACIDADE E SEGURANÇA.md para como configurar.
 # ---------------------------------------------------------------------------
 
 def _segredo_valido(segredo_recebido: str) -> bool:
@@ -181,9 +181,9 @@ def receber_webhook():
 # Webhook do WAHA (WhatsApp HTTP API self-hosted via Docker, login por QR)
 #
 # A URL inclui um segredo (<segredo>) como parte do caminho: só quem conhece
-# WEBHOOK_SECRET (configurado no .env e usado no WHATSAPP_HOOK_URL do
-# docker-compose.yml) consegue mandar requisições que o Flask aceita como
-# vindas do WAHA de verdade. Ver MANUAL.md, seção "Segurança".
+# WEBHOOK_SECRET (configurado no servidor WAHA externo) consegue mandar
+# requisições que o Flask aceita como vindas do WAHA de verdade.
+# Ver PRIVACIDADE E SEGURANÇA.md.
 # ---------------------------------------------------------------------------
 
 @app.route("/webhook/waha/<segredo>", methods=["POST"])
@@ -206,7 +206,7 @@ def receber_webhook_waha(segredo):
 
 
 # ---------------------------------------------------------------------------
-# API interna usada pelo workflow do N8N (veja n8n/deliverybot-waha.json).
+# API interna para integrações externas de processamento de mensagens.
 # Também protegida pelo mesmo segredo do webhook -- sem isso, qualquer
 # pessoa que descobrisse a URL pública poderia conversar com a IA de graça
 # à sua custa, ou criar pedidos falsos.

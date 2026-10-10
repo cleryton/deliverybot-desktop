@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 2.11.1 — 2026-10-10
+
+- Remoção dos iniciadores, configurações e manual do fluxo antigo com Docker/n8n/ngrok.
+- Limpeza de artefatos temporários, instalações de teste, caches e distribuições antigas, preservando dados e dependências de manutenção.
+- Documentação das pastas necessárias e compilação limpa com preparação do túnel, licenças e hashes da distribuição.
+
 ## 2.11.0 — 2026-10-10
 
 - Página de pedidos com túnel Cloudflare integrado, início pelo painel, opção de início automático e reconexão em segundo plano.

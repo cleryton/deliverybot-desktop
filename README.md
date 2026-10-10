@@ -1,236 +1,42 @@
-> **Página de pedidos integrada:** inicie o túnel Cloudflare dentro do aplicativo, com opção de início automático e reconexão. Escolha endereço temporário para testes ou domínio fixo para uso diário. Veja o [guia](GUIA%20DO%20APLICATIVO.md#página-de-pedidos-pela-internet). O computador precisa permanecer ligado.
+# DeliveryBot Desktop
 
-> **Aplicativo Windows:** [baixar o instalador](https://github.com/cleryton/deliverybot-desktop/releases) · [guia de instalação e uso](GUIA%20DO%20APLICATIVO.md). A versão desktop inclui WhatsApp integrado, estoque genérico, atendimento humano, backups criptografados e permissões por funcionário, sem instalação de Docker, Node.js ou Python pelo usuário final.
+Aplicativo Windows para cadastrar produtos de qualquer categoria, controlar estoque e receber pedidos pelo WhatsApp. Inclui atendimento humano, permissões por funcionário, backups criptografados e página de pedidos com túnel Cloudflare integrado.
 
-> **Aplicativo Windows:** comece pelo [GUIA DO APLICATIVO.md](GUIA%20DO%20APLICATIVO.md). Abra `dist/Instalar-DeliveryBot.exe` para instalar ou `dist/DeliveryBot.exe` para usar diretamente. O novo painel permite cadastrar produtos de qualquer categoria e controlar estoque.
->
-> **Versão 2.2:** conecte o WhatsApp pelo QR Code em **WhatsApp e IA**, sem instalar Docker ou Node.js. O componente integrado já vem no executável, salva a sessão e mantém uma fila persistente para evitar eventos duplicados. Inicie o Ollama e baixe o modelo pelos botões desse painel; apenas o Ollama precisa de instalação separada para usar IA local.
->
-> O [MANUAL.md](MANUAL.md) abaixo documenta o modo servidor e as integrações originais para desenvolvedores.
+## Instalar e usar
 
-> **Versão 2.3:** configure o responsável e o contato em **Privacidade e LGPD**. O app oferece aviso aos clientes, exportação e correção de dados, remoção da identificação e limpeza do histórico. Backups novos são criptografados por senha. Veja [PRIVACIDADE E SEGURANÇA.md](PRIVACIDADE%20E%20SEGURAN%C3%87A.md) para procedimentos, retenção e limites das medidas.
+Dentro de `dist/`, abra a pasta da versão indicada em `VERSION` (por exemplo, `v2.11.1`). Execute `Instalar-DeliveryBot.exe` para instalar ou `DeliveryBot.exe` para usar diretamente. O usuário final não precisa instalar Docker, Node.js ou Python. Para IA local, configure o Ollama em **WhatsApp e IA**.
 
-## Versões e histórico
+Use o [guia do aplicativo](GUIA%20DO%20APLICATIVO.md) para configurar a loja, cadastrar produtos, conectar o WhatsApp e iniciar a página de pedidos. Os procedimentos de proteção dos dados estão em [Privacidade e segurança](PRIVACIDADE%20E%20SEGURAN%C3%87A.md).
 
-A versão atual está em [VERSION](VERSION), e as alterações são registradas em [CHANGELOG.md](CHANGELOG.md). Cada pedido que modificar o projeto gera um commit identificado por versão e uma tag `vX.Y.Z`, conforme [AGENTS.md](AGENTS.md). Os executáveis são gerados localmente e não fazem parte do histórico Git.
+Os dados, configurações, backups e sessão do WhatsApp do aplicativo ficam em `%LOCALAPPDATA%\DeliveryBot`, separados do código e da distribuição. Não apague essa pasta para atualizar o aplicativo. Para encerrar o atendimento, use **Sair do aplicativo** no painel ou **Sair e interromper atendimento** no ícone perto do relógio.
 
-Repositório do aplicativo: [cleryton/deliverybot-desktop](https://github.com/cleryton/deliverybot-desktop).
+## O que existe nesta pasta
 
-# DeliveryBot 🤖🍔 — Bot de Pedidos para Restaurante via WhatsApp
+| Arquivo ou pasta | Finalidade |
+| --- | --- |
+| `dist/v<versão>/` | Distribuição atual: aplicativo, instalador, hashes, guia e licenças. |
+| `desktop.py`, `src/`, `web/`, `sql/`, `data/cardapio.json` | Código, interface, estrutura do banco e catálogo de exemplo usados pelo aplicativo e pelos testes. |
+| `packaging/`, `DeliveryBot.spec`, `Compilar aplicativo.ps1` | Compilação, instalador, integridade e assinatura. |
+| `whatsapp-native/`, `cloudflare/runtime/` | Código, dependências e componentes incluídos no executável. |
+| `.venv/`, arquivos `requirements*.txt` | Ambiente e dependências para desenvolver, testar e compilar. |
+| `tests/` | Verificações de pedidos, estoque, segurança e integrações. |
+| `.env.example`, `definir_senha_cozinha.py`, `gerar_segredos.py`, `testar_ia.py` | Exemplos e utilitários para manutenção do modo servidor; não são exigidos para abrir o aplicativo instalado. |
+| `.git/`, `AGENTS.md`, `VERSION`, `CHANGELOG.md`, `.gitignore` | Histórico Git, instruções, versões e exclusões de arquivos privados. |
 
-> Tema 09 — DeliveryBot: Pedidos de restaurante
-> Cenário: restaurantes confirmam pedidos manualmente um a um.
-> O sistema deve: cadastro de cardápio e pedidos; enviar confirmação do pedido,
-> tempo estimado e aviso de "saiu para entrega"; fila de preparo visível para a cozinha.
-> Segunda API: ViaCEP — validar área de entrega pelo CEP.
-> Entidades mínimas do banco: clientes, produtos, pedidos, itens_pedido, fila_preparo, mensagens.
+Foram removidos os iniciadores e manuais do fluxo antigo com Docker/n8n/ngrok, cópias antigas fora de uso, instalações de teste, scripts temporários e caches de compilação. Um executável antigo aberto pode permanecer em `dist/` até o aplicativo ser encerrado: o Windows bloqueia sua exclusão durante o uso. As integrações com WAHA externo e Meta continuam disponíveis no aplicativo.
 
-Inspirado no fluxo do projeto [Pirata-dos-Hamburguer](https://github.com/Kennedy-Mariano/Pirata-dos-Hamburguer)
-(automação com Flask + WhatsApp Business Cloud API) e nos prints de atendimento
-anexados (menu numerado, link de pedido único, confirmação com número de pedido,
-atualizações de status e um cupom "DOCUMENTO NÃO FISCAL").
+`build/`, `artifacts/`, `.pytest_cache/` e `__pycache__/` podem reaparecer ao compilar ou testar; são arquivos temporários, ignorados pelo Git. Não apague bancos, credenciais, backups ou sessões para limpar espaço.
 
-## Como o fluxo funciona (igual aos prints)
+## Desenvolvimento e compilação
 
-1. Cliente manda qualquer mensagem no WhatsApp → bot responde com o menu:
-   ```
-   1 - Horário de funcionamento
-   2 - Realizar pedidos
-   3 - Formas de pagamento
-   4 - Cardápio
-   5 - Telefone
-   6 - Promoções
-   7 - Taxa de entrega
-   8 - Endereço
-   ```
-2. Cliente digita **2** → o bot gera um **link único de pedido**
-   (`/m/<token>`), válido para **um único pedido** — depois de usado ou expirado
-   o link não abre outro pedido.
-3. Cliente escolhe os itens na página do link, informa forma de pagamento e
-   CEP (validado na hora com a **ViaCEP**).
-4. Ao confirmar, o bot manda no WhatsApp:
-   *"Seu pedido #21535858 foi realizado com sucesso. Vou te atualizando sobre
-   o processo do seu pedido por aqui."* + o **cupom formatado** (igual ao print
-   "DOCUMENTO NÃO FISCAL").
-5. O pedido entra na **fila de preparo** (visível para a cozinha em
-   `/cozinha`). Cada mudança de status dispara uma mensagem automática:
-   - `Pedido confirmado. Recebemos o seu pedido. Você pode retirar seu pedido em
-     aproximadamente 40 minutos...`
-   - `Pronto para retirada. Pode vir, seu pedido já está lhe aguardando...`
+Para compilar no Windows, o desenvolvedor precisa de Python 3.12 e Node.js/npm. Execute `Compilar aplicativo.ps1` no PowerShell: ele prepara as dependências, executa os testes, inclui os componentes WhatsApp e Cloudflare e gera os executáveis e seus hashes em `dist/v<versão>/`. O script faz uma compilação limpa para evitar módulos antigos em cache.
 
-## Estrutura de pastas
+Também é possível executar os testes com `.venv/Scripts/python.exe -m pytest -q` e os testes do componente WhatsApp com `npm test` dentro de `whatsapp-native`.
 
-```
-deliverybot/
-├── requirements.txt
-├── docker-compose.yml       -> sobe WAHA + N8N (WhatsApp real via QR Code)
-├── .env.example
-├── n8n/
-│   └── deliverybot-waha.json -> workflow pronto pra importar no N8N
-├── sql/schema.sql          -> clientes, produtos, pedidos, itens_pedido, fila_preparo, mensagens
-├── data/cardapio.json      -> cardápio inicial (usado no seed do banco)
-├── src/
-│   ├── config.py           -> lê variáveis do .env
-│   ├── db.py                -> conexão SQLite + criação/seed do banco
-│   ├── viacep.py             -> valida CEP / área de entrega (API ViaCEP)
-│   ├── cardapio.py           -> consultas de produtos/cardápio
-│   ├── pedidos.py            -> regra de negócio: criar pedido, gerar nº, calcular total
-│   ├── links.py               -> geração/validação do link único de pedido (token de uso único)
-│   ├── recibo.py               -> monta o cupom "DOCUMENTO NÃO FISCAL" (texto)
-│   ├── fila.py                  -> fila de preparo da cozinha + mudança de status
-│   ├── whatsapp.py               -> envio de mensagens via WhatsApp Business Cloud API (Meta)
-│   ├── bot.py                     -> máquina de estados da conversa (o menu 1-8)
-│   └── app.py                      -> servidor Flask: webhook do WhatsApp + página do link + painel da cozinha
-├── web/templates/
-│   ├── pedido.html                 -> formulário de pedido (o link único abre isso)
-│   ├── pedido_sucesso.html
-│   ├── link_invalido.html
-│   └── cozinha.html                 -> painel da fila de preparo (para o restaurante)
-└── tests/
-    └── test_pedidos.py
-```
+Para manutenção do modo servidor, copie `.env.example` para `.env`, configure as credenciais e execute `python -m src.app`. O provedor `TESTE` não envia mensagens reais. Não exponha o servidor de desenvolvimento nem o painel administrativo diretamente à internet; o gateway público do aplicativo limita as rotas acessíveis.
 
-## 1. Instalação
+## Versões
 
-```bash
-cd deliverybot
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-```
+A versão atual está em [VERSION](VERSION) e o histórico em [CHANGELOG.md](CHANGELOG.md). Cada pedido que alterar arquivos versionados gera um commit e uma tag conforme [AGENTS.md](AGENTS.md). Executáveis, dados pessoais, credenciais e dependências instaladas não são versionados.
 
-Rodando sem preencher nada no `.env`, o sistema funciona em **modo teste**:
-o banco (SQLite) é criado sozinho em `data/deliverybot.db` e as mensagens que
-seriam enviadas ao WhatsApp aparecem só no console, com o prefixo
-`[MODO TESTE] enviaria para 5547...:`. Isso permite testar toda a lógica do
-bot e do cardápio antes de ter as credenciais da Meta.
-
-Simule um pedido de ponta a ponta sem precisar do WhatsApp real:
-
-```bash
-python -m src.main_teste
-```
-
-## 2. Conectando no WhatsApp de verdade — duas opções
-
-### Opção A (recomendada para testar rápido): WAHA + Docker, login por QR Code
-
-Essa é a forma mais rápida de testar com o **seu próprio número de WhatsApp**,
-sem precisar de conta comercial verificada nem esperar aprovação da Meta —
-é o mesmo [WAHA](https://waha.devlike.pro/) usado por trás do N8N no vídeo
-[N8N + WhatsApp GRÁTIS](https://www.youtube.com/watch?v=KkKlfAb3TSI), só que
-aqui chamado direto do Python, sem precisar do N8N.
-
-1. Instale o [Docker Desktop](https://docker.com).
-2. No `.env`, defina `WHATSAPP_PROVIDER=WAHA`.
-3. Rode o servidor Flask: `python -m src.app` (deixe essa janela aberta).
-4. Em outro terminal, suba o WAHA: `docker compose up`.
-5. Abra `http://localhost:3000` no navegador — é o Swagger/Dashboard do WAHA.
-   Vá em `GET /api/screenshot` (ou na aba Dashboard) para ver o **QR Code** e
-   escaneie com o WhatsApp do seu celular, em **Aparelhos conectados → Conectar
-   um aparelho**.
-6. Pronto — assim que a sessão ficar `WORKING`, qualquer mensagem que
-   alguém mandar pro **seu número de WhatsApp** cai automaticamente no
-   webhook `http://localhost:5000/webhook/waha` (o `docker-compose.yml` já
-   configura isso sozinho) e o bot responde na hora.
-
-> Atenção: o WAHA usa o WhatsApp Web por baixo dos panos. Use um número que
-> você não se importe de conectar a um "aparelho" extra (dá pra usar seu
-> WhatsApp normal mesmo, ele só aparece na lista de aparelhos conectados).
-
-### Opção C: WAHA + N8N (o mesmo arranjo do vídeo, orquestrado visualmente)
-
-Aqui o **N8N** vira o "cérebro" que liga o WAHA no Flask: ele recebe o evento
-do WAHA, manda o texto pro Flask decidir a resposta (reaproveitando a mesma
-lógica de `bot.py`, sem duplicar nada), e manda a resposta de volta pro WAHA.
-É útil se você quiser mostrar visualmente o fluxo no trabalho, ou plugar
-outras automações (IA, planilhas, etc.) depois sem mexer no Python.
-
-1. Instale o [Docker Desktop](https://docker.com).
-2. Rode o Flask fora do Docker: `python -m src.app` (deixe aberto).
-3. Suba o WAHA **e** o N8N juntos: `docker compose up`.
-4. Abra `http://localhost:3000` (WAHA) e escaneie o QR Code com o WhatsApp
-   do seu celular, em **Aparelhos conectados → Conectar um aparelho**. O
-   webhook do WAHA já sai configurado sozinho apontando pro N8N (variável
-   `WHATSAPP_HOOK_URL` no `docker-compose.yml`).
-5. Abra `http://localhost:5678` (N8N), crie sua conta local (é só local,
-   fica na sua máquina) e importe o workflow pronto:
-   **Menu (⋯) → Import from File → `n8n/deliverybot-waha.json`**.
-6. **Ative o workflow** (toggle no canto superior direito do editor).
-7. Pronto: mande uma mensagem pro seu número de WhatsApp. O caminho é
-   `WhatsApp real → WAHA → N8N (decide) → Flask /api/bot/mensagem (aplica a
-   regra de negócio) → N8N manda a resposta de volta pro WAHA → WhatsApp`.
-
-O workflow importado tem 6 nós:
-- **Webhook WAHA** — recebe o evento cru do WAHA.
-- **É mensagem de cliente?** — filtra eventos que não são `message` ou que
-  foram enviados pelo próprio bot (`fromMe`).
-- **Processar no Bot (Flask)** — `POST /api/bot/mensagem` com
-  `{telefone, texto, nome}`, recebe `{resposta}`.
-- **Enviar resposta (WAHA)** — `POST /api/sendText` com a resposta.
-- **Responder 200** (dois nós) — confirma o recebimento do webhook pro WAHA
-  não ficar reenviando o mesmo evento.
-
-> Se preferir mexer no fluxo dentro do N8N (textos, novas opções de menu,
-> etc.) em vez de editar `bot.py`, dá pra trocar o nó **Processar no Bot** por
-> nós de lógica do próprio N8N (Switch/Set) — só que aí o link único de
-> pedido (`/m/<token>`) e o cardápio continuam vindo do Flask, porque
-> precisam do banco de dados.
-
-### Opção D: WhatsApp Business Cloud API (Meta) — oficial
-
-Essa é a forma **oficial** de um bot Python conversar com o WhatsApp real
-(é o mesmo caminho usado no projeto de referência Pirata-dos-Hamburguer):
-
-1. Crie uma conta em [developers.facebook.com](https://developers.facebook.com/)
-   e um **App do tipo "Business"**.
-2. No app, adicione o produto **WhatsApp**. A Meta te dá automaticamente um
-   número de teste, um **Phone Number ID** e um **token de acesso temporário**
-   (24h) — dá para testar tudo com eles antes de ter um número comercial
-   definitivo.
-3. Copie para o `.env`:
-   ```
-   WHATSAPP_TOKEN=seu_token_de_acesso
-   WHATSAPP_PHONE_NUMBER_ID=id_do_numero
-   WHATSAPP_VERIFY_TOKEN=uma_palavra_secreta_que_voce_escolhe
-   BASE_URL=https://SEU-DOMINIO-PUBLICO
-   ```
-4. Rode o servidor:
-   ```bash
-   python -m src.app
-   ```
-5. Deixe a porta 5000 pública (em desenvolvimento, use o
-   [ngrok](https://ngrok.com/): `ngrok http 5000`) e copie a URL https gerada
-   para `BASE_URL` no `.env` — é esse domínio que vira o link
-   `https://SEU-DOMINIO/m/<token>` mandado ao cliente.
-6. No painel do app da Meta, em **WhatsApp → Configuração → Webhooks**,
-   cadastre:
-   - Callback URL: `https://SEU-DOMINIO/webhook`
-   - Verify Token: o mesmo valor de `WHATSAPP_VERIFY_TOKEN`
-   - Inscreva-se no campo `messages`.
-7. No seu celular, mande qualquer mensagem para o número de teste da Meta —
-   o bot já responde com o menu.
-
-> Para usar em produção com o **seu próprio número comercial** (não o número
-> de teste da Meta), é preciso verificar o WhatsApp Business Account e trocar
-> o token temporário por um **token permanente de usuário do sistema**, mas o
-> código não muda — só as credenciais no `.env`.
-
-## 3. Painel da cozinha (fila de preparo)
-
-Acesse `http://localhost:5000/cozinha` (ou o seu domínio) para ver a fila de
-preparo em tempo real e clicar para avançar o status de cada pedido
-("Confirmado" → "Em preparo" → "Pronto para retirada" → "Entregue"). Cada
-clique dispara automaticamente a mensagem correspondente no WhatsApp do
-cliente.
-
-## 4. Testes automatizados
-
-```bash
-pip install -r requirements-dev.txt   # já incluso em requirements.txt (pytest)
-pytest -v
-```
-
-Os testes cobrem: geração de número de pedido, cálculo de total, geração e
-invalidação do link único, validação de CEP e montagem do cupom.
+Repositório: [cleryton/deliverybot-desktop](https://github.com/cleryton/deliverybot-desktop). Downloads publicados: [releases](https://github.com/cleryton/deliverybot-desktop/releases).

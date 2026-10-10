@@ -69,8 +69,7 @@ WAHA_URL = os.getenv("WAHA_URL", "http://localhost:3000").rstrip("/")
 WAHA_SESSION = os.getenv("WAHA_SESSION", "default").strip()
 WAHA_WEBHOOK_BASE_URL = os.getenv("WAHA_WEBHOOK_BASE_URL", "").strip().rstrip("/")
 WAHA_API_KEY = os.getenv("WAHA_API_KEY", "").strip()  # usado como X-Api-Key nas chamadas ao WAHA
-# Credenciais do dashboard/Swagger do WAHA -- o docker-compose.yml lê essas
-# MESMAS variáveis deste .env (não ficam mais hardcoded no compose).
+# Credenciais do dashboard/Swagger do servidor WAHA externo, se utilizado.
 WAHA_DASHBOARD_USERNAME = os.getenv("WAHA_DASHBOARD_USERNAME", "admin").strip()
 WAHA_DASHBOARD_PASSWORD = os.getenv("WAHA_DASHBOARD_PASSWORD", "").strip()
 
