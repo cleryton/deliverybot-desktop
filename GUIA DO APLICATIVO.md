@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.3
+# DeliveryBot Desktop 2.5.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -44,7 +44,7 @@ O aplicativo começa em **modo de teste** e não envia mensagens reais. Para rec
 - **Meta:** preencha as credenciais da WhatsApp Cloud API, incluindo o **App Secret** do aplicativo Meta, e configure a URL pública `/webhook` e o token de verificação no serviço. O App Secret permite verificar a assinatura das mensagens recebidas.
 - **Endereço público da loja:** precisa apontar para o servidor deste computador, na porta 5000, por um domínio/túnel configurado à parte. `localhost` não abre no celular de outro usuário. O aplicativo não cria hospedagem nem túnel automaticamente.
 
-Mantenha o computador ligado, conectado e o aplicativo aberto durante o atendimento. Fechar a janela encerra o servidor, o bot e seu componente WhatsApp. O Ollama pode continuar ativo em segundo plano. O painel consulta o estado real da conexão. Depois de conectar, envie uma mensagem de outro número para confirmar o recebimento pelo aplicativo.
+Mantenha o computador ligado, conectado e o aplicativo em execução durante o atendimento. Fechar a janela mantém o bot em segundo plano, com um ícone perto do relógio. Clique duas vezes no ícone ou use **Abrir DeliveryBot** para voltar ao painel. Para encerrar o servidor e o WhatsApp, use **Sair do aplicativo** no painel ou **Sair e interromper atendimento** no ícone. Desligar ou suspender o computador interrompe o atendimento. O Ollama pode continuar ativo em segundo plano. Depois de conectar, envie uma mensagem de outro número para confirmar o recebimento.
 
 A sessão WhatsApp fica salva em **%LOCALAPPDATA%\DeliveryBot\whatsapp**. A conexão ativa é retomada ao reabrir o aplicativo; não é necessário escanear novamente enquanto a sessão continuar válida. **Pausar conexão** mantém a autenticação, preserva a pausa na próxima abertura e deixa as mensagens da fila aguardando a retomada.
 

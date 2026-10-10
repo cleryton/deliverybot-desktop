@@ -182,6 +182,7 @@ def main():
     trava = open(pasta / "aplicativo.lock", "a+b")
     servidor = None
     thread = None
+    bandeja = None
     try:
         if sys.platform == "win32":
             import msvcrt
@@ -218,6 +219,9 @@ def main():
         if config.WHATSAPP_PROVIDER == "LOCAL":
             conexoes.iniciar_tarefa("whatsapp", lambda progresso: whatsapp_local.iniciar(progresso))
         class API:
+            def sair_aplicativo(self):
+                self._verificar()
+                bandeja.sair()
             def _verificar(self):
                 from urllib.parse import urlsplit
                 url = urlsplit(window.get_current_url())
@@ -257,13 +261,17 @@ def main():
                     criar_backup(senha)
                     # SQLite backup também funciona se o arquivo escolhido estiver em WAL.
                     os.replace(temporario, pasta / "restaurar.db")
-                    window.destroy()
+                    bandeja.sair()
                     return {"ok": True}
                 except Exception as exc:
                     temporario.unlink(missing_ok=True)
                     return {"erro": "Não foi possível restaurar. Confira a senha, o formato do backup e a conta Windows da cópia de recuperação."}
         window = webview.create_window("DeliveryBot — Gestão da loja", f"http://127.0.0.1:{port}/gestao?acesso={token}",
                                        js_api=API(), width=1280, height=850, min_size=(850,600), background_color="#f6f8f7")
+        from src.bandeja import Bandeja
+        bandeja = Bandeja(window)
+        bandeja.iniciar()
+        window.events.closing += bandeja.ao_fechar
         webview.start(gui="edgechromium", private_mode=True)
         return 0
     except Exception as exc:
@@ -276,6 +284,8 @@ def main():
             print(mensagem, file=sys.stderr)
         return 1
     finally:
+        if bandeja:
+            bandeja.parar()
         if servidor:
             servidor.close()
             from src import processamento

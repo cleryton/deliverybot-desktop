@@ -38,3 +38,17 @@ def test_preparacao_endereco_publico_e_expiracao(cliente):
     assert not c.get('/gestao/api/preparacao').json['abertura_recebida']
     assert c.get(caminho).status_code==410
     assert c.post('/gestao/api/preparacao/testar').status_code==403
+
+
+def test_fechar_esconde_e_sair_encerra():
+    from unittest.mock import Mock
+    from src.bandeja import Bandeja
+    janela=Mock()
+    b=Bandeja(janela)
+    b.ativa=True
+    assert b.ao_fechar() is False
+    janela.hide.assert_called_once()
+    janela.destroy.assert_not_called()
+    b.sair()
+    janela.destroy.assert_called_once()
+    assert b.ao_fechar() is True

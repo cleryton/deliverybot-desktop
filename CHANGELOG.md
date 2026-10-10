@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.5.0 — 2026-10-10
+
+Atendimento em segundo plano com ícone na área do relógio, opções de reabrir e encerrar, preservando os serviços ao fechar a janela. Validado o ciclo real da bandeja Windows, sem contas ou dados reais.
+
 ## 2.4.0 — 2026-10-10
 
 Configuração inicial guiada com checklist da loja, privacidade, catálogo, WhatsApp, IA e confirmação de abertura do endereço público no celular. Teste temporário vinculado ao endereço configurado, sem expor dados ou segredos.

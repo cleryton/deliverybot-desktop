@@ -9,7 +9,7 @@ if not (native / 'runtime/node.exe').exists() or not (native / 'node_modules/@wh
 a = Analysis(
     [str(root / 'desktop.py')], pathex=[str(root)],
     binaries=[],
-    datas=[(str(root / 'web'), 'web'), (str(root / 'sql'), 'sql'),
+    datas=[(str(root / 'web'), 'web'), (str(root / 'sql'), 'sql'), (str(root / 'packaging' / 'DeliveryBot.ico'), 'packaging'),
            (str(root / 'data' / 'cardapio.json'), 'data'),
            (str(native / 'runtime'), 'whatsapp-native/runtime'),
            (str(native / 'node_modules'), 'whatsapp-native/node_modules'),

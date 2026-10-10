@@ -9,3 +9,4 @@ $('#preparation-check').addEventListener('click',e=>run(e.target,preparacao));
 $('#preparation-test').addEventListener('click',e=>run(e.target,async()=>{const r=await api('preparacao/testar','POST',{});$('#preparation-link').value=r.url;$('#preparation-link').hidden=false;}));
 $('#preparation-link').addEventListener('click',e=>e.target.select());
 preparacao().catch(e=>toast(e.message,true));
+$('#app-exit').addEventListener('click',e=>run(e.target,async()=>{if(!window.pywebview?.api?.sair_aplicativo)throw new Error('Use o aplicativo Desktop para encerrar.');if(confirm('Encerrar o aplicativo e interromper o atendimento?'))await window.pywebview.api.sair_aplicativo();}));

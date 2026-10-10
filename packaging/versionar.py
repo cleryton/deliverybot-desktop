@@ -18,7 +18,8 @@ def versionar(versao, descricao):
         p.write_text(p.read_text(encoding='utf-8').replace(anterior, versao), encoding='utf-8')
     for arquivo in ('GUIA DO APLICATIVO.md', 'whatsapp-native/LICENCAS.txt', 'packaging/preparar_whatsapp.py'):
         p = ROOT / arquivo
-        p.write_text(p.read_text(encoding='utf-8').replace('.'.join(anterior.split('.')[:2]), '.'.join(versao.split('.')[:2])), encoding='utf-8')
+        texto = re.sub(r'(DeliveryBot(?: Desktop)? )\d+\.\d+(?:\.\d+)?', lambda m: m[1]+versao, p.read_text(encoding='utf-8'))
+        p.write_text(texto, encoding='utf-8')
     p = ROOT / 'packaging/app.manifest'
     p.write_text(p.read_text(encoding='utf-8').replace(anterior+'.0', versao+'.0'), encoding='utf-8')
     for arquivo in ('whatsapp-native/package.json', 'whatsapp-native/package-lock.json'):
