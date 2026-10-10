@@ -1,0 +1,37 @@
+# Segredos e configuracao local -- NUNCA versionar
+.env
+.env.*
+!.env.example
+
+# Ambiente virtual Python
+venv/
+__pycache__/
+*.pyc
+
+# Banco de dados local (gerado automaticamente)
+data/deliverybot.db
+data/deliverybot.db-wal
+data/deliverybot.db-shm
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+data/whatsapp/
+data/backups/
+*.pem
+*.key
+
+# Logs
+*.log
+.venv/
+build/
+dist/
+*.spec
+!DeliveryBot.spec
+.pytest_cache/
+artifacts/
+whatsapp-native/node_modules/
+whatsapp-native/runtime/

@@ -1,0 +1,169 @@
+{
+  "name": "DeliveryBot - WAHA + Flask",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-in",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1a1e6b30-0001-4a1a-9a10-000000000001",
+      "name": "Webhook WAHA",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-40, 260],
+      "webhookId": "deliverybot-whatsapp-in"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "message",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.body.payload.fromMe }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1a1e6b30-0002-4a1a-9a10-000000000002",
+      "name": "É mensagem de cliente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [180, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5000/api/bot/mensagem",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"telefone\": \"{{ $json.body.payload.from }}\",\n  \"texto\": \"{{ $json.body.payload.body }}\",\n  \"nome\": \"{{ $json.body.payload._data?.notifyName || 'Cliente' }}\"\n}",
+        "options": {}
+      },
+      "id": "1a1e6b30-0003-4a1a-9a10-000000000003",
+      "name": "Processar no Bot (Flask)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://waha:3000/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"session\": \"default\",\n  \"chatId\": \"{{ $('Webhook WAHA').item.json.body.payload.from }}\",\n  \"text\": \"{{ $json.resposta }}\"\n}",
+        "options": {}
+      },
+      "id": "1a1e6b30-0004-4a1a-9a10-000000000004",
+      "name": "Enviar resposta (WAHA)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }",
+        "options": {}
+      },
+      "id": "1a1e6b30-0005-4a1a-9a10-000000000005",
+      "name": "Responder 200 (evento tratado)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ignorado\" }",
+        "options": {}
+      },
+      "id": "1a1e6b30-0006-4a1a-9a10-000000000006",
+      "name": "Responder 200 (ignorado)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [420, 380]
+    }
+  ],
+  "connections": {
+    "Webhook WAHA": {
+      "main": [
+        [
+          {
+            "node": "É mensagem de cliente?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É mensagem de cliente?": {
+      "main": [
+        [
+          {
+            "node": "Processar no Bot (Flask)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 200 (ignorado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar no Bot (Flask)": {
+      "main": [
+        [
+          {
+            "node": "Enviar resposta (WAHA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar resposta (WAHA)": {
+      "main": [
+        [
+          {
+            "node": "Responder 200 (evento tratado)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

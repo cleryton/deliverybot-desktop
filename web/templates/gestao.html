@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf }}"><title>DeliveryBot • Gestão da loja</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='gestao.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='conexoes.css') }}">
+  <script defer src="{{ url_for('static', filename='gestao.js') }}"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">D</span><div>DeliveryBot<small>SEU NEGÓCIO, ORGANIZADO</small></div></div>
+    <div class="store-label">ESPAÇO DE TRABALHO</div><div id="loja-nome" class="store-name">Minha loja</div>
+    <nav aria-label="Navegação principal">
+      <button data-page="inicio" class="selected"><span>◈</span> Visão geral</button>
+      <button data-page="produtos"><span>▦</span> Produtos e estoque</button>
+      <button data-page="pedidos"><span>▤</span> Pedidos</button>
+      <button data-page="movimentos"><span>⇄</span> Movimentações</button>
+      <button data-page="conexoes"><span>⌁</span> WhatsApp e IA</button>
+      <button data-page="bot"><span>☏</span> Testar atendimento</button>
+      <button data-page="configuracoes"><span>⚙</span> Configurações</button>
+    </nav>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.2</small></div>
+  </aside>
+  <main>
+    <header class="topbar"><span id="breadcrumb">Sua operação, em um só lugar</span><div><span id="connection" class="badge">Modo de teste</span><button id="refresh" class="icon-button" title="Atualizar dados" aria-label="Atualizar dados">↻</button></div></header>
+    <div class="content">
+      <section id="page-inicio" class="page">
+        <div class="page-heading"><div><p class="eyebrow">PAINEL DA LOJA</p><h1>Seu dia começa aqui.</h1><p>Acompanhe seus produtos, vendas e atendimento.</p></div><button class="primary" data-action="novo">+ Cadastrar produto</button></div>
+        <div id="metrics" class="metrics"></div>
+        <div class="home-grid">
+          <article class="card welcome"><span class="pill">PRIMEIROS PASSOS</span><h2>Pronto para vender<br>do seu jeito.</h2><p>Roupas, acessórios, alimentos, eletrônicos ou outros produtos: monte o catálogo da sua loja e deixe o bot apresentar o que você tem disponível.</p><div class="steps"><button data-page="configuracoes"><b>01</b><span>Personalize a loja<small>Nome, horários e pagamento</small></span><span>→</span></button><button data-page="produtos"><b>02</b><span>Cadastre seus produtos<small>Preços, categorias e estoque</small></span><span>→</span></button><button data-page="bot"><b>03</b><span>Experimente o atendimento<small>Simule uma compra antes de conectar</small></span><span>→</span></button></div></article>
+          <article class="card"><div class="card-heading"><h2>Atenção ao estoque</h2><span class="badge warning">Reposição</span></div><div id="low-stock"></div></article>
+        </div>
+        <article class="card backup-row"><div><h2>Uma cópia dos seus dados</h2><p>Guarde um backup dos produtos, pedidos e configurações. Copie o arquivo para outro local seguro.</p><small id="backup-result"></small></div><div class="button-row"><button data-action="backup">Criar backup</button><button data-action="pasta">Abrir pasta de dados</button><button data-action="restaurar">Restaurar backup</button></div></article>
+        <div id="daily-note" class="notice"></div>
+      </section>
+      <section id="page-produtos" class="page" hidden>
+        <div class="page-heading"><div><p class="eyebrow">CATÁLOGO</p><h1>Produtos e estoque</h1><p>O bot apresenta os produtos ativos com disponibilidade.</p></div><button class="primary" data-action="novo">+ Cadastrar produto</button></div>
+        <div class="filters"><input id="search" type="search" placeholder="Buscar por nome, código ou categoria" aria-label="Buscar produtos"><select id="filter" aria-label="Filtrar produtos"><option value="todos">Todos os produtos</option><option value="baixo">Estoque baixo</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select><span id="product-count"></span></div>
+        <div class="card table-wrap"><table><thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Disponível</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="product-list"></tbody></table><div id="products-empty" class="empty" hidden><div class="empty-icon">▦</div><h2>Seu catálogo começa aqui</h2><p>Cadastre seu primeiro produto para disponibilizá-lo no atendimento.</p><button data-action="novo" class="primary">Cadastrar primeiro produto</button></div></div>
+      </section>
+      <section id="page-pedidos" class="page" hidden>
+        <div class="page-heading"><div><p class="eyebrow">VENDAS</p><h1>Pedidos da loja</h1><p>Separe os produtos e acompanhe cada compra até a entrega.</p></div><select id="order-filter" aria-label="Filtrar pedidos"><option value="abertos">Em andamento</option><option value="todos">Últimos 200 pedidos</option><option value="concluidos">Concluídos</option><option value="cancelados">Cancelados</option></select></div>
+        <div id="order-list" class="orders"></div>
+      </section>
+      <section id="page-movimentos" class="page" hidden>
+        <div class="page-heading"><div><p class="eyebrow">HISTÓRICO</p><h1>Movimentações de estoque</h1><p>Últimas 150 entradas, saídas, vendas e devoluções.</p></div></div>
+        <div class="card table-wrap"><table><thead><tr><th>Quando</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Saldo</th><th>Motivo</th></tr></thead><tbody id="movement-list"></tbody></table></div>
+      </section>
+      <section id="page-bot" class="page" hidden>
+        <div class="page-heading"><div><p class="eyebrow">ATENDIMENTO</p><h1>Conheça seu assistente</h1><p>Teste o menu e o catálogo sem enviar mensagens ao WhatsApp.</p></div></div>
+        <div class="bot-grid"><article class="card"><h2>Simular uma conversa</h2><p>Use seu telefone de teste com DDI e DDD. Digite <b>4</b> para ver o catálogo ou <b>2</b> para fazer um pedido de teste.</p><form id="bot-form"><label>Telefone de teste<input name="telefone" value="5547999990000" required maxlength="40"></label><div id="chat" class="chat" aria-live="polite"><div class="bubble assistant">Olá! Envie uma mensagem para experimentar o atendimento da sua loja.</div></div><div class="send-row"><input name="texto" placeholder="Digite oi, 2 ou 4…" required maxlength="2000" aria-label="Mensagem de teste"><button class="primary">Enviar</button></div></form></article><article class="card"><span class="pill">COMO FUNCIONA</span><h2>Seu estoque guia o bot.</h2><p>O menu usa o catálogo cadastrado neste aplicativo. Produtos inativos ou sem saldo ficam fora das ofertas.</p><p>Um pedido confirmado baixa o estoque automaticamente. Cancelamentos devolvem as unidades.</p><div class="notice">Um pedido feito pelo link de teste entra no estoque e nos pedidos de verdade. Cancele-o depois para devolver as unidades.</div><h3>Conectar o WhatsApp</h3><p>Escolha WAHA ou Meta em Configurações. O computador precisa permanecer ligado e o aplicativo aberto para atender.</p><button data-page="configuracoes">Configurar atendimento →</button></article></div>
+      </section>
+      <section id="page-conexoes" class="page" hidden>
+        <div class="page-heading"><div><p class="eyebrow">ATENDIMENTO CONECTADO</p><h1>WhatsApp e inteligência artificial</h1><p>Conecte seu celular e prepare o assistente com poucos cliques.</p></div><button data-action="conexoes-atualizar">Verificar agora ↻</button></div>
+        <div class="connections-grid">
+          <article class="card service-card">
+            <div class="card-heading"><h2>WhatsApp</h2><span id="wa-badge" class="badge gray">Verificando…</span></div>
+            <p id="wa-status" aria-live="polite">Consultando a conexão do seu celular…</p>
+            <div class="connection-steps"><p><b>1.</b> Clique em <b>Conectar WhatsApp</b>. A conexão é iniciada dentro do aplicativo.</p><p><b>2.</b> No celular, abra <b>WhatsApp → Aparelhos conectados → Conectar um aparelho</b>.</p><p><b>3.</b> Escaneie o QR Code abaixo. Sua sessão ficará salva para as próximas aberturas.</p></div>
+            <div class="button-row"><button class="primary" data-connection-action="whatsapp-conectar" id="wa-connect">Conectar WhatsApp</button><button data-connection-action="whatsapp-pausar" id="wa-pause">Pausar conexão</button><button data-connection-action="whatsapp-integrado" id="wa-integrated" hidden>Usar conexão integrada</button></div>
+            <div id="wa-job" class="job-message" hidden aria-live="polite"></div>
+            <div id="wa-qr-area" class="qr-area" hidden><img id="wa-qr" alt="QR Code para conectar o WhatsApp" width="260" height="260"><p>Escaneie pelo WhatsApp do celular. O código é atualizado automaticamente.</p><button data-action="qr-atualizar">Atualizar QR Code</button><small id="qr-status" aria-live="polite"></small></div>
+            <div id="wa-hook-status" class="notice"></div>
+            <details class="connection-details"><summary>Configurações avançadas</summary><p>A conexão integrada já vem no instalador. Você também pode configurar um servidor WAHA externo ou a API da Meta, caso sua loja já utilize um desses serviços.</p><div class="button-row"><button data-page="configuracoes">Endereço e credenciais</button></div></details>
+          </article>
+          <article class="card service-card">
+            <div class="card-heading"><h2>Ollama · IA local</h2><span id="ol-badge" class="badge gray">Verificando…</span></div>
+            <p id="ol-status" aria-live="polite">Consultando o assistente instalado…</p>
+            <p>Inicie o Ollama pelo botão abaixo. Quando o modelo estiver pronto, ele será carregado na memória e ativado no atendimento.</p>
+            <label for="ollama-model">Modelo do assistente<input id="ollama-model" list="ollama-models" placeholder="Ex.: llama3.2:3b" maxlength="100"><datalist id="ollama-models"></datalist></label>
+            <small>Escolha um modelo já instalado ou informe o nome do modelo para baixar.</small>
+            <div class="button-row ollama-actions"><button class="primary" data-connection-action="ollama-iniciar" id="ol-start">Iniciar Ollama</button><button data-connection-action="ollama-baixar" id="ol-download">Baixar modelo</button></div>
+            <div id="ol-job" class="job-message" hidden aria-live="polite"></div><progress id="ol-progress" max="100" hidden></progress>
+            <div class="notice">O Ollama roda neste computador. O download de um modelo pode ocupar alguns GB e só acontece quando você clicar em Baixar modelo. Sem IA disponível, o bot continua pelo menu.</div>
+            <div class="button-row install-row"><a class="button-link" href="https://ollama.com/download/windows" target="_blank" rel="noopener">Instalar Ollama ↗</a><button data-page="configuracoes">Mais configurações</button></div>
+          </article>
+        </div>
+        <div id="public-url-note" class="notice"></div>
+        <article class="card inbox-card"><div class="card-heading"><h2>Recebimento de mensagens</h2><span id="inbox-count" class="badge">0 pendentes</span></div><p id="inbox-last">Nenhuma mensagem recebida ainda.</p><div id="inbox-errors"></div><p class="muted">As mensagens recebidas ficam salvas e são processadas em segundo plano. Repetições do mesmo evento não geram outro atendimento.</p></article>
+      </section>
+      <section id="page-configuracoes" class="page" hidden>
+        <div class="page-heading"><div><p class="eyebrow">PREFERÊNCIAS</p><h1>Uma loja com a sua cara</h1><p>Salve as informações que o bot usará no atendimento.</p></div></div>
+        <form id="settings-form"><div id="settings-fields"></div><div class="save-bar"><span>As mudanças passam a valer ao salvar.</span><button class="primary" type="submit">Salvar configurações</button></div></form>
+        <article class="card"><h2>Usar o WhatsApp com clientes</h2><p><b>Modo de teste:</b> não envia mensagens reais. Você pode usar cadastro, estoque e a simulação local.</p><p><b>WAHA:</b> conecte pelo QR Code em <b>WhatsApp e IA</b>. O recebimento das mensagens é configurado automaticamente. Para um serviço existente, salve o endereço e a chave acima.</p><p><b>Meta:</b> preencha as credenciais da WhatsApp Cloud API e configure o webhook <code>/webhook</code> com o token de verificação.</p><p>O endereço público da loja precisa apontar para este computador para que clientes abram os links de pedido. Um endereço localhost só funciona nesta máquina.</p><button data-page="conexoes">Abrir WhatsApp e IA →</button><label>Webhook WAHA<input id="waha-hook" readonly aria-label="URL do webhook WAHA"></label><p class="muted">A chave deste endereço é privada. Compartilhe apenas na configuração do seu serviço WAHA.</p></article>
+      </section>
+    </div>
+  </main>
+  <dialog id="product-dialog"><form id="product-form"><div class="modal-heading"><div><p class="eyebrow">CATÁLOGO</p><h2 id="product-title">Cadastrar produto</h2></div><button type="button" data-close="product-dialog" aria-label="Fechar">×</button></div><input name="id" type="hidden"><div class="form-grid"><label class="wide">Nome do produto<input name="nome" required maxlength="160" placeholder="Ex.: Camiseta de algodão · tamanho M"></label><label>Código / SKU<input name="sku" maxlength="80" placeholder="Ex.: CAM-M-01"></label><label>Categoria<input name="categoria" required maxlength="160" list="categories" placeholder="Ex.: Vestuário"><datalist id="categories"></datalist></label><label>Preço (R$)<input name="preco" type="number" min="0" max="99999999" step="0.01" required></label><label>Unidade<select name="unidade"><option value="un">Unidade</option><option value="cx">Caixa</option><option value="pct">Pacote</option><option value="par">Par</option><option value="kit">Kit</option><option value="kg">Quilograma (inteiro)</option><option value="l">Litro (inteiro)</option></select></label><label class="wide">Descrição<textarea name="descricao" rows="3" maxlength="2000" placeholder="Características, tamanho, cor ou outras informações para o cliente"></textarea></label><label class="check wide"><input name="controlar_estoque" type="checkbox" checked> Controlar quantidade em estoque</label><label>Quantidade inicial<input name="estoque" type="number" min="0" max="999999" step="1" value="0" required></label><label>Alerta de estoque mínimo<input name="estoque_minimo" type="number" min="0" max="999999" step="1" value="0" required></label><p id="stock-help" class="muted wide">As quantidades são inteiras. Crie um produto por variação (cor, tamanho ou embalagem).</p><label class="check wide"><input name="ativo" type="checkbox" checked> Disponibilizar no catálogo do bot</label></div><div class="modal-footer"><button type="button" data-close="product-dialog">Cancelar</button><button type="submit" class="primary">Salvar produto</button></div></form></dialog>
+  <dialog id="stock-dialog"><form id="stock-form"><div class="modal-heading"><h2>Movimentar estoque</h2><button type="button" data-close="stock-dialog" aria-label="Fechar">×</button></div><input name="id" type="hidden"><p id="stock-product"></p><label>Tipo de movimento<select name="tipo"><option value="1">Entrada / reposição</option><option value="-1">Saída / perda</option></select></label><label>Quantidade<input name="quantidade" type="number" min="1" max="999999" step="1" required></label><label>Motivo<input name="motivo" required maxlength="300" placeholder="Ex.: Reposição do fornecedor"></label><div class="modal-footer"><button type="button" data-close="stock-dialog">Cancelar</button><button class="primary">Registrar movimento</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

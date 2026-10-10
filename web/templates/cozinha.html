@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fila de preparo — {{ fila|length }} pedido(s)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --tinta: #15201c;
+    --pergaminho: #f4ecd8;
+    --latao: #c8963e;
+    --latao-claro: #e0b45f;
+    --mar: #2f6b5e;
+    --mar-claro: #4a9684;
+    --rum: #a53d3d;
+    --carvao: #1c1812;
+    --painel: #1f2b25;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--tinta);
+    color: var(--pergaminho);
+    margin: 0;
+    padding: 18px;
+  }
+  header { text-align: center; margin-bottom: 18px; }
+  header h1 {
+    font-family: 'Rye', serif;
+    font-weight: 400;
+    font-size: 1.4rem;
+    color: var(--latao-claro);
+    margin: 0 0 4px;
+  }
+  header p { margin: 0; font-size: .82rem; color: #9fb0a6; }
+  header .indicador {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .72rem;
+    color: #7f9188;
+    margin-top: 6px;
+  }
+  header .ponto {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--mar-claro);
+    animation: pulsar 2s infinite;
+  }
+  @keyframes pulsar { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  .quadro {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(240px, 1fr));
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .quadro { grid-template-columns: 1fr; }
+  }
+
+  .coluna { min-height: 80px; }
+  .coluna-titulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .3px;
+    color: var(--pergaminho);
+    background: var(--painel);
+    border-radius: 10px 10px 0 0;
+    padding: 10px 14px;
+    border-bottom: 3px solid var(--cor-coluna, var(--latao));
+  }
+  .coluna-titulo .bolha {
+    background: rgba(0,0,0,.25);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: .72rem;
+  }
+  .coluna[data-status="AGUARDANDO"] .coluna-titulo { --cor-coluna: #c8963e; }
+  .coluna[data-status="EM_PREPARO"] .coluna-titulo { --cor-coluna: #4a9684; }
+  .coluna[data-status="PRONTO"] .coluna-titulo { --cor-coluna: #6fbf73; }
+
+  .lista-pedidos {
+    background: #121a16;
+    border-radius: 0 0 10px 10px;
+    padding: 10px;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .vazia {
+    text-align: center;
+    color: #5f6f66;
+    font-size: .8rem;
+    padding: 18px 6px;
+  }
+
+  .pedido {
+    background: var(--pergaminho);
+    color: var(--carvao);
+    border-radius: 12px;
+    padding: 13px 14px;
+  }
+  .pedido .topo {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .pedido .numero { font-weight: 800; font-size: .98rem; }
+  .pedido .tempo { font-size: .72rem; color: #7a6e4e; font-weight: 600; white-space: nowrap; }
+  .pedido .cliente { font-size: .82rem; color: #4a453a; margin-top: 2px; }
+  .pedido .meta { font-size: .76rem; color: #6b6354; margin-top: 2px; }
+
+  .pedido ul.itens {
+    list-style: none;
+    margin: 9px 0 0;
+    padding: 8px 0 0;
+    border-top: 1px dashed #cfc4a4;
+    font-size: .82rem;
+  }
+  .pedido ul.itens li { display: flex; justify-content: space-between; padding: 1px 0; }
+  .pedido ul.itens li .qtd { color: var(--mar); font-weight: 700; margin-right: 6px; }
+
+  .pedido .total {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e3d7b4;
+    font-weight: 700;
+    font-size: .86rem;
+    color: #1f5e3f;
+  }
+
+  .pedido button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 9px;
+    border: none;
+    border-radius: 8px;
+    background: var(--mar);
+    color: #f3f8f6;
+    font-weight: 700;
+    font-size: .84rem;
+    cursor: pointer;
+  }
+  .coluna[data-status="EM_PREPARO"] .pedido button { background: #3f7c6c; }
+  .coluna[data-status="PRONTO"] .pedido button { background: var(--rum); }
+  .pedido button:active { opacity: .85; }
+  .pedido button:disabled { opacity: .5; cursor: wait; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🍔 Fila de preparo</h1>
+    <p>{{ fila|length }} pedido(s) em aberto</p>
+    <div class="indicador"><span class="ponto"></span> atualiza automaticamente</div>
+  </header>
+
+  <div class="quadro" id="quadro">
+    {% set colunas = [("AGUARDANDO", "Aguardando"), ("EM_PREPARO", "Em preparo"), ("PRONTO", "Pronto para retirada/entrega")] %}
+    {% for status, titulo in colunas %}
+    <div class="coluna" data-status="{{ status }}">
+      <div class="coluna-titulo">
+        {{ titulo }}
+        <span class="bolha" data-contagem>{{ fila|selectattr('status', 'equalto', status)|list|length }}</span>
+      </div>
+      <div class="lista-pedidos" data-lista>
+        {% set pedidos_coluna = fila|selectattr('status', 'equalto', status)|list %}
+        {% if not pedidos_coluna %}
+          <div class="vazia">Nenhum pedido aqui.</div>
+        {% endif %}
+        {% for pedido in pedidos_coluna %}
+          <div class="pedido" data-pedido-id="{{ pedido.pedido_id }}">
+            <div class="topo">
+              <span class="numero">{{ pedido.numero_pedido }}</span>
+              <span class="tempo" data-desde="{{ pedido.status_atualizado_em.replace(' ', 'T') }}Z">agora</span>
+            </div>
+            <div class="cliente">{{ pedido.cliente_nome }} · {{ pedido.cliente_telefone }}</div>
+            <div class="meta">{{ pedido.forma_entrega }} · {{ pedido.forma_pagamento }}</div>
+            <ul class="itens">
+              {% for item in pedido.itens %}
+              <li><span><span class="qtd">{{ item.quantidade }}x</span>{{ item.produto_nome }}</span></li>
+              {% endfor %}
+            </ul>
+            <div class="total">
+              <span>Total</span>
+              <span>R$ {{ "%.2f"|format(pedido.total_pedido) }}</span>
+            </div>
+            {% if status != 'PRONTO' or True %}
+            <button type="button" data-avancar="{{ pedido.pedido_id }}">
+              {% if status == 'AGUARDANDO' %}Iniciar preparo
+              {% elif status == 'EM_PREPARO' %}Marcar como pronto
+              {% elif status == 'PRONTO' %}Marcar como retirado/entregue{% endif %}
+            </button>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    (function () {
+      const TITULOS = { AGUARDANDO: 'Iniciar preparo', EM_PREPARO: 'Marcar como pronto', PRONTO: 'Marcar como retirado/entregue' };
+
+      function escapeHtml(texto) {
+        return String(texto).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      function formatarMoeda(valor) {
+        return 'R$ ' + Number(valor).toFixed(2).replace('.', ',');
+      }
+
+      function renderizarCartao(pedido) {
+        const itensHtml = (pedido.itens || []).map(function (item) {
+          return '<li><span><span class="qtd">' + item.quantidade + 'x</span>' + escapeHtml(item.produto_nome) + '</span></li>';
+        }).join('');
+
+        const desdeIso = pedido.status_atualizado_em.replace(' ', 'T') + 'Z';
+
+        return (
+          '<div class="pedido" data-pedido-id="' + pedido.pedido_id + '">' +
+            '<div class="topo">' +
+              '<span class="numero">' + escapeHtml(pedido.numero_pedido) + '</span>' +
+              '<span class="tempo" data-desde="' + desdeIso + '">agora</span>' +
+            '</div>' +
+            '<div class="cliente">' + escapeHtml(pedido.cliente_nome) + ' · ' + escapeHtml(pedido.cliente_telefone) + '</div>' +
+            '<div class="meta">' + escapeHtml(pedido.forma_entrega) + ' · ' + escapeHtml(pedido.forma_pagamento) + '</div>' +
+            '<ul class="itens">' + itensHtml + '</ul>' +
+            '<div class="total"><span>Total</span><span>' + formatarMoeda(pedido.total_pedido) + '</span></div>' +
+            '<button type="button" data-avancar="' + pedido.pedido_id + '">' + TITULOS[pedido.status] + '</button>' +
+          '</div>'
+        );
+      }
+
+      function renderizarQuadro(fila) {
+        ['AGUARDANDO', 'EM_PREPARO', 'PRONTO'].forEach(function (status) {
+          const coluna = document.querySelector('.coluna[data-status="' + status + '"]');
+          const lista = coluna.querySelector('[data-lista]');
+          const pedidosColuna = fila.filter(function (p) { return p.status === status; });
+
+          coluna.querySelector('[data-contagem]').textContent = pedidosColuna.length;
+
+          if (pedidosColuna.length === 0) {
+            lista.innerHTML = '<div class="vazia">Nenhum pedido aqui.</div>';
+          } else {
+            lista.innerHTML = pedidosColuna.map(renderizarCartao).join('');
+          }
+        });
+        atualizarTempos();
+      }
+
+      function atualizarTempos() {
+        document.querySelectorAll('[data-desde]').forEach(function (span) {
+          const desde = new Date(span.dataset.desde);
+          const minutos = Math.max(0, Math.round((Date.now() - desde.getTime()) / 60000));
+          span.textContent = minutos === 0 ? 'agora' : 'há ' + minutos + ' min';
+        });
+      }
+
+      async function avancarPedido(pedidoId, botao) {
+        botao.disabled = true;
+        try {
+          const resp = await fetch('/cozinha/avancar/' + pedidoId, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'fetch' },
+          });
+          if (resp.ok) {
+            await buscarEAtualizar();
+          } else {
+            botao.disabled = false;
+            alert('Não foi possível avançar o pedido. Tente de novo.');
+          }
+        } catch (erro) {
+          botao.disabled = false;
+          alert('Falha de conexão. Verifique a internet e tente de novo.');
+        }
+      }
+
+      async function buscarEAtualizar() {
+        try {
+          const resp = await fetch('/cozinha/api/fila');
+          if (!resp.ok) return;
+          const fila = await resp.json();
+          renderizarQuadro(fila);
+        } catch (erro) {
+          // falha silenciosa -- tenta de novo no próximo ciclo
+        }
+      }
+
+      document.getElementById('quadro').addEventListener('click', function (ev) {
+        const botao = ev.target.closest('[data-avancar]');
+        if (botao) avancarPedido(botao.dataset.avancar, botao);
+      });
+
+      setInterval(atualizarTempos, 30000);
+      setInterval(buscarEAtualizar, 15000);
+      atualizarTempos();
+    })();
+  </script>
+</body>
+</html>

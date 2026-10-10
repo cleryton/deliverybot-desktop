@@ -1,0 +1,10 @@
+[
+  {"nome": "X-Bacon", "categoria": "Lanche", "descricao": "Pão, blend 150g, queijo, bacon crocante e molho da casa", "preco": 25.00},
+  {"nome": "X-Salada", "categoria": "Lanche", "descricao": "Pão, blend 150g, queijo, alface, tomate e maionese", "preco": 22.00},
+  {"nome": "X-Tudo Pirata", "categoria": "Lanche", "descricao": "Pão, 2 blends, queijo, bacon, ovo, presunto e molho especial", "preco": 32.00},
+  {"nome": "Batata Frita G", "categoria": "Acompanhamento", "descricao": "Porção grande de batata frita crocante", "preco": 18.00},
+  {"nome": "Guaraná Zero Açúcar", "categoria": "Bebida", "descricao": "Lata 350ml", "preco": 6.00},
+  {"nome": "Coca-Cola Lata", "categoria": "Bebida", "descricao": "Lata 350ml", "preco": 6.50},
+  {"nome": "Suco Natural", "categoria": "Bebida", "descricao": "Copo 500ml, sabores variados", "preco": 9.00},
+  {"nome": "Milk-shake Chocolate", "categoria": "Sobremesa", "descricao": "400ml", "preco": 15.00}
+]

@@ -1,0 +1,78 @@
+# Sobe o WAHA (WhatsApp HTTP API) + o N8N (orquestrador do bot, opcional)
+# localmente. Todas as credenciais vêm do arquivo .env na MESMA pasta deste
+# docker-compose.yml (o Docker Compose lê .env automaticamente) -- nada de
+# senha fixa aqui no arquivo. Ver MANUAL.md, seção "Segurança", para como
+# gerar valores fortes para cada uma.
+#
+# Uso:
+#   1. Preencha o .env (WAHA_API_KEY, WAHA_DASHBOARD_USERNAME/PASSWORD,
+#      WEBHOOK_SECRET) -- veja .env.example.
+#   2. Rode o app Flask (fora do Docker): python -m src.app
+#   3. Suba os serviços:                  docker compose up -d
+#   4. Abra http://localhost:3000/dashboard e escaneie o QR Code com o
+#      WhatsApp do seu celular (Aparelhos conectados > Conectar aparelho).
+#      O webhook já vem configurado sozinho (variável WHATSAPP_HOOK_URL
+#      abaixo, incluindo o WEBHOOK_SECRET do seu .env).
+#   5. (Opcional) Abra http://localhost:5678 (N8N), importe
+#      n8n/deliverybot-waha.json e ative o workflow.
+#
+# host.docker.internal aponta pro "localhost" da sua máquina de dentro dos
+# containers -- é assim que o WAHA alcança o Flask (rodando fora do Docker).
+
+services:
+  waha:
+    image: devlikeapro/waha
+    container_name: deliverybot-waha
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Aponta direto pro Flask, já com o segredo do webhook embutido na URL
+      # -- sem ele, o Flask rejeita a requisição (ver src/app.py).
+      WHATSAPP_HOOK_URL: "http://host.docker.internal:5000/webhook/waha/${WEBHOOK_SECRET}"
+      WHATSAPP_HOOK_EVENTS: "message"
+      # A engine WEBJS tem um bug conhecido ("No LID for user") com
+      # atualizações recentes do WhatsApp Web. GOWS é a engine recomendada
+      # pela própria comunidade do WAHA pra evitar esse erro.
+      WHATSAPP_DEFAULT_ENGINE: GOWS
+      # Reinicia automaticamente as sessões já salvas quando o container
+      # sobe (sem precisar escanear o QR Code de novo).
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+      # Credenciais do dashboard/Swagger do WAHA -- lidas do .env deste
+      # projeto (mesma pasta). Troque os valores padrão antes de usar de
+      # verdade: ver .env.example.
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME:-admin}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
+      WHATSAPP_SWAGGER_USERNAME: ${WAHA_DASHBOARD_USERNAME:-admin}
+      WHATSAPP_SWAGGER_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
+      WAHA_API_KEY: ${WAHA_API_KEY}
+    volumes:
+      - waha_sessions:/app/.sessions
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - deliverybot
+
+  n8n:
+    image: n8nio/n8n
+    container_name: deliverybot-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_SECURE_COOKIE: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n:/home/node/workflows:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - deliverybot
+
+networks:
+  deliverybot:
+    driver: bridge
+
+volumes:
+  waha_sessions:
+  n8n_data:

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedido {{ pedido.numero_pedido }} recebido</title>
+<style>
+  :root { --tinta:#f1f6f3; --pergaminho:#ffffff; --latao:#187d64; --latao-claro:#187d64; --carvao:#192d36; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--tinta);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; margin: 0; padding: 24px;
+  }
+  .card {
+    background: var(--pergaminho); color: var(--carvao);
+    border-radius: 18px; padding: 34px 26px; max-width: 420px; text-align: center;
+    border-top: 4px solid var(--latao);
+  }
+  .check { font-size: 2.6rem; }
+  h1 { font-family: 'Segoe UI', sans-serif; font-weight: 700; font-size: 1.25rem; margin: 10px 0 14px; color: #1f5e3f; }
+  .numero { color: var(--carvao); }
+  p { color: #4a453a; line-height: 1.55; font-size: .92rem; }
+  .tempo {
+    display: inline-block; margin-top: 6px; padding: 6px 14px;
+    background: #fff; border-radius: 999px; font-weight: 700; font-size: .85rem; color: #1f5e3f;
+    border: 1px solid #d8cba3;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="check">✅</div>
+    <h1>Pedido <span class="numero">{{ pedido.numero_pedido }}</span> confirmado!</h1>
+    {% if modo_teste %}<p>Este pedido foi registrado em modo de teste. Nenhuma mensagem real foi enviada ao WhatsApp.</p>
+    {% elif notificacao_ok %}<p>Enviamos a confirmação no seu WhatsApp. Vamos avisando por lá conforme seu pedido avança.</p>
+    {% else %}<p>O pedido foi salvo. A confirmação pelo WhatsApp não pôde ser enviada agora; entre em contato com a loja para acompanhar.</p>{% endif %}
+    <div class="tempo">⏱️ {{ pedido.tempo_estimado_min }} min</div>
+    <p style="margin-top:18px">Você já pode fechar esta página — este link não pode ser usado novamente.</p>
+  </div>
+</body>
+</html>
