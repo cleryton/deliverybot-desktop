@@ -312,6 +312,17 @@ def main():
                 with open(arquivo, "w", encoding="utf-8") as saida:
                     json.dump(relatorio, saida, ensure_ascii=False, indent=2)
                 return {"ok": True}
+            def salvar_diagnostico(self):
+                self._verificar()
+                from src.diagnosticos import coletar
+                relatorio = coletar()
+                arquivos = window.create_file_dialog(webview.FileDialog.SAVE, save_filename="diagnostico-deliverybot.json", file_types=("Relatório JSON (*.json)",))
+                if not arquivos:
+                    return {"cancelado": True}
+                arquivo = arquivos[0] if isinstance(arquivos, (tuple, list)) else arquivos
+                with open(arquivo, "w", encoding="utf-8") as saida:
+                    json.dump(relatorio, saida, ensure_ascii=False, indent=2)
+                return {"ok": True}
             def restaurar_backup(self, senha):
                 self._verificar()
                 arquivos = window.create_file_dialog(webview.FileDialog.OPEN, allow_multiple=False, file_types=("Backup DeliveryBot (*.dbot;*.dbot-local;*.db)",))

@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.17.0 — 2026-10-10
+
+Diagnóstico operacional exportável com campos reduzidos para suporte e alerta de backups automáticos desativados, atrasados ou com falha.
+
 ## 2.16.0 — 2026-10-10
 
 Assistente de domínio fixo com passos, validação visual do domínio/token/túnel e cópia rápida do destino HTTP exigido pela Cloudflare.

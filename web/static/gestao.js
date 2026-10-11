@@ -46,6 +46,7 @@ function openProduct(id){const form=$('#product-form');form.reset();const p=stat
 function stockInputs(){const f=$('#product-form'),p=state.products.find(p=>String(p.id)===f.elements.id.value),control=f.elements.controlar_estoque.checked;f.elements.estoque.disabled=!control||p?.estoque!==null&&!!p;f.elements.estoque_minimo.disabled=!control;$('#stock-help').textContent=p?.estoque!==null&&p?'Use Movimentar para registrar entradas e saídas. A edição do produto preserva o saldo atual.':'Habilite Fracionado para vender por peso ou volume. Use família e variação para organizar tamanhos e cores.';}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||(!Object.keys(b.dataset).length&&b.id!=='refresh'))return;run(b,async()=>{
   if(b.dataset.connectionAction)await connectionAction(b.dataset.connectionAction);
+  if(b.id==='diagnostic-export')await exportarDiagnostico();
   if(b.dataset.action==='conexoes-atualizar')await refreshConnections();
   if(b.dataset.action==='qr-atualizar')await refreshQR();
   if(b.dataset.messageAction&&confirm(b.dataset.messageAction==='reenviar'?'Confira no celular se a resposta já chegou. Reenviar esta resposta?':'Marcar esta mensagem como resolvida e liberar o atendimento deste cliente?')){await api(`conexoes/mensagens/${b.dataset.messageId}/${b.dataset.messageAction}`,'POST',{});await refreshConnections();}
@@ -108,6 +109,20 @@ async function refreshQR(){
   try{const q=await api('conexoes/qr');$('#wa-qr').src=q.imagem;$('#qr-status').textContent='QR atualizado às '+new Date().toLocaleTimeString('pt-BR')+'.';}
   catch(e){$('#qr-status').textContent=e.message;}
   finally{qrBusy=false;}
+}
+async function exportarDiagnostico(){
+  const status=$('#diagnostic-status');status.textContent='Coletando estados dos serviços sem ler dados dos clientes…';
+  try{
+    if(window.pywebview?.api?.salvar_diagnostico){
+      const r=await window.pywebview.api.salvar_diagnostico();
+      status.textContent=r.cancelado?'Salvamento cancelado.':'Diagnóstico salvo no local escolhido.';
+      return;
+    }
+    const dados=await api('diagnostico');
+    const url=URL.createObjectURL(new Blob([JSON.stringify(dados,null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='diagnostico-deliverybot-'+new Date().toISOString().slice(0,10)+'.json';link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);status.textContent='Diagnóstico baixado. Revise o conteúdo antes de compartilhar.';
+  }catch(e){status.textContent='Não foi possível gerar o diagnóstico.';throw e;}
 }
 async function refreshConnections(){
   if(connectionsBusy)return;connectionsBusy=true;

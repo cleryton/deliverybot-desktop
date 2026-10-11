@@ -334,6 +334,15 @@ def relatorios_api():
     return jsonify(relatorio(request.args.get('inicio'),request.args.get('fim')))
 
 
+@bp.get('/gestao/api/diagnostico')
+@protegido
+def diagnostico_api():
+    if not operadores.admin():
+        return jsonify(erro='Somente um administrador pode gerar o diagnóstico.'), 403
+    from .diagnosticos import coletar
+    return jsonify(coletar())
+
+
 @bp.route('/gestao/api/humano',methods=['GET','POST'])
 @protegido
 def humano_api():
