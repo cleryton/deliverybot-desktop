@@ -1,0 +1,19 @@
+<section class="espera-jogo" aria-labelledby="titulo-minijogo">
+  <p class="sobretitulo">Uma pausa pra se divertir</p>
+  <h2 id="titulo-minijogo">Que tal uma partida enquanto espera?</h2>
+  <p>Pingue-pongue contra o computador. A partida vai até 5 pontos e você pode parar quando quiser.</p>
+  <details><summary>Jogar pingue-pongue 🏓</summary>
+    <div class="pong-panel" data-pong hidden>
+      <div class="pong-score"><span>Você · verde</span><strong data-score aria-label="Placar: você e computador">0 × 0</strong><span>Computador · amarelo</span></div>
+      <canvas class="pong-canvas" width="640" height="400" tabindex="0" aria-label="Mesa de pingue-pongue. Controle a raquete verde com as setas para cima e para baixo ou W e S." aria-describedby="pong-ajuda">Seu navegador precisa oferecer suporte a canvas para jogar.</canvas>
+      <div class="pong-actions"><button type="button" data-start>Jogar</button><button type="button" data-pause disabled>Pausar</button><button type="button" data-restart>Reiniciar</button></div>
+      <label class="pong-mode">Dificuldade <select data-mode><option value="leve">Leve</option><option value="normal">Normal</option></select></label>
+      <div class="pong-touch" aria-label="Controles da raquete"><button type="button" data-direction="-1" aria-label="Mover raquete para cima">↑</button><button type="button" data-direction="1" aria-label="Mover raquete para baixo">↓</button></div>
+      <p class="pong-help" id="pong-ajuda">No celular, arraste o dedo na mesa ou segure as setas. No computador, mova o mouse ou use ↑ ↓ / W S. Esc pausa.</p>
+      <p data-status role="status" aria-live="polite" aria-atomic="true">Toque em Jogar para começar.</p>
+    </div>
+    <noscript><p>Ative o JavaScript do navegador para jogar.</p></noscript>
+  </details>
+  <p class="pong-notice">O jogo não acompanha o preparo. Confira as atualizações do pedido na conversa com a loja.</p>
+  {% if request.endpoint != 'pagina_minijogo' %}<p class="pong-help"><a href="{{ url_for('pagina_minijogo') }}" target="_blank" rel="noopener noreferrer">Abrir somente o jogo em outra aba ↗</a></p>{% endif %}
+</section>

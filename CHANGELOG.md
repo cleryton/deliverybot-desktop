@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.30.0 — 2026-10-11
+
+Adiciona pingue-pongue opcional à confirmação do pedido, com acesso independente em /jogar, controles por toque, mouse e teclado, duas dificuldades, placar até cinco pontos, pausa e reinício. A partida pausa ao trocar de aba ou fechar o jogo e funciona sem dados do pedido, persistência ou serviços externos. Amplia testes de física, fluxo público e empacotamento e inclui os testes JavaScript no Actions.
+
 ## 2.29.0 — 2026-10-11
 
 Cria padrões Obsidian individuais por segmento de comércio e etapa de atendimento. O Ollama consulta somente o perfil ativo e a etapa relacionada à mensagem, preservando personalizações e isolando categorias anteriores. O painel exibe o perfil e as notas, o Graph liga os padrões ativos e os backups preservam a estrutura. Inclui testes de seleção, revogação, validade, privacidade, preservação e integração no executável.

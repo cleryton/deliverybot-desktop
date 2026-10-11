@@ -1,0 +1,16 @@
+.espera-jogo{margin-top:26px;border:1px solid var(--linha);border-radius:18px;padding:20px;background:var(--verde-claro)}
+.espera-jogo h2{font-size:1.15rem;margin:5px 0 8px}.espera-jogo p{font-size:.82rem;line-height:1.6;color:var(--muted)}
+.espera-jogo summary{cursor:pointer;color:var(--verde);font-weight:750;min-height:44px;padding:12px 0;list-style-position:inside}
+.pong-panel{margin-top:12px}.pong-score{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.78rem;color:var(--texto);margin-bottom:12px}
+.pong-score strong{font-size:1.6rem;font-variant-numeric:tabular-nums;letter-spacing:.12em}
+.pong-canvas{display:block;width:100%;height:auto;aspect-ratio:8/5;background:#102d29;border:2px solid #385b53;border-radius:14px;touch-action:none;cursor:crosshair}
+.pong-canvas:focus-visible{outline:3px solid var(--verde);outline-offset:4px}
+.pong-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}.pong-actions button,.pong-touch button{min-height:44px;border-radius:10px;padding:9px 14px;border:1px solid var(--linha);background:white;color:var(--verde);font-weight:700}
+.pong-actions [data-start]{background:var(--verde);color:white}.pong-actions button:disabled{opacity:.5;cursor:default}
+.pong-mode{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:.8rem;color:var(--texto)}.pong-mode select{min-height:44px;border:1px solid var(--linha);border-radius:10px;background:white;padding:8px;color:var(--texto)}
+.pong-touch{display:flex;justify-content:center;gap:16px;margin-top:12px}.pong-touch button{min-width:76px;font-size:1.3rem;touch-action:none;user-select:none}
+.espera-jogo .pong-help{margin:10px 0 0;font-size:.75rem}.espera-jogo [data-status]{min-height:2.8em;margin-bottom:0;color:var(--texto);font-size:.8rem}
+.espera-jogo .pong-notice{font-size:.7rem;margin-bottom:0}.pong-page .cartao-estado{width:min(100%,760px)}.pong-page .espera-jogo{margin-top:20px}
+@media(max-width:420px){.espera-jogo{padding:14px}.pong-actions{gap:6px}.pong-actions button{padding:9px 11px;font-size:.78rem}.pong-score{font-size:.7rem}.pong-score strong{font-size:1.35rem}.pong-mode select{font-size:16px}}
+@media(forced-colors:active){.pong-canvas{forced-color-adjust:none}.pong-actions button,.pong-touch button{border:1px solid ButtonText}}
+@media print{.espera-jogo{display:none}}

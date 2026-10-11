@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>Pingue-pongue · DeliveryBot</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='pedido.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='pong.css') }}">
+<script src="{{ url_for('static', filename='pong-core.js') }}" defer></script><script src="{{ url_for('static', filename='pong.js') }}" defer></script></head>
+<body class="pagina-estado pong-page"><main class="cartao-estado"><div class="estado-cabecalho"><p class="sobretitulo">Intervalo de diversão</p><h1>Uma partida de pingue-pongue?</h1><p>Sem cadastro. Só você, a raquete e a bolinha.</p></div>{% include 'minijogo.html' %}</main></body>
+</html>
