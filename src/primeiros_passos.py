@@ -4,7 +4,7 @@ import secrets
 from urllib.parse import urlsplit
 
 from flask import Blueprint, jsonify
-from . import config, conexoes, estoque, processamento, publicacao
+from . import config, conexoes, estoque, processamento, publicacao, tutorial
 from .db import get_conn
 from .gestao import protegido
 
@@ -38,14 +38,17 @@ def situacao():
         https_estado, https_ok = tunnel.get("estado", "DESLIGADO"), False
     with get_conn() as conn:
         teste = conn.execute("SELECT 1 FROM testes_publicos WHERE base_url=? AND recebido_em IS NOT NULL AND expira_em>datetime('now')", (publicacao.endereco(),)).fetchone()
-    return jsonify(loja=bool(config.NOME_RESTAURANTE and config.NOME_RESTAURANTE != 'Minha loja' and config.TELEFONE_RESTAURANTE),
-                   produtos=bool(estoque.listar_produtos()), privacidade=bool(config.LGPD_RESPONSAVEL and config.LGPD_CONTATO),
+    dados = dict(loja=bool(config.NOME_RESTAURANTE and config.NOME_RESTAURANTE != 'Minha loja' and config.TELEFONE_RESTAURANTE),
+                   perfil=config.COMERCIO_CONFIGURADO == 'SIM', modelo=config.COMERCIO_MODELO,
+                   produtos=any(p['ativo'] and (p['estoque'] is None or p['estoque'] > 0) for p in estoque.listar_produtos()), privacidade=bool(config.LGPD_RESPONSAVEL and config.LGPD_CONTATO),
                    whatsapp=config.WHATSAPP_PROVIDER, ia=config.IA_PROVIDER or 'Menu sem IA',
                    endereco_publico=publico(), abertura_recebida=bool(teste), base_url=publicacao.endereco(),
                    operacao={"whatsapp_ok": whatsapp_ok, "whatsapp_estado": whatsapp_estado,
                              "https_ok": https_ok, "https_estado": https_estado,
                              "fila_ok": processamento.ativo(),
                              "whatsapp_tarefa": conexoes.status_jobs().get("whatsapp", {}).get("estado", "")})
+    dados['tutorial'] = tutorial.etapas(dados)
+    return jsonify(dados)
 
 
 @bp.post('/gestao/api/preparacao/testar')

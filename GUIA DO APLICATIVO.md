@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.25.0
+# DeliveryBot Desktop 2.26.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -13,6 +13,14 @@ Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de 
 Também pode abrir **DeliveryBot.exe** nessa pasta diretamente, sem instalar. O usuário final não precisa instalar Python, Node.js ou Docker nem abrir um terminal. O componente de conexão do WhatsApp já está incluído no executável.
 
 A janela usa o Microsoft Edge WebView2 Runtime, normalmente presente no Windows. Se faltar, instale pelo [site da Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/). Os arquivos gerados ainda não possuem assinatura digital de um editor comercial.
+
+## Guias para configurar o aplicativo
+
+Abra **Guia de configuração** no menu ou **Começar tutorial** na Visão geral. Os guias do negócio, catálogo, privacidade, conexão, atendimento e pedidos explicam cada etapa e oferecem o botão **Abrir esta configuração**. Use Anterior e Próxima etapa para navegar, incluindo a preparação opcional do Ollama.
+
+Depois de salvar uma configuração, volte ao guia e clique em **Verificar configuração**. As verificações acompanham os dados atuais: apenas visitar uma etapa não a conclui. O catálogo precisa ter ao menos um item ativo e disponível. O teste de acesso pelo celular não cria pedidos nem envia mensagens; a abertura recebida corresponde ao endereço atual e não garante disponibilidade permanente. Confira os dados móveis e o funcionamento do catálogo separadamente.
+
+As orientações são locais, funcionam sem IA e ficam disponíveis ao administrador. Não iniciam serviços nem alteram configurações por conta própria.
 
 ## Seu comércio, do seu jeito
 
