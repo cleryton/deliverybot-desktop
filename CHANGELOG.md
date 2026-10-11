@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.18.1 — 2026-10-10
+
+Respostas do Ollama com tom mais natural, melhor aproveitamento do contexto da conversa e menos frases repetidas, preservando as regras da loja.
+
 ## 2.18.0 — 2026-10-10
 
 Modelo de importação de produtos em CSV, atalho para filtrar itens com estoque baixo e relatório com ticket médio, margem parcial e destaque dos mais vendidos.

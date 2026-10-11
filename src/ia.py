@@ -156,6 +156,21 @@ def _system_prompt() -> str:
     return texto
 
 
+def _system_prompt_ollama() -> str:
+    """Adapta o atendimento local para soar natural sem afrouxar os fatos."""
+    return _system_prompt() + (
+        "\n\nCONVERSA NATURAL (PRIORIZE ESTAS ORIENTAÇÕES DE ESTILO):\n"
+        "- Converse como alguém atencioso da equipe da loja: caloroso, direto e espontâneo, sem parecer um formulário.\n"
+        "- Considere o que a pessoa acabou de dizer e o contexto recente. Responda primeiro ao pedido dela, sem repetir a pergunta.\n"
+        "- Varie a construção das frases conforme a conversa. Evite respostas prontas repetidas como 'Claro!', 'Posso ajudar?' e 'Se precisar, estou à disposição'.\n"
+        "- Seja breve sem ser seco. Faça no máximo uma pergunta por vez e só quando ela ajudar a continuar o atendimento.\n"
+        "- Use emoji apenas quando combinar com o momento; não coloque emoji em toda resposta. Não use listas ou linguagem formal quando uma frase simples resolver.\n"
+        "- Não invente familiaridade, ações ou dados. Se não tiver certeza, explique com naturalidade e ofereça confirmar com a equipe.\n"
+        "- Se gerar um link de pedido, apresente-o com uma frase curta e acolhedora. Deixe claro que a pessoa ainda precisa abrir o link e confirmar o pedido.\n"
+        "- Mantenha as regras do catálogo, preços, disponibilidade, privacidade e uso da ferramenta descritas acima. Estas instruções mudam o tom, nunca os fatos.\n"
+    )
+
+
 def invalidar_cache_prompt() -> None:
     """Chame depois de alterar o cardápio em tempo real, se precisar que a
     próxima resposta já reflita a mudança sem esperar o cache expirar."""
@@ -321,7 +336,7 @@ def _chamar_ollama(payload_mensagens: list, tentativas: int = 2) -> dict:
 
 def _responder_ollama(telefone: str, texto: str) -> str:
     mensagens = _mensagens_atualizadas(telefone, texto)
-    payload_mensagens = [{"role": "system", "content": _system_prompt()}] + mensagens
+    payload_mensagens = [{"role": "system", "content": _system_prompt_ollama()}] + mensagens
 
     dados = _chamar_ollama(payload_mensagens)
     msg = dados.get("message", {})

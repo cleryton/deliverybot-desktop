@@ -4,6 +4,16 @@ from src import config, preferencias
 from src.db import init_db, get_conn
 
 
+def test_prompt_ollama_tom_humano_preserva_regras_e_catalogo():
+    from src import ia
+    ia.invalidar_cache_prompt()
+    prompt = ia._system_prompt_ollama()
+    assert "caloroso, direto e espontâneo" in prompt
+    assert "Evite respostas prontas repetidas" in prompt
+    assert "Estas instruções mudam o tom, nunca os fatos" in prompt
+    assert "Nunca invente preço" in prompt
+
+
 def test_permissoes_auditoria_e_revogacao(cliente):
     c,h=cliente
     admin={'nome':'Administrador fictício','login':'admin','senha':'senha-admin-ficticia','perfil':'ADMIN'}
