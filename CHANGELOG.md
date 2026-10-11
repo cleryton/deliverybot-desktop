@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.18.0 — 2026-10-10
+
+Modelo de importação de produtos em CSV, atalho para filtrar itens com estoque baixo e relatório com ticket médio, margem parcial e destaque dos mais vendidos.
+
 ## 2.17.0 — 2026-10-10
 
 Diagnóstico operacional exportável com campos reduzidos para suporte e alerta de backups automáticos desativados, atrasados ou com falha.
