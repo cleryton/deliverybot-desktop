@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.18.2 — 2026-10-10
+
+Ignora ruído sem conteúdo útil e mensagens comuns que envelhecem na fila; reduz o limite de geração do Ollama para agilizar respostas.
+
 ## 2.18.1 — 2026-10-10
 
 Respostas do Ollama com tom mais natural, melhor aproveitamento do contexto da conversa e menos frases repetidas, preservando as regras da loja.

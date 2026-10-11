@@ -105,12 +105,13 @@ ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-5").strip()
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b").strip()
 OLLAMA_TEMPERATURE = float(os.getenv("OLLAMA_TEMPERATURE", "0.7"))
-OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "250"))
+OLLAMA_NUM_PREDICT = int(os.getenv("OLLAMA_NUM_PREDICT", "160"))
 OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m").strip()
 OLLAMA_TIMEOUT_SEGUNDOS = int(os.getenv("OLLAMA_TIMEOUT_SEGUNDOS", "120"))
 # Pré-carrega o modelo na memória assim que o Flask sobe, em vez de deixar a
 # primeira mensagem de um cliente de verdade pagar esse custo (30-60s).
 OLLAMA_AQUECER_AO_INICIAR = _env_bool("OLLAMA_AQUECER_AO_INICIAR", True)
+BOT_FILA_MAX_IDADE_SEGUNDOS = int(os.getenv("BOT_FILA_MAX_IDADE_SEGUNDOS", "300"))
 
 # --- Restaurante ---
 NOME_RESTAURANTE = os.getenv("NOME_RESTAURANTE", "Barbaros Lanches")

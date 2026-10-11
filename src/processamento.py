@@ -4,6 +4,7 @@ import hashlib
 import threading
 import time
 import uuid
+import unicodedata
 
 from . import bot, whatsapp, config
 from .db import get_conn
@@ -15,6 +16,25 @@ _threads = []
 _status_lock = threading.Lock()
 _status_ate = 0
 _pronto = False
+
+
+def _mensagem_ruido(texto):
+    """Ignora reações sem texto e repetições claramente acidentais."""
+    normalizada = unicodedata.normalize("NFKC", texto or "").strip()
+    if not any(caractere.isalnum() for caractere in normalizada):
+        return normalizada not in {"?", "??", "???"}
+    compacta = "".join(normalizada.split()).casefold()
+    return compacta.isalpha() and len(compacta) >= 8 and len(set(compacta)) == 1
+
+
+def _concluir_sem_resposta(conn, tarefa_id, motivo):
+    # Não coloca ruído no histórico do cliente e apaga o conteúdo sem utilidade.
+    conn.execute(
+        "UPDATE tarefas_bot SET estado='CONCLUIDA', telefone='', texto='', resposta=NULL, "
+        "chat_id=NULL, sessao=NULL, erro=NULL, atualizado_em=datetime('now') WHERE id=?",
+        (tarefa_id,),
+    )
+    logger.info("Mensagem ignorada automaticamente (tarefa=%s, motivo=%s)", tarefa_id, motivo)
 
 
 def ativo():
@@ -75,6 +95,14 @@ def processar_proxima():
         return False
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        idade_maxima = max(60, int(config.BOT_FILA_MAX_IDADE_SEGUNDOS))
+        vencidas = conn.execute(
+            "SELECT id FROM tarefas_bot WHERE estado='PENDENTE' AND origem!='HUMANO' "
+            "AND recebido_em < datetime('now', ?)",
+            (f"-{idade_maxima} seconds",),
+        ).fetchall()
+        for vencida in vencidas:
+            _concluir_sem_resposta(conn, vencida["id"], "fila expirada")
         row = conn.execute(
             "SELECT * FROM tarefas_bot t WHERE estado='PENDENTE' AND NOT EXISTS "
             "(SELECT 1 FROM tarefas_bot ativas WHERE ativas.telefone=t.telefone AND ativas.estado IN ('PROCESSANDO','ENVIANDO')) "
@@ -84,6 +112,9 @@ def processar_proxima():
         if row is None:
             return False
         tarefa = dict(row)
+        if tarefa["origem"] != "HUMANO" and _mensagem_ruido(tarefa["texto"]):
+            _concluir_sem_resposta(conn, tarefa["id"], "sem conteúdo textual útil")
+            return True
         # O histórico da IA inclui somente entradas que chegaram à sua vez.
         # Entradas futuras já estão preservadas na fila, mas não antecipam a conversa.
         if not tarefa["entrada_registrada"]:
@@ -167,7 +198,7 @@ def situacao():
 
 def reenviar(tarefa_id):
     with get_conn() as conn:
-        cur = conn.execute("UPDATE tarefas_bot SET estado='PENDENTE', erro=NULL, atualizado_em=datetime('now') WHERE id=? AND estado IN ('FALHOU','VERIFICAR')", (tarefa_id,))
+        cur = conn.execute("UPDATE tarefas_bot SET estado='PENDENTE', erro=NULL, recebido_em=datetime('now'), atualizado_em=datetime('now') WHERE id=? AND estado IN ('FALHOU','VERIFICAR')", (tarefa_id,))
         if not cur.rowcount:
             raise ValueError("Esta mensagem não está aguardando uma nova tentativa.")
     _acordar.set()

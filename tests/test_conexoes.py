@@ -103,6 +103,36 @@ def test_sem_conexao_mensagem_continua_pendente(monkeypatch):
     assert processamento.situacao()["pendentes"] == 1
 
 
+def test_ruido_emoji_e_repeticao_nao_chamam_bot(monkeypatch):
+    assert not processamento._mensagem_ruido("?")
+    assert not processamento._mensagem_ruido("4")
+    ruido = processamento.enfileirar({"telefone":"5547999990000", "texto":"😂😂😂"}, "emoji")
+    repetir = processamento.enfileirar({"telefone":"5547999990001", "texto":"aaaaaaaa"}, "repeticao")
+    gerar = Mock(side_effect=AssertionError("mensagens sem conteúdo não devem chamar o bot"))
+    monkeypatch.setattr(bot, "processar_mensagem", gerar)
+    assert processamento.processar_proxima()
+    assert processamento.processar_proxima()
+    gerar.assert_not_called()
+    with get_conn() as conn:
+        for tarefa in (ruido, repetir):
+            linha = conn.execute("SELECT estado, telefone, texto FROM tarefas_bot WHERE id=?", (tarefa["id"],)).fetchone()
+            assert tuple(linha) == ("CONCLUIDA", "", "")
+            assert not conn.execute("SELECT 1 FROM mensagens WHERE telefone=?", ("5547999990000" if tarefa["id"] == ruido["id"] else "5547999990001",)).fetchone()
+
+
+def test_fila_descarta_mensagem_vencida_e_atende_nova(monkeypatch):
+    antiga = entrada("antiga")
+    entrada("nova")
+    with get_conn() as conn:
+        conn.execute("UPDATE tarefas_bot SET recebido_em=datetime('now','-10 minutes') WHERE id=?", (antiga["id"],))
+    monkeypatch.setattr(bot, "processar_mensagem", Mock(return_value="Resposta recente"))
+    monkeypatch.setattr(whatsapp, "enviar_mensagem", Mock(return_value={}))
+    assert processamento.processar_proxima()
+    assert whatsapp.enviar_mensagem.call_args.args == ("5547999990000", "Resposta recente")
+    with get_conn() as conn:
+        assert conn.execute("SELECT estado, telefone, texto FROM tarefas_bot WHERE id=?", (antiga["id"],)).fetchone()[0] == "CONCLUIDA"
+
+
 def test_ia_nao_recebe_mensagens_futuras_na_fila(monkeypatch):
     from src import ia
     entrada("a")
