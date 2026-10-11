@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.31.0 — 2026-10-11
+
+Adiciona diagnóstico do Ollama e do cofre, recuperação automática opcional e verificação manual pelo administrador. Detecta serviço desligado, modelo ausente, falhas consecutivas de inferência e notas indisponíveis; prepara o Ollama local instalado com tentativas limitadas e preserva o provedor e as edições. O Obsidian recebe um estado operacional derivado e um guia, enquanto a IA recebe somente um sinal técnico confiável. Inclui testes de intervalos, cancelamento, permissões, privacidade, inferência e empacotamento.
+
 ## 2.30.0 — 2026-10-11
 
 Adiciona pingue-pongue opcional à confirmação do pedido, com acesso independente em /jogar, controles por toque, mouse e teclado, duas dificuldades, placar até cinco pontos, pausa e reinício. A partida pausa ao trocar de aba ou fechar o jogo e funciona sem dados do pedido, persistência ou serviços externos. Amplia testes de física, fluxo público e empacotamento e inclui os testes JavaScript no Actions.

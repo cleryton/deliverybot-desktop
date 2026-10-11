@@ -111,6 +111,7 @@ OLLAMA_TIMEOUT_SEGUNDOS = int(os.getenv("OLLAMA_TIMEOUT_SEGUNDOS", "120"))
 # Pré-carrega o modelo na memória assim que o Flask sobe, em vez de deixar a
 # primeira mensagem de um cliente de verdade pagar esse custo (30-60s).
 OLLAMA_AQUECER_AO_INICIAR = _env_bool("OLLAMA_AQUECER_AO_INICIAR", True)
+CEREBRO_RECUPERACAO_AUTOMATICA = os.getenv('CEREBRO_RECUPERACAO_AUTOMATICA', 'NAO').strip().upper()
 BOT_FILA_MAX_IDADE_SEGUNDOS = int(os.getenv("BOT_FILA_MAX_IDADE_SEGUNDOS", "300"))
 
 # --- Restaurante ---
