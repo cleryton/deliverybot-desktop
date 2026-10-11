@@ -52,3 +52,9 @@ Repositório: [cleryton/deliverybot-desktop](https://github.com/cleryton/deliver
 O cliente pode escolher **PEDIDO PELO WHATSAPP** para comprar sem abrir o link. O rascunho é privado no SQLite, com validade de 30 minutos, resumo calculado pelo cadastro e confirmação explícita. A transação confere preço e saldo, registra pedido e fila, baixa somente estoque controlado e impede duplicação por repetição ou retentativa. Seleções ambíguas pedem a variação completa; alterações especiais devem ser encaminhadas a um atendente.
 
 O cofre Obsidian inclui um guia operacional e o painel possui leitor de notas exclusivo do administrador. O Ollama usa a memória editorial como contexto; gravação comercial, preços e privacidade permanecem no aplicativo. Exportação e remoção de dados contemplam os rascunhos sem expor tokens.
+
+## WhatsApp, HTTPS e mapa do atendimento
+
+Ao salvar uma nova conexão LOCAL ou WAHA no aplicativo Windows, a preparação começa automaticamente. O túnel temporário fornece o endereço HTTPS; o aplicativo verifica DNS e destino antes de iniciar a sessão e liberar o QR Code no painel. Conectar WhatsApp repete a preparação em caso de falha. Domínio fixo exige configuração na Cloudflare. Mantenha o aplicativo aberto e a internet disponível para receber pedidos pelo link.
+
+No cofre Obsidian, abra `Mapa do atendimento.md` ou a visualização em gráfico. O mapa liga os guias, o estilo e o conhecimento aprovado, e remove referências a conhecimento revogado ou vencido na próxima consulta do aplicativo. As notas existentes são preservadas. O mapa é gerado automaticamente; para mantê-lo manualmente, remova o comentário `DeliveryBot: mapa automático v1`. Os guias operacionais e o mapa não são enviados ao modelo e não executam pedidos ou conexões.

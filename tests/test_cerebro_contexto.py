@@ -125,3 +125,39 @@ def test_ollama_recebe_apenas_notas_relevantes_sem_guardar_pergunta(cofre, monke
     assert 'Condições de troca revisadas.' in prompt
     assert 'Embalagens especiais.' not in prompt
     assert 'Cadastro oficial e regras.' in prompt
+
+
+def test_mapa_graph_liga_guias_e_so_conhecimento_revisado(cofre):
+    nota(cofre, 'Trocas', 'Condições aprovadas para trocas.')
+    nota(cofre, 'Rascunho', 'Texto ainda privado.', 'atendimento: false')
+    nota(cofre, 'Vencida', 'Orientação vencida.', 'atendimento: true\nvalido_ate: 2000-01-01')
+    cerebro.arquivo_inicio()
+    mapa = (cofre / 'Mapa do atendimento.md').read_text(encoding='utf-8')
+    for nome in ['Estilo de atendimento', 'Pedidos pelo WhatsApp', 'Conexão e página de pedidos', 'Conhecimento/Trocas', 'Modelos/Lista de estoque', 'Modelos/Conhecimento aprovado']:
+        assert f'[[{nome}]]' in mapa
+    assert 'Rascunho' not in mapa and 'Vencida' not in mapa
+    assert 'atendimento: false' in mapa
+    assert 'Mapa do atendimento.md' in [n['nome'] for n in cerebro.visualizacao()['notas']]
+    assert 'Mapa atualizado pelo aplicativo' not in cerebro.instrucoes_contexto('trocas')
+    (cofre / 'Conhecimento/Trocas.md').write_text('---\natendimento: false\n---\nEm revisão.', encoding='utf-8')
+    cerebro.arquivo_inicio()
+    assert 'Conhecimento/Trocas' not in (cofre / 'Mapa do atendimento.md').read_text(encoding='utf-8')
+
+
+def test_mapa_preserva_index_e_edicao_manual_nao_reescreve_sem_mudanca(cofre):
+    inicio = cofre / 'Início.md'
+    inicio.write_text('# Meu índice\nTexto da equipe.', encoding='utf-8')
+    mapa = cofre / 'Mapa do atendimento.md'
+    antes = mapa.stat().st_mtime_ns
+    cerebro.arquivo_inicio()
+    assert mapa.stat().st_mtime_ns == antes
+    assert inicio.read_text(encoding='utf-8') == '# Meu índice\nTexto da equipe.'
+    mapa.write_text('# Mapa mantido pela equipe\n', encoding='utf-8')
+    cerebro.arquivo_inicio()
+    assert mapa.read_text(encoding='utf-8') == '# Mapa mantido pela equipe\n'
+
+
+def test_mapa_nao_injeta_wikilinks_pelo_nome_da_nota(cofre):
+    nota(cofre, 'Troca]] [[Rascunho', 'Condições de troca aprovadas.')
+    cerebro.arquivo_inicio()
+    assert 'Rascunho' not in (cofre / 'Mapa do atendimento.md').read_text(encoding='utf-8')

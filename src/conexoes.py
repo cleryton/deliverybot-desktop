@@ -114,9 +114,13 @@ def conectar_whatsapp(progresso):
     # exibir o QR Code. Assim a URL de pedidos já estará acessível no login.
     from .publicacao import preparar_para_whatsapp
     preparar_para_whatsapp(progresso)
+    _configurar_whatsapp(progresso)
+
+
+def _configurar_whatsapp(progresso, servico_local_pronto=False):
     if not config.WEBHOOK_SECRET:
         preferencias.salvar({"WEBHOOK_SECRET": secrets.token_urlsafe(32)})
-    if config.WHATSAPP_PROVIDER == "LOCAL":
+    if config.WHATSAPP_PROVIDER == "LOCAL" and not servico_local_pronto:
         whatsapp_local.iniciar(progresso)
     callback = url_webhook()
     info = _waha("GET", _sessao_path(), aceitar_404=True)
@@ -331,8 +335,10 @@ def baixar_modelo(progresso):
 
 
 def iniciar_whatsapp_local(progresso):
+    from .publicacao import preparar_para_whatsapp
+    preparar_para_whatsapp(progresso)
     if not config.WEBHOOK_SECRET:
         preferencias.salvar({"WEBHOOK_SECRET": secrets.token_urlsafe(32)})
     whatsapp_local.iniciar(progresso)
     preferencias.salvar({"WHATSAPP_PROVIDER": "LOCAL"})
-    conectar_whatsapp(progresso)
+    _configurar_whatsapp(progresso, servico_local_pronto=True)

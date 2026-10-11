@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.27.0
+# DeliveryBot Desktop 2.28.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -254,3 +254,9 @@ O cliente pode dizer **PEDIDO PELO WHATSAPP** ou informar uma seleção concreta
 Use **adicionar**, **alterar** ou **remover** seguido de quantidade, nome e variação para ajustar itens. **CANCELAR** descarta o rascunho e **ATENDENTE** pausa o bot. Confirmações repetidas retornam o pedido existente. O resumo expira após 30 minutos; preço e estoque são conferidos novamente na gravação. Pagamento combinado não significa pagamento recebido.
 
 Em **WhatsApp e IA → Cérebro local → Visualizar notas**, escolha uma nota para ler seu conteúdo e verificar se ela orienta o estilo, o contexto aprovado ou apenas o guia. O cofre inclui **Pedidos pelo WhatsApp.md**; as notas não substituem ações, preços ou saldo do aplicativo. Dados de clientes não são copiados para o Obsidian.
+
+## WhatsApp, HTTPS e mapa do atendimento
+
+Ao salvar uma nova conexão LOCAL ou WAHA no aplicativo Windows, a preparação começa automaticamente. O túnel temporário fornece o endereço HTTPS; o aplicativo verifica DNS e destino antes de iniciar a sessão e liberar o QR Code no painel. Conectar WhatsApp repete a preparação em caso de falha. Domínio fixo exige configuração na Cloudflare. Mantenha o aplicativo aberto e a internet disponível para receber pedidos pelo link.
+
+No cofre Obsidian, abra `Mapa do atendimento.md` ou a visualização em gráfico. O mapa liga os guias, o estilo e o conhecimento aprovado, e remove referências a conhecimento revogado ou vencido na próxima consulta do aplicativo. As notas existentes são preservadas. O mapa é gerado automaticamente; para mantê-lo manualmente, remova o comentário `DeliveryBot: mapa automático v1`. Os guias operacionais e o mapa não são enviados ao modelo e não executam pedidos ou conexões.

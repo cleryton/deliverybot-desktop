@@ -302,9 +302,20 @@ def cancelar(pedido_id):
 @bp.route("/gestao/api/configuracoes", methods=["GET", "PUT"])
 @protegido
 def configuracoes():
-    resultado = preferencias.obter() if request.method == "GET" else preferencias.salvar(dados_json())
+    if request.method == "GET":
+        return jsonify(preferencias.obter())
+    dados = dados_json()
+    campos_conexao = {'WHATSAPP_PROVIDER', 'WAHA_URL', 'WAHA_API_KEY', 'WAHA_SESSION', 'WAHA_WEBHOOK_BASE_URL'}
+    antes = {k: getattr(config, k) for k in campos_conexao}
+    if campos_conexao.intersection(dados) and conexoes.status_jobs().get('whatsapp', {}).get('estado') == 'EXECUTANDO':
+        raise ValueError('Aguarde a preparação do WhatsApp antes de alterar sua configuração.')
+    resultado = preferencias.salvar(dados)
     if request.method == "PUT" and config.WHATSAPP_PROVIDER != "LOCAL":
         conexoes.whatsapp_local.encerrar()
+    alterada = any(antes[k] != getattr(config, k) for k in campos_conexao)
+    if alterada and config.WHATSAPP_PROVIDER in {'LOCAL', 'WAHA'} and _local() and current_app.config.get('DESKTOP_TOKEN'):
+        funcao = conexoes.iniciar_whatsapp_local if config.WHATSAPP_PROVIDER == 'LOCAL' else conexoes.conectar_whatsapp
+        resultado['preparacao_whatsapp'] = conexoes.iniciar_tarefa('whatsapp', funcao)
     return jsonify(resultado)
 
 
@@ -473,12 +484,15 @@ def status_conexoes():
                        pode_iniciar_local=bool(_local() and current_app.config.get("DESKTOP_TOKEN")),
                        whatsapp_local=config.WHATSAPP_PROVIDER in {"TESTE", "LOCAL"},
                        endereco_publico=publicacao.endereco(),
+                       pagina_publica=publicacao.situacao(),
                        links_publicos=bool(publicacao.endereco()) and not conexoes.url_local(publicacao.endereco()))
 
 
 @bp.route("/gestao/api/conexoes/qr")
 @protegido
 def qr_conexao():
+    if conexoes.status_jobs().get('whatsapp', {}).get('estado') == 'EXECUTANDO' or (publicacao._gerente and publicacao.situacao()['estado'] != 'ONLINE'):
+        raise ValueError('Aguarde a validação do endereço HTTPS antes de escanear o QR Code. Clique em Conectar WhatsApp para preparar tudo automaticamente.')
     return jsonify(conexoes.qr_whatsapp())
 
 

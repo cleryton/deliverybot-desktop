@@ -129,8 +129,10 @@ def smoke_test(destino, janela=False):
             assert conn.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0] == 1
         notas = client.get('/gestao/api/cerebro/visualizar').json['notas']
         assert any(n['nome']=='Pedidos pelo WhatsApp.md' for n in notas)
+        mapa = next(n['conteudo'] for n in notas if n['nome'] == 'Mapa do atendimento.md')
+        assert '[[Pedidos pelo WhatsApp]]' in mapa and '[[Conexão e página de pedidos]]' in mapa
         assert publico.get('/gestao/api/cerebro/visualizar').status_code == 404
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True}
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local
@@ -164,10 +166,13 @@ def smoke_test(destino, janela=False):
                 try:
                     if not window.events.loaded.wait(30):
                         raise RuntimeError("A janela não carregou em 30 segundos.")
+                    # A abertura com WhatsApp LOCAL começa em Conexões; o catálogo
+                    # só é carregado depois de navegar para a visão geral.
+                    window.evaluate_js("document.querySelector('[data-page=inicio]').click()")
                     # Espera o carregamento inicial das chamadas fetch da interface.
                     import time
                     for _ in range(100):
-                        if window.evaluate_js("document.querySelector('#loja-nome')?.textContent === 'Minha loja' && document.querySelectorAll('#product-list tr').length === 1"):
+                        if window.evaluate_js("document.querySelector('#loja-nome')?.textContent === 'Loja teste' && document.querySelectorAll('#product-list tr').length === 2"):
                             resultado["janela"] = True
                             break
                         time.sleep(.1)
@@ -185,12 +190,14 @@ def smoke_test(destino, janela=False):
                     cores = window.evaluate_js("({fundo:getComputedStyle(document.body).backgroundColor,card:getComputedStyle(document.querySelector('.card')).backgroundColor,tema:document.documentElement.dataset.theme})")
                     assert cores == {'fundo':'rgb(17, 27, 23)','card':'rgb(27, 42, 35)','tema':'dark'}, f'Cores do tema escuro: {cores}'
                     window.evaluate_js("location.reload()")
-                    esperar("document.readyState === 'complete' && document.documentElement.dataset.themeChoice === 'escuro' && document.documentElement.dataset.theme === 'dark' && document.querySelector('#loja-nome')?.textContent === 'Minha loja' && document.querySelectorAll('#product-list tr').length === 1")
+                    esperar("document.readyState === 'complete' && document.documentElement.dataset.themeChoice === 'escuro' && document.documentElement.dataset.theme === 'dark' && document.querySelector('#loja-nome')?.textContent === 'Loja teste'")
+                    window.evaluate_js("document.querySelector('[data-page=inicio]').click()")
+                    esperar("document.querySelectorAll('#product-list tr').length === 2")
                     window.evaluate_js("document.querySelector('[data-action=novo]').click(); const f=document.querySelector('#product-form'); f.elements.nome.value='Caderno UI'; f.elements.categoria.value='Papelaria'; f.elements.preco.value='12.50'; f.elements.estoque.value='4'; f.querySelector('button[type=submit]').click();")
-                    esperar("!document.querySelector('#product-dialog').open && document.querySelectorAll('#product-list tr').length === 2")
+                    esperar("!document.querySelector('#product-dialog').open && document.querySelectorAll('#product-list tr').length === 3")
                     window.evaluate_js("document.querySelector('[data-page=produtos]').click()")
                     esperar("!document.querySelector('#page-produtos').hidden")
-                    window.evaluate_js("document.querySelector('[data-stock=\"2\"]').click(); const f=document.querySelector('#stock-form'); f.elements.quantidade.value='3'; f.elements.motivo.value='Teste de reposição'; f.querySelector('.primary').click();")
+                    window.evaluate_js("document.querySelector('[data-stock=\"3\"]').click(); const f=document.querySelector('#stock-form'); f.elements.quantidade.value='3'; f.elements.motivo.value='Teste de reposição'; f.querySelector('.primary').click();")
                     esperar("!document.querySelector('#stock-dialog').open && document.querySelector('#product-list').textContent.includes('7 un')")
                     window.evaluate_js("document.querySelector('[data-page=configuracoes]').click()")
                     esperar("document.querySelector('[name=NOME_RESTAURANTE]') !== null")
@@ -219,11 +226,15 @@ def smoke_test(destino, janela=False):
                     esperar("document.querySelector('#ol-badge').textContent === 'Ativo no bot'")
                     assert config.IA_PROVIDER == "OLLAMA"
                     assert config.WHATSAPP_PROVIDER == "LOCAL"
+                    assert pagina_teste.situacao()['estado'] == 'ONLINE', 'O WhatsApp deve preparar o HTTPS antes do QR.'
                     resultado["conexoes_simuladas"] = ["componente_integrado_sem_docker", "configurar_webhook", "exibir_qr", "iniciar_e_ativar_ollama"]
+                    # O login já iniciou a página automaticamente; encerra somente
+                    # este conector fictício para testar também o início manual.
+                    pagina_teste.encerrar()
                     window.evaluate_js("document.querySelector('[data-page=publicacao]').click()")
                     esperar("!document.querySelector('#page-publicacao').hidden && !document.querySelector('#public-start').disabled")
                     window.evaluate_js("document.querySelector('#public-auto').checked=true;document.querySelector('#public-start').click()")
-                    esperar("document.querySelector('#public-state').textContent==='Conector ligado' && document.querySelector('#public-url').value.includes('loja-ficticia.trycloudflare.com')")
+                    esperar("document.querySelector('#public-state').textContent==='Página HTTPS pronta' && document.querySelector('#public-url').value.includes('loja-ficticia.trycloudflare.com')")
                     assert config.TUNEL_AUTOMATICO == 'SIM', 'A preferência de início automático não foi salva.'
                     window.evaluate_js("document.querySelector('#public-test').click()")
                     esperar("document.querySelector('#public-test-link').value.includes('/diagnostico/')")
@@ -257,7 +268,7 @@ def smoke_test(destino, janela=False):
                 except Exception as exc:
                     resultado.update(ok=False, erro=str(exc) or type(exc).__name__)
                     try:
-                        resultado['diagnostico_janela'] = window.evaluate_js("({url:location.pathname,carregamento:document.readyState,tema:document.documentElement.dataset.theme,escolha:document.documentElement.dataset.themeChoice,fundo:document.body?getComputedStyle(document.body).backgroundColor:null})")
+                        resultado['diagnostico_janela'] = window.evaluate_js("({url:location.pathname,carregamento:document.readyState,tema:document.documentElement.dataset.theme,escolha:document.documentElement.dataset.themeChoice,loja:document.querySelector('#loja-nome')?.textContent,produtos:document.querySelectorAll('#product-list tr').length,aviso:document.querySelector('#toast')?.textContent,fundo:document.body?getComputedStyle(document.body).backgroundColor:null})")
                     except Exception:
                         pass
                 finally:

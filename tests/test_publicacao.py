@@ -288,6 +288,53 @@ def test_reinicia_conector_que_cai_e_encerra_todos_recursos(aplicativo, tmp_path
     assert config.BASE_URL == 'http://localhost:5000'
 
 
+@pytest.mark.parametrize('modo', ['RAPIDO', 'FIXO'])
+def test_dns_temporario_regerado_dentro_do_prazo_do_login(aplicativo, tmp_path, monkeypatch, modo):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+    from src import seguranca
+    import waitress
+    g = publicacao.Publicacao(aplicativo)
+    g.ativo, g._modo = True, modo
+    monkeypatch.setattr(g, '_binario', lambda: tmp_path / 'cloudflared.exe')
+    monkeypatch.setattr(seguranca, 'proteger_pasta', lambda _: None)
+    monkeypatch.setattr(waitress, 'create_server', lambda *a, **kw: Mock())
+    processos, relogio = [], [0]
+    monkeypatch.setattr(publicacao.time, 'monotonic', lambda: relogio[0])
+    def criar_processo(*a, **kw):
+        p = Mock()
+        p.poll.return_value = None
+        p.stdout = io.StringIO('https://ficticio.trycloudflare.com\nStarting metrics server on 127.0.0.1:9999/metrics\n')
+        processos.append(p)
+        return p
+    monkeypatch.setattr(publicacao.subprocess, 'Popen', criar_processo)
+    def thread(target, args=(), **kw):
+        return SimpleNamespace(start=lambda: target(*args) if target == g._ler else None, join=lambda **kw: None)
+    monkeypatch.setattr(publicacao.threading, 'Thread', thread)
+    class Parada:
+        stop = False
+        def is_set(self):
+            return self.stop
+        def wait(self, segundos):
+            relogio[0] += segundos
+            if g.situacao()['estado'] == 'ONLINE':
+                self.stop = True
+            return self.stop
+    g._stop = Parada()
+    http = MagicMock()
+    http.__enter__.return_value = http
+    http.get.return_value.__enter__.return_value.status_code = 200
+    monkeypatch.setattr(publicacao.requests, 'Session', lambda: http)
+    def verificar(*a):
+        g._diagnostico_https = 'DNS' if len(processos) == 1 else ''
+        return len(processos) > 1
+    monkeypatch.setattr(g, '_verificar_https', verificar)
+    g._executar()
+    assert len(processos) == 2
+    assert (relogio[0] < 120) if modo == 'RAPIDO' else (relogio[0] > 120)
+    assert processos[0].terminate.call_count == 1
+
+
 @pytest.mark.parametrize('base', ['http://loja.example', 'http://localhost:5000', 'https://loja.localhost', 'https://192.168.0.12', 'https://127.1', 'https://loja.lan', 'https://user:senha@loja.example'])
 def test_producao_nunca_gera_link_sem_https_publico(base):
     from src import links

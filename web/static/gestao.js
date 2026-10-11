@@ -97,7 +97,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
 $('#search').addEventListener('input',renderProducts);$('#filter').addEventListener('change',renderProducts);$('#order-filter').addEventListener('change',renderOrders);$('#product-form').elements.controlar_estoque.addEventListener('change',stockInputs);
 $('#product-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const f=e.target,d=Object.fromEntries(new FormData(f)),id=d.id;d.fracionado=f.elements.fracionado.checked;d.ativo=f.elements.ativo.checked;d.controlar_estoque=f.elements.controlar_estoque.checked;d.estoque=f.elements.estoque.value;d.estoque_minimo=f.elements.estoque_minimo.value;delete d.id;d.remover_foto=photoRemoved;const foto=$('#product-photo').files[0];let body=d;if(foto){body=new FormData();body.append('dados',JSON.stringify(d));body.append('foto',foto);}await api('produtos'+(id?'/'+id:''),id?'PUT':'POST',body);$('#product-dialog').close();toast('Produto salvo no catálogo.');await reload();});});
 $('#stock-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const d=Object.fromEntries(new FormData(e.target));await api(`produtos/${d.id}/estoque`,'POST',{quantidade:Number(d.quantidade)*Number(d.tipo),motivo:d.motivo});$('#stock-dialog').close();toast('Movimentação registrada.');await reload();});});
-$('#settings-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{await api('configuracoes','PUT',Object.fromEntries(new FormData(e.target)));toast('Configurações salvas.');await reload();});});
+$('#settings-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const r=await api('configuracoes','PUT',Object.fromEntries(new FormData(e.target)));toast(r.preparacao_whatsapp?'Configurações salvas. Preparando HTTPS e WhatsApp automaticamente…':'Configurações salvas.');await reload();if(r.preparacao_whatsapp)await navigate('conexoes');});});
 $('#bot-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const d=Object.fromEntries(new FormData(e.target));$('#chat').insertAdjacentHTML('beforeend',`<div class="bubble customer">${escapeHTML(d.texto)}</div>`);const result=await api('simular','POST',d);$('#chat').insertAdjacentHTML('beforeend',`<div class="bubble assistant">${escapeHTML(result.resposta)}${result.caminho?`<br><a href="${escapeHTML(result.caminho)}" target="_blank" rel="noopener">Abrir pedido de teste →</a>`:''}</div>`);e.target.elements.texto.value='';$('#chat').scrollTop=$('#chat').scrollHeight;});});
 function openBackup(acao){$('#backup-form').reset();$('#backup-form').dataset.acao=acao;$('#backup-title').textContent=acao==='criar'?'Criar backup criptografado':'Restaurar backup';$('#backup-dialog').showModal();}
 $('#backup-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const f=e.target,senha=f.elements.senha.value;if(senha!==f.elements.confirmacao.value)throw new Error('As senhas devem ser iguais.');if(f.dataset.acao==='criar'){const r=await api('backup','POST',{senha});$('#backup-result').textContent=r.caminho;toast('Backup criptografado criado. Guarde a senha em local separado.');}else{if(!confirm('Substituir os dados atuais pelo backup? Uma cópia protegida será criada antes. O aplicativo fechará; abra-o novamente para concluir.'))return;const r=await window.pywebview.api.restaurar_backup(senha);if(r?.erro)throw new Error(r.erro);}f.reset();$('#backup-dialog').close();});});
@@ -118,7 +118,7 @@ function renderConnections(c){
   $('#wa-connect').textContent=w.conectado?'Verificar e configurar conexão':'Conectar WhatsApp';
   $('#wa-connect').disabled=waBusy;
   $('#wa-pause').disabled=waBusy||!w.servico||['STOPPED','SEM_SESSAO'].includes(w.estado);
-  $('#wa-qr-area').hidden=w.estado!=='SCAN_QR_CODE';
+  $('#wa-qr-area').hidden=w.estado!=='SCAN_QR_CODE'||waBusy||(c.pagina_publica?.disponivel&&c.pagina_publica.estado!=='ONLINE');
   $('#wa-hook-status').textContent=c.provedor==='META'?'O atendimento está usando a Meta. Use a conexão integrada para conectar pelo QR Code.':c.provedor==='TESTE'?'Modo de teste. Clique em Conectar para ativar o atendimento real.':w.webhook_configurado?'Recebimento automático configurado. Envie uma mensagem de outro número para conferir.':'Recebimento automático pendente. Clique em Conectar para configurar.';
   $('#wa-integrated').hidden=c.whatsapp_local;$('#wa-integrated').disabled=waBusy||!c.pode_iniciar_local;
   connectionJob('#wa-job',c.tarefas.whatsapp);connectionJob('#ol-job',c.tarefas.ollama);
@@ -130,7 +130,7 @@ function renderConnections(c){
   $('#ol-start').disabled=olBusy||!c.pode_iniciar_local;$('#ol-download').disabled=olBusy||!o.online;
   $('#ollama-model').disabled=olBusy;
   const progress=c.tarefas.ollama?.percentual;$('#ol-progress').hidden=!olBusy||progress===null||progress===undefined;if(progress!=null)$('#ol-progress').value=progress;
-  $('#public-url-note').textContent=c.links_publicos?'Links de compra usam '+c.endereco_publico+'. Confira se esse endereço abre no celular do cliente.':'Para clientes abrirem os links de compra, configure um endereço público da loja em Configurações. O WhatsApp pode conectar localmente antes dessa etapa.';
+  $('#public-url-note').textContent=c.links_publicos?'HTTPS pronto: os links de compra usam '+c.endereco_publico+'.':c.pagina_publica?.disponivel?'Ao conectar o WhatsApp, o aplicativo prepara e valida o HTTPS automaticamente antes de liberar o QR Code. '+c.pagina_publica.mensagem:'Configure um endereço público HTTPS antes de conectar o WhatsApp neste servidor.';
   $('#inbox-count').textContent=c.fila.pendentes+' mensagens em processamento ou aguardando';
   $('#inbox-last').textContent='Última mensagem recebida: '+date(c.fila.ultima_mensagem);
   $('#inbox-errors').innerHTML=c.fila.falhas.map(f=>`<div class="inbox-error"><b>${escapeHTML(f.telefone)}</b><p>${escapeHTML(f.erro)}</p><div class="button-row"><button data-message-action="reenviar" data-message-id="${f.id}">Tentar novamente</button><button data-message-action="ignorar" data-message-id="${f.id}">Marcar como resolvida</button></div></div>`).join('');
@@ -158,7 +158,7 @@ async function exportarDiagnostico(){
 }
 async function refreshConnections(){
   if(connectionsBusy)return;connectionsBusy=true;
-  try{const c=state.connections=await api('conexoes');renderConnections(c);if(c.whatsapp.estado==='SCAN_QR_CODE'&&Date.now()-lastQR>15000)await refreshQR();}
+  try{const c=state.connections=await api('conexoes');renderConnections(c);if(!$('#wa-qr-area').hidden&&Date.now()-lastQR>15000)await refreshQR();}
   finally{connectionsBusy=false;}
 }
 async function connectionAction(action){
