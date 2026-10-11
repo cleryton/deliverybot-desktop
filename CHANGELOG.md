@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.15.0 — 2026-10-10
+
+Checklist inicial com estado real do WhatsApp, HTTPS e fila de atendimento, com atalhos para corrigir componentes indisponíveis.
+
 ## 2.14.0 — 2026-10-10
 
 Inicialização automática da conexão WhatsApp integrada e da página HTTPS quando o provedor já foi escolhido, abertura direta da tela de conexão para facilitar a leitura do QR Code e inicialização do Ollama local quando selecionado.

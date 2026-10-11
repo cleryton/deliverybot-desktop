@@ -17,6 +17,11 @@ _status_ate = 0
 _pronto = False
 
 
+def ativo():
+    """Indica se os consumidores da fila estão ativos neste processo."""
+    return bool(_threads) and all(thread.is_alive() for thread in _threads)
+
+
 def invalidar_conexao():
     global _status_ate
     with _status_lock:
