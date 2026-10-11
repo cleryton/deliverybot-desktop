@@ -1,5 +1,6 @@
 """Painel administrativo compartilhado pelo aplicativo e pelo servidor."""
 import hmac
+import json
 from concurrent.futures import ThreadPoolExecutor
 import secrets
 from functools import wraps
@@ -10,7 +11,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
 from . import conexoes, processamento, publicacao, aparencia, cerebro
-from . import seguranca, privacidade, backups, operadores
+from . import seguranca, privacidade, backups, operadores, fotos
 
 bp = Blueprint("gestao", __name__)
 
@@ -57,6 +58,22 @@ def dados_json():
     if not isinstance(dados, dict):
         raise ValueError("Envie os dados em formato válido.")
     return dados
+
+
+def dados_produto():
+    if request.mimetype != 'multipart/form-data':
+        return dados_json(), None
+    try:
+        dados = json.loads(request.form.get('dados', ''))
+    except (ValueError, TypeError):
+        raise ValueError('Envie os dados do produto em formato válido.') from None
+    if not isinstance(dados, dict):
+        raise ValueError('Envie os dados do produto em formato válido.')
+    arquivos = request.files.getlist('foto')
+    if len(arquivos) > 1 or set(request.files) - {'foto'}:
+        raise ValueError('Escolha apenas uma foto por produto.')
+    foto = fotos.normalizar(arquivos[0].stream) if arquivos else None
+    return dados, foto
 
 
 @bp.errorhandler(ValueError)
@@ -215,13 +232,15 @@ def produtos():
             for p in produtos:
                 p.pop('custo',None)
         return jsonify(produtos)
-    return jsonify(estoque.salvar_produto(dados_json())), 201
+    dados, foto = dados_produto()
+    return jsonify(estoque.salvar_produto(dados, _foto=foto)), 201
 
 
 @bp.route("/gestao/api/produtos/<int:produto_id>", methods=["PUT"])
 @protegido
 def editar_produto(produto_id):
-    return jsonify(estoque.salvar_produto(dados_json(), produto_id))
+    dados, foto = dados_produto()
+    return jsonify(estoque.salvar_produto(dados, produto_id, _foto=foto))
 
 
 @bp.route("/gestao/api/produtos/<int:produto_id>/estoque", methods=["POST"])

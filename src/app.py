@@ -3,14 +3,16 @@ import hashlib
 import logging
 import threading
 import secrets
+from io import BytesIO
+import re
 from functools import wraps
 from decimal import Decimal, ROUND_HALF_UP
 
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, abort, jsonify, redirect, render_template, request, url_for, send_file
 from werkzeug.security import check_password_hash
 
 from . import auth_windows, bot, cardapio, config, fila, pedidos, recibo, viacep, whatsapp
-from .db import init_db
+from .db import init_db, get_conn
 from .ia import aquecer_ollama
 from .links import link_valido
 from . import preferencias, processamento
@@ -39,6 +41,32 @@ seguranca.instalar(app)
 init_db()
 preferencias.carregar()
 app.jinja_env.globals["icone_categoria"] = cardapio.icone_categoria
+
+
+@app.before_request
+def limite_upload_produto():
+    if request.endpoint in {'gestao.produtos', 'gestao.editar_produto'} and request.mimetype == 'multipart/form-data':
+        request.max_content_length = 6 * 1024 * 1024
+
+
+@app.errorhandler(413)
+def arquivo_grande(exc):
+    if request.path.startswith('/gestao/api/'):
+        return jsonify(erro='Arquivo muito grande. Escolha uma foto de até 5 MB.'), 413
+    return 'Os dados enviados ultrapassam o limite permitido.', 413
+
+
+@app.get('/produtos/fotos/<chave>.jpg')
+def foto_produto(chave):
+    if not re.fullmatch(r'[a-f0-9]{64}', chave):
+        abort(404)
+    from .gestao import autorizado
+    with get_conn() as conn:
+        foto = conn.execute('SELECT f.dados FROM fotos_produto f JOIN produtos p ON p.id=f.produto_id '
+            'WHERE f.hash=? AND (p.ativo=1 OR ?) LIMIT 1', (chave, autorizado())).fetchone()
+    if foto is None:
+        abort(404)
+    return send_file(BytesIO(foto['dados']), mimetype='image/jpeg', etag=chave, conditional=True)
 
 
 @app.context_processor

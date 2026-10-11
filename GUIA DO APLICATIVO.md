@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.22.0
+# DeliveryBot Desktop 2.23.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -164,3 +164,11 @@ A instalação automática exige uma assinatura Authenticode válida e o certifi
 ### Preparação de uma distribuição assinada
 
 O mantenedor deve obter um certificado confiável de assinatura de código, manter a chave privada no repositório de certificados Windows e configurar apenas seu thumbprint público em `packaging/assinatura.json` **antes** de reconstruir o aplicativo. Não inclua certificados com chave privada no Git. Use `packaging/assinar.ps1 -Arquivo caminho -SignTool caminho-do-signtool.exe` para assinar o aplicativo, compile o instalador para incorporar o aplicativo assinado e assine também o instalador. Execute `packaging/gerar_hashes.py` por último. Publique o instalador e `SHA256SUMS.txt` na mesma release, sem substituir assets de uma versão já publicada. Consulte a [documentação de assinatura da Microsoft](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature) e a [API de releases do GitHub](https://docs.github.com/en/rest/releases/releases).
+
+### Fotos dos produtos
+
+Em **Produtos e estoque**, cadastre ou edite um produto e escolha sua foto. Aceita JPG, PNG e WebP de até 5 MB (até 20 milhões de pixels, sem animação). Você pode conferir a prévia, substituir a foto ou removê-la antes de salvar.
+
+O cliente vê as fotos no catálogo do link de pedido e pode ampliá-las. As imagens usam o próprio endereço HTTPS da loja, sem hospedar arquivos em outro serviço. Fotos de produtos inativos não ficam disponíveis pelo túnel.
+
+As fotos são otimizadas, têm os metadados da câmera removidos e ficam no banco de dados: acompanham as atualizações e os backups, inclusive a restauração em outro computador. Use fotos dos produtos que você tenha autorização para divulgar; elas ficam acessíveis publicamente enquanto o produto estiver ativo.

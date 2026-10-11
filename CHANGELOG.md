@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.23.0 — 2026-10-11
+
+Fotos opcionais no cadastro de produtos, com prévia, substituição e remoção; catálogo visual pelo HTTPS, imagens otimizadas sem metadados e preservadas nos backups e atualizações.
+
 ## 2.22.0 — 2026-10-11
 
 Consulta do cérebro Obsidian por assunto, tags compatíveis com as propriedades e prioridade; validade opcional de conhecimento aprovado, leitura limitada e protegida, preservação das notas existentes e orçamento de contexto incluindo títulos.

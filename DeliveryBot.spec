@@ -14,6 +14,7 @@ a = Analysis(
     binaries=[],
     datas=[(str(root / 'web'), 'web'), (str(root / 'sql'), 'sql'), (str(root / 'packaging' / 'DeliveryBot.ico'), 'packaging'),
            (str(root / 'VERSION'), '.'),
+           (str(root / 'packaging/LICENCA Pillow.txt'), 'packaging'),
            (str(conector), 'cloudflare/runtime'),
            (str(root / 'packaging/cloudflared.json'), 'packaging'),
            (str(root / 'packaging' / 'assinatura.json'), 'packaging'),

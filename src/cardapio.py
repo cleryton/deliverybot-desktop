@@ -16,13 +16,15 @@ ICONE_CATEGORIA_PADRAO = "📦"
 def listar_produtos_ativos():
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM produtos "
-            "WHERE ativo = 1 AND (estoque IS NULL OR estoque > 0) ORDER BY categoria, nome"
+            "SELECT p.*,f.hash AS foto_hash FROM produtos p LEFT JOIN fotos_produto f ON f.produto_id=p.id "
+            "WHERE p.ativo = 1 AND (p.estoque IS NULL OR p.estoque > 0) ORDER BY p.categoria, p.nome"
         ).fetchall()
     from .estoque import nome_completo
     resultado=[dict(r) for r in rows]
+    from . import fotos
     for p in resultado:
         p['nome']=nome_completo(p)
+        p['foto_url'] = fotos.url(p)
     return resultado
 
 

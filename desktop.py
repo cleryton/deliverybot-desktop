@@ -80,6 +80,13 @@ def smoke_test(destino, janela=False):
         assert client.get("/gestao/api/produtos").status_code == 401
         assert client.get("/gestao?acesso=" + token, follow_redirects=True).status_code == 200
         produto = estoque.salvar_produto({"nome": "Camiseta teste", "categoria": "Vestuário", "preco": "49.90", "estoque": 5})
+        from io import BytesIO
+        from PIL import Image
+        from src import fotos
+        foto_teste = BytesIO()
+        Image.new('RGB', (24, 24), 'blue').save(foto_teste, format='PNG')
+        foto_teste.seek(0)
+        produto = estoque.salvar_produto({**produto, 'controlar_estoque': True, 'ativo': True}, produto['id'], _foto=fotos.normalizar(foto_teste))
         assert client.get("/gestao/api/produtos").json[0]["id"] == produto["id"]
         # Confere também os recursos públicos incluídos no executável, sem publicar
         # um túnel ou conectar contas reais durante a verificação da distribuição.
@@ -93,7 +100,9 @@ def smoke_test(destino, janela=False):
         assert publico.get('/static/pedido.css').status_code == 200
         assert publico.get('/static/pedido.js').status_code == 200
         assert publico.get('/static/gestao.js').status_code == 404
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True}
+        assert publico.get(produto['foto_url']).mimetype == 'image/jpeg'
+        assert produto['foto_url'].encode() in publico.get(caminho_pedido).data
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local

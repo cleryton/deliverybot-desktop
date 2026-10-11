@@ -4,6 +4,7 @@ from contextlib import nullcontext
 from decimal import Decimal, InvalidOperation
 
 from .db import get_conn
+from . import fotos
 
 
 def inteiro(valor, campo, minimo=0):
@@ -68,7 +69,11 @@ def invalidar_catalogo():
 
 def listar_produtos():
     with get_conn() as conn:
-        return [dict(r) for r in conn.execute("SELECT * FROM produtos ORDER BY ativo DESC, nome")]
+        produtos = [dict(r) for r in conn.execute('SELECT p.*,f.hash AS foto_hash FROM produtos p '
+                    'LEFT JOIN fotos_produto f ON f.produto_id=p.id ORDER BY p.ativo DESC,p.nome')]
+    for produto in produtos:
+        produto['foto_url'] = fotos.url(produto)
+    return produtos
 
 
 def registrar_movimento(conn, produto_id, tipo, quantidade, saldo, motivo, pedido_id=None):
@@ -78,7 +83,10 @@ def registrar_movimento(conn, produto_id, tipo, quantidade, saldo, motivo, pedid
     )
 
 
-def salvar_produto(dados, produto_id=None, _conn=None):
+def salvar_produto(dados, produto_id=None, _conn=None, _foto=None):
+    remover_foto = dados.get('remover_foto', False)
+    if not isinstance(remover_foto, bool) or (remover_foto and _foto is not None):
+        raise ValueError('Escolha uma nova foto ou remova a atual.')
     nome = texto(dados.get("nome", ""), "Nome", obrigatorio=True)
     categoria = texto(dados.get("categoria", ""), "Categoria", obrigatorio=True)
     descricao = texto(dados.get("descricao", ""), "Descrição", 2000)
@@ -125,7 +133,10 @@ def salvar_produto(dados, produto_id=None, _conn=None):
                                      (saldo or 0) - ((anterior["estoque"] or 0) if anterior else 0), saldo,
                                      "Cadastro inicial" if anterior is None else "Saldo alterado no cadastro")
             conn.execute('UPDATE produtos SET fracionado=?,familia=?,variacao=?,custo=? WHERE id=?',(fracionado,familia,variacao,custo,produto_id))
-            produto = dict(conn.execute("SELECT * FROM produtos WHERE id=?", (produto_id,)).fetchone())
+            fotos.salvar(conn, produto_id, _foto, remover_foto)
+            produto = dict(conn.execute('SELECT p.*,f.hash AS foto_hash FROM produtos p '
+                'LEFT JOIN fotos_produto f ON f.produto_id=p.id WHERE p.id=?', (produto_id,)).fetchone())
+            produto['foto_url'] = fotos.url(produto)
     except sqlite3.IntegrityError as exc:
         raise ValueError("Já existe um produto com esse código. Use um código diferente.") from exc
     invalidar_catalogo()

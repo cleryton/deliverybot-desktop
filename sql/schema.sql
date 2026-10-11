@@ -22,6 +22,13 @@ CREATE TABLE IF NOT EXISTS produtos (
     imagem        TEXT                      -- nome do arquivo em web/static/produtos/, opcional
 );
 
+CREATE TABLE IF NOT EXISTS fotos_produto (
+    produto_id INTEGER PRIMARY KEY REFERENCES produtos(id) ON DELETE CASCADE,
+    hash TEXT NOT NULL,
+    dados BLOB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fotos_produto_hash ON fotos_produto(hash);
+
 CREATE TABLE IF NOT EXISTS pedidos (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     numero_pedido       TEXT NOT NULL UNIQUE,     -- ex: #21535858, exibido ao cliente
