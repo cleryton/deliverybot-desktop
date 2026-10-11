@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.19.1 — 2026-10-10
+
+Personalidade do atendimento mais calorosa e reconhecível, com respostas variadas e adaptação ao contexto, sem perder clareza, precisão e respeito.
+
 ## 2.19.0 — 2026-10-10
 
 Cofre Markdown compatível com Obsidian para personalizar o estilo de atendimento; Ollama consulta a nota atual sem aprender automaticamente com conversas de clientes.
