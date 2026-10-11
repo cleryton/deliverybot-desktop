@@ -277,6 +277,7 @@ def test_reinicia_conector_que_cai_e_encerra_todos_recursos(aplicativo, tmp_path
     http = MagicMock()
     http.__enter__.return_value = http
     http.get.return_value.__enter__.return_value.status_code = 200
+    http.get.return_value.__enter__.return_value.iter_content.return_value = [g._verificacao.encode()]
     monkeypatch.setattr(publicacao.requests, 'Session', lambda: http)
     g._executar()
     assert len(processos) == 2
@@ -285,3 +286,139 @@ def test_reinicia_conector_que_cai_e_encerra_todos_recursos(aplicativo, tmp_path
     servidor.close.assert_called_once()
     assert g._processo is None
     assert config.BASE_URL == 'http://localhost:5000'
+
+
+@pytest.mark.parametrize('base', ['http://loja.example', 'http://localhost:5000', 'https://loja.localhost', 'https://192.168.0.12', 'https://127.1', 'https://loja.lan', 'https://user:senha@loja.example'])
+def test_producao_nunca_gera_link_sem_https_publico(base):
+    from src import links
+    config.MODO_TESTE = False
+    config.BASE_URL = base
+    assert publicacao.endereco() == ''
+    with pytest.raises(links.PaginaIndisponivel):
+        links.gerar_link_pedido('5511999990033')
+    with get_conn() as banco:
+        assert banco.execute('SELECT COUNT(*) FROM links_pedido').fetchone()[0] == 0
+
+
+def test_links_em_frases_naturais_markdown_e_aviso_usam_https_atual(aplicativo, monkeypatch):
+    from src import links
+    g = gerente_online(aplicativo, monkeypatch)
+    config.MODO_TESTE = False
+    telefone = '5511999990033'
+    link = links.gerar_link_pedido(telefone)
+    original = f'Pode escolher com calma: [seu pedido]({link}).\nAviso: https://antigo.trycloudflare.com/privacidade'
+    g._status('ONLINE', 'Verificado', 'https://atual.trycloudflare.com')
+    atualizado = links.atualizar_resposta(original, telefone)
+    assert f'[seu pedido](https://atual.trycloudflare.com/m/{link.rsplit("/", 1)[-1]}).' in atualizado
+    assert 'https://atual.trycloudflare.com/privacidade' in atualizado
+    assert 'antigo' not in atualizado and 'loja-ficticia' not in atualizado
+    # Um token conhecido é corrigido mesmo se veio com localhost de um histórico antigo.
+    assert links.atualizar_resposta('Abra: http://localhost:5000/m/' + link.rsplit('/', 1)[-1], telefone).startswith('Abra: https://atual.')
+
+
+@pytest.mark.parametrize('texto', ['Compre: https://loja.example/m/token-inventado', 'Abra https://192.168.1.2:5000', 'Abra http://loja.example', 'Abra https://loja.localhost', 'Abra localhost:5000', 'Abra http://[::1]:5000', 'Abra 192.168.1.2:5000/m/teste', 'Abra ftp://192.168.1.2/pedidos'])
+def test_barreira_final_impede_envio_de_link_invalido(aplicativo, monkeypatch, texto):
+    from src import whatsapp
+    gerente_online(aplicativo, monkeypatch)
+    config.MODO_TESTE = False
+    config.WHATSAPP_PROVIDER = 'LOCAL'
+    envio = Mock()
+    monkeypatch.setattr(whatsapp, '_enviar_via_waha', envio)
+    with pytest.raises(ValueError):
+        whatsapp.enviar_mensagem('5511999990033', texto)
+    envio.assert_not_called()
+
+
+def test_fila_aguarda_https_e_retoma_com_dominio_atual_sem_repetir_ia(aplicativo, monkeypatch):
+    from src import links, processamento, whatsapp, bot
+    g = gerente_online(aplicativo, monkeypatch)
+    config.MODO_TESTE = False
+    config.WHATSAPP_PROVIDER = 'LOCAL'
+    telefone = '5511999990033'
+    link = links.gerar_link_pedido(telefone)
+    tarefa = processamento.enfileirar({'telefone': telefone, 'texto': 'quero comprar'}, 'ficticia-https')
+    with get_conn() as banco:
+        banco.execute('UPDATE tarefas_bot SET resposta=? WHERE id=?', ('Escolha por aqui: ' + link, tarefa['id']))
+    g._status('RECONECTANDO', 'Verificando')
+    envio, gerar = Mock(), Mock(side_effect=AssertionError('não chamar a IA novamente'))
+    monkeypatch.setattr(processamento, '_servico_pronto', lambda: True)
+    monkeypatch.setattr(whatsapp, 'enviar_mensagem', envio)
+    monkeypatch.setattr(bot, 'processar_mensagem', gerar)
+    processamento._parar.clear()
+    assert processamento.processar_proxima() is False
+    envio.assert_not_called()
+    with get_conn() as banco:
+        row = banco.execute('SELECT estado,resposta FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()
+        assert row['estado'] == 'PENDENTE' and row['resposta'].endswith(link)
+    g._status('ONLINE', 'Verificado', 'https://novo.trycloudflare.com')
+    assert processamento.processar_proxima() is True
+    envio.assert_called_once()
+    gerar.assert_not_called()
+    assert 'https://novo.trycloudflare.com/m/' in envio.call_args.args[1]
+    with get_conn() as banco:
+        assert banco.execute('SELECT estado FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()[0] == 'CONCLUIDA'
+
+
+def test_probe_https_confere_aplicativo_sem_seguir_redirect(aplicativo):
+    from unittest.mock import MagicMock
+    g = publicacao.Publicacao(aplicativo)
+    http = MagicMock()
+    resposta = http.get.return_value.__enter__.return_value
+    resposta.status_code = 200
+    resposta.iter_content.return_value = [b'outro-aplicativo']
+    assert not g._verificar_https(http, 'https://loja.example')
+    resposta.iter_content.return_value = [g._verificacao.encode()]
+    assert g._verificar_https(http, 'https://loja.example')
+    assert http.get.call_args.kwargs['allow_redirects'] is False
+    assert http.get.call_args.args[0].startswith('https://loja.example/_deliverybot/health/')
+    resposta.status_code = 302
+    assert not g._verificar_https(http, 'https://loja.example')
+    resposta.status_code = 200
+    resposta.iter_content.return_value = [b'x' * 128, b'x']
+    assert not g._verificar_https(http, 'https://loja.example')
+
+
+def test_gateway_probe_nao_libera_painel_ou_pedido_antes_de_pronto(aplicativo):
+    c = Client(publicacao.PaginaPublica(aplicativo, lambda: '', 'verificacao-ficticia', lambda: False), Response)
+    r = c.get('/_deliverybot/health/verificacao-ficticia')
+    assert r.status_code == 200 and r.text == 'verificacao-ficticia'
+    assert r.headers['Cache-Control'] == 'no-store' and not r.headers.get('Set-Cookie')
+    assert c.get('/privacidade').status_code == 503
+    assert c.get('/_deliverybot/health/outro').status_code == 503
+
+
+def test_leitor_rejeita_dominios_com_sufixo_enganoso():
+    processo = Mock(stdout=io.StringIO('https://loja.trycloudflare.com.evil.example\nhttps://loja.trycloudflare.com:444\n'))
+    info = {}
+    publicacao.Publicacao._ler(processo, info, threading.Lock())
+    assert not info
+
+
+def test_encerramento_oculta_url_antes_de_esperar_thread(aplicativo, monkeypatch):
+    g = gerente_online(aplicativo, monkeypatch)
+    config.MODO_TESTE = False
+    def esperar(**kwargs):
+        assert publicacao.endereco() == ''
+    g._thread = Mock()
+    g._thread.join.side_effect = esperar
+    g._thread.is_alive.return_value = False
+    g.encerrar()
+    assert g.situacao()['estado'] == 'DESLIGADO'
+
+
+def test_monitor_renova_callback_na_troca_de_url_e_retenta_falhas(aplicativo, monkeypatch):
+    from src import conexoes
+    g = gerente_online(aplicativo, monkeypatch)
+    config.MODO_TESTE = False
+    config.WHATSAPP_PROVIDER = 'WAHA'
+    renovacao = Mock(side_effect=[True, ValueError('Serviço indisponível'), True])
+    monkeypatch.setattr(conexoes, 'renovar_webhook_publico', renovacao)
+    assert g._atualizar_webhook('https://primeiro.example')
+    assert g._atualizar_webhook('https://primeiro.example')
+    assert renovacao.call_count == 1
+    assert not g._atualizar_webhook('https://novo.example')
+    assert not g._atualizar_webhook('https://novo.example')
+    assert renovacao.call_count == 2
+    g._webhook_apos = 0
+    assert g._atualizar_webhook('https://novo.example')
+    assert renovacao.call_count == 3

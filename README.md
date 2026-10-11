@@ -2,6 +2,8 @@
 
 Aplicativo Windows para cadastrar produtos de qualquer categoria, controlar estoque e receber pedidos pelo WhatsApp. Inclui atendimento humano, permissões por funcionário, backups criptografados e página de pedidos com túnel Cloudflare integrado.
 
+O atendimento responde dúvidas simples diretamente com o cadastro, usa contexto recente na IA e apresenta links validados para cada cliente. O túnel confirma a página HTTPS antes de liberar os pedidos, acompanha reconexões e atualiza respostas pendentes para o endereço atual. O catálogo público tem busca, carrinho revisável e layout adaptado ao celular. Para manter links já enviados válidos entre reinícios, configure o domínio fixo em **Página de pedidos**.
+
 ## Instalar e usar
 
 Dentro de `dist/`, abra a pasta da versão indicada em `VERSION` (por exemplo, `v2.12.0`). Execute `Instalar-DeliveryBot.exe` para instalar ou `DeliveryBot.exe` para usar diretamente. O usuário final não precisa instalar Docker, Node.js ou Python. Para IA local, configure o Ollama em **WhatsApp e IA**. O seletor **Tema** permite usar modo claro, escuro ou acompanhar o Windows; a preferência continua após reabrir o aplicativo.

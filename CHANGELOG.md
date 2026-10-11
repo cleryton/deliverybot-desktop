@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.21.0 — 2026-10-10
+
+Atendimento mais natural com respostas locais rápidas e contexto recente; validação de todos os links antes do envio, verificação HTTPS da origem, espera automática na reconexão e renovação do callback WAHA remoto; catálogo público redesenhado com busca, carrinho acessível e recibo com valores precisos.
+
 ## 2.20.0 — 2026-10-10
 
 Cofre Obsidian estruturado com notas aprovadas de estilo e conhecimento, contexto local protegido contra instruções e dados operacionais inconsistentes, além de inclusão cifrada do vault nos novos backups e restauração com preservação de notas adicionais.

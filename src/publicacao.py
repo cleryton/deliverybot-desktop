@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import sys
 import threading
@@ -26,7 +27,7 @@ def validar_dominio(url):
         host = (p.hostname or '').lower()
         if p.scheme != 'https' or p.username or p.password or p.query or p.fragment or p.path not in {'', '/'} or p.port not in {None, 443}:
             raise ValueError()
-        if not re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?', host) or '.' not in host or host.endswith(('.localhost', '.local', '.internal')):
+        if not re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?', host) or '.' not in host or host.endswith(('.localhost', '.local', '.internal', '.lan', '.home')) or all(parte.isdigit() for parte in host.split('.')):
             raise ValueError()
         if len(host) > 253 or any(not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?', parte) for parte in host.split('.')):
             raise ValueError()
@@ -45,8 +46,14 @@ def endereco():
     """URL temporária é somente da sessão; não sobrescreve o domínio manual salvo."""
     if _gerente and _gerente.ativo:
         s = _gerente.situacao()
-        return s['url'] if s['estado'] == 'ONLINE' else ''
-    return config.BASE_URL
+        base = s['url'] if s['estado'] == 'ONLINE' else ''
+    else:
+        base = config.BASE_URL
+    try:
+        return validar_dominio(base)
+    except ValueError:
+        # Endereços locais só existem no simulador, que não envia mensagens reais.
+        return base if config.MODO_TESTE and not (_gerente and _gerente.ativo) else ''
 
 
 def situacao():
@@ -57,8 +64,10 @@ def preparar_para_whatsapp(progresso, timeout=120):
     """Deixa o HTTPS público pronto antes de iniciar a sessão do WhatsApp."""
     gerente = _gerente
     if gerente is None:
-        # Em instalações sem o gerenciador integrado, preserva o endereço manual.
-        return endereco()
+        base = endereco()
+        if not base:
+            raise ValueError('Configure um endereço público HTTPS para receber pedidos antes de conectar o WhatsApp.')
+        return base
 
     atual = gerente.situacao()
     if atual['estado'] != 'ONLINE':
@@ -84,14 +93,20 @@ class PaginaPublica:
     """Permite somente endpoints públicos conhecidos; ignora identidade de proxy."""
     ENDPOINTS = {'pagina_pedido', 'enviar_pedido', 'aviso_privacidade', 'primeiros_passos.confirmar', 'verificar_webhook', 'receber_webhook', 'receber_webhook_waha'}
 
-    def __init__(self, app, obter_url):
+    ASSETS = {'pedido.css', 'pedido.js'}
+
+    def __init__(self, app, obter_url, verificacao='', esta_pronto=lambda: True):
         self.app = app
         self.obter_url = obter_url
+        self.verificacao = verificacao
+        self.esta_pronto = esta_pronto
 
     def __call__(self, environ, start_response):
+        if self.verificacao and environ.get('PATH_INFO') == '/_deliverybot/health/' + self.verificacao and environ.get('REQUEST_METHOD') == 'GET':
+            return Response(self.verificacao, headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}, mimetype='text/plain')(environ, start_response)
         url = self.obter_url()
-        if not url:
-            return Response('Página de pedidos reconectando. Tente novamente em instantes.', status=503)(environ, start_response)
+        if not url or not self.esta_pronto():
+            return Response('Página de pedidos reconectando. Tente novamente em instantes.', status=503, headers={'Retry-After': '10', 'Cache-Control': 'no-store'})(environ, start_response)
         host = urlsplit(url).netloc
         env = dict(environ)
         # Mesmo com Host/X-Forwarded-For forjados, este servidor nunca é local.
@@ -105,7 +120,8 @@ class PaginaPublica:
         except HTTPException:
             return Response('Página não encontrada.', status=404)(env, start_response)
         imagem = endpoint == 'static' and re.fullmatch(r'produtos/[a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif)', args.get('filename', ''), re.I)
-        if endpoint not in self.ENDPOINTS and not imagem:
+        asset_publico = endpoint == 'static' and args.get('filename') in self.ASSETS
+        if endpoint not in self.ENDPOINTS and not imagem and not asset_publico:
             return Response('Página não encontrada.', status=404)(env, start_response)
         return self.app(env, start_response)
 
@@ -127,6 +143,9 @@ class Publicacao:
         self._modo = config.TUNEL_MODO
         self._dominio = ''
         self._token = ''
+        self._verificacao = secrets.token_urlsafe(32)
+        self._webhook_chave = None
+        self._webhook_apos = 0.0
 
     def situacao(self):
         with self._lock:
@@ -136,6 +155,40 @@ class Publicacao:
     def _status(self, estado, mensagem, url=''):
         with self._lock:
             self._estado, self._mensagem, self._url = estado, mensagem, url
+
+    def _verificar_https(self, http, url):
+        """Confirma o destino real, sem clientes, tokens de compra ou redirecionamentos."""
+        try:
+            base = validar_dominio(url)
+            with http.get(base + '/_deliverybot/health/' + self._verificacao,
+                          timeout=(3, 5), allow_redirects=False, stream=True) as resposta:
+                if resposta.status_code != 200:
+                    return False
+                conteudo = b''
+                for bloco in resposta.iter_content(chunk_size=128):
+                    conteudo += bloco
+                    if len(conteudo) > 128:
+                        return False
+                return conteudo == self._verificacao.encode('ascii')
+        except (requests.RequestException, ValueError, TypeError):
+            return False
+
+    def _atualizar_webhook(self, url):
+        if config.MODO_TESTE or config.WHATSAPP_PROVIDER != 'WAHA':
+            return True
+        chave = (url, config.WAHA_URL, config.WAHA_SESSION, config.WAHA_WEBHOOK_BASE_URL, config.WEBHOOK_SECRET)
+        if self._webhook_chave == chave:
+            return True
+        if time.monotonic() < self._webhook_apos:
+            return False
+        from .conexoes import renovar_webhook_publico
+        try:
+            renovar_webhook_publico()
+        except ValueError:
+            self._webhook_apos = time.monotonic() + 15
+            return False
+        self._webhook_chave, self._webhook_apos = chave, 0.0
+        return True
 
     def iniciar(self):
         with self._lock:
@@ -182,7 +235,7 @@ class Publicacao:
         # Não grava saída do conector: pode conter endereços e segredos.
         try:
             for linha in iter(processo.stdout.readline, ''):
-                url = re.search(r'https://([a-z0-9-]+\.trycloudflare\.com)\b', linha)
+                url = re.search(r'https://([a-z0-9-]+\.trycloudflare\.com)(?=[\s|]|$)', linha)
                 metricas = re.search(r'Starting metrics server on (127\.0\.0\.1:\d+)/metrics', linha)
                 with trava:
                     if url:
@@ -201,11 +254,12 @@ class Publicacao:
             proteger_pasta(pasta)
             from waitress import create_server
             try:
-                self._servidor = create_server(PaginaPublica(self.app, lambda: self.situacao()['url']), host='127.0.0.1', port=self._porta, threads=6)
+                gateway = PaginaPublica(self.app, lambda: self.situacao()['url'], self._verificacao, lambda: self.situacao()['estado'] == 'ONLINE')
+                self._servidor = create_server(gateway, host='127.0.0.1', port=self._porta, threads=6)
             except OSError:
                 if self._modo == 'FIXO':
                     raise ValueError('A porta da página pública está ocupada. Altere a porta e atualize o destino na Cloudflare.') from None
-                self._servidor = create_server(PaginaPublica(self.app, lambda: self.situacao()['url']), host='127.0.0.1', port=0, threads=6)
+                self._servidor = create_server(gateway, host='127.0.0.1', port=0, threads=6)
                 self._porta = self._servidor.effective_port
             self._http_thread = threading.Thread(target=self._servidor.run, name='DeliveryBot-Publico-HTTP', daemon=True)
             self._http_thread.start()
@@ -219,6 +273,7 @@ class Publicacao:
                 leitor.start()
                 inicio = time.monotonic()
                 ultimo_pronto = inicio
+                https_url, https_ate = '', 0.0
                 with requests.Session() as http:
                     http.trust_env = False
                     while not self._stop.wait(2) and self._processo.poll() is None:
@@ -231,14 +286,24 @@ class Publicacao:
                                     pronto = r.status_code == 200
                             except requests.RequestException:
                                 pass
+                        if pronto and (url != https_url or time.monotonic() >= https_ate):
+                            pronto = self._verificar_https(http, url)
+                            if pronto:
+                                https_url, https_ate = url, time.monotonic() + 20
+                            else:
+                                https_ate = 0.0
                         if pronto:
                             ultimo_pronto = time.monotonic()
                             tentativas = 0
-                            self._status('ONLINE', 'Conector ligado. Teste o link no celular usando dados móveis para confirmar que a página abre.', url)
+                            self._status('ONLINE', 'Página HTTPS verificada e pronta para receber pedidos. A conexão é monitorada automaticamente.', url)
+                            if not self._atualizar_webhook(url):
+                                self._status('ONLINE', 'Página HTTPS pronta. Reconectando o recebimento das mensagens do WAHA externo; confira esse servidor se a demora continuar.', url)
                         else:
-                            self._status('RECONECTANDO' if time.monotonic()-inicio > 15 else 'INICIANDO', 'Aguardando conexão com a Cloudflare. Confira a internet e o firewall.')
+                            https_ate = 0.0
+                            self._status('RECONECTANDO' if time.monotonic()-inicio > 15 else 'INICIANDO', 'Verificando o acesso HTTPS aos pedidos. Confira a internet; no domínio fixo, confira também o destino na Cloudflare.')
                         if not pronto and time.monotonic()-ultimo_pronto > 120:
                             break
+                self._status('RECONECTANDO', 'Conexão interrompida. O aplicativo tentará novamente automaticamente.')
                 self._matar()
                 leitor.join(timeout=3)
                 tentativas += 1
@@ -271,6 +336,7 @@ class Publicacao:
 
     def encerrar(self):
         self._stop.set()
+        self._status('DESLIGADO', 'Página pública desligada. Os pedidos salvos continuam no aplicativo.')
         if self._thread:
             self._thread.join(timeout=15)
             if self._thread.is_alive():

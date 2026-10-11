@@ -285,14 +285,16 @@ def test_atendimento_humano_pausa_envio_e_retoma(cliente,monkeypatch):
 
 def test_fracionados_cancelamento_e_custo_historico():
     from src import estoque,pedidos,catalogo_avancado
-    from datetime import date
     p=estoque.salvar_produto({'nome':'Tecido','categoria':'Materiais','preco':10,'custo':4,'unidade':'m','fracionado':True,'estoque':1.5,'variacao':'Azul','familia':'Tecidos'})
     pedido=pedidos.criar_pedido('5511999990033','Cliente fictício',[{'produto_id':p['id'],'quantidade':'0.250'}],'Dinheiro')
     assert pedido['total_pedido']==2.5
     assert estoque.listar_produtos()[0]['estoque']==1.25
     assert pedido['itens'][0]['produto_nome']=='Tecido · Azul'
     estoque.salvar_produto({**p,'custo':8,'ativo':True,'controlar_estoque':True},p['id'])
-    hoje=date.today().isoformat()
+    # Data fixa evita divergência entre o relógio local e o timestamp UTC do SQLite.
+    with get_conn() as conn:
+        conn.execute("UPDATE pedidos SET criado_em='2026-10-10 12:00:00' WHERE id=?", (pedido['id'],))
+    hoje='2026-10-10'
     r=catalogo_avancado.relatorio(hoje,hoje)
     assert r['custos_registrados']==1 and r['margem_parcial']==1.5
     pedidos.cancelar_pedido(pedido['id'])

@@ -150,6 +150,7 @@ def test_ia_nao_recebe_mensagens_futuras_na_fila(monkeypatch):
 
 
 def test_configura_waha_preserva_outros_recursos(monkeypatch):
+    config.BASE_URL = 'https://loja-ficticia.example'
     original = {"status":"STOPPED", "apps":[{"id":"outro"}], "config":{"custom":7, "ignore":None, "webhooks":[{"url":"https://outro/hook", "events":["message"]}, {"url":"http://antigo/webhook/waha/velho"}]}}
     chamada = Mock(side_effect=[original, {}, {}])
     monkeypatch.setattr(conexoes, "_waha", chamada)
@@ -165,6 +166,7 @@ def test_configura_waha_preserva_outros_recursos(monkeypatch):
 
 
 def test_cria_sessao_nova_com_webhook(monkeypatch):
+    config.BASE_URL = 'https://loja-ficticia.example'
     chamada = Mock(side_effect=[None, {}])
     monkeypatch.setattr(conexoes, "_waha", chamada)
     conexoes.conectar_whatsapp(lambda *args: None)
@@ -250,6 +252,7 @@ def test_componente_integrado_autenticacao_qr_e_encerramento(monkeypatch):
     import time
     from src import whatsapp_local
     config.WHATSAPP_PROVIDER = "LOCAL"
+    config.BASE_URL = 'https://loja-ficticia.example'
     try:
         whatsapp_local.iniciar(teste=True)
         endereco, chave = whatsapp_local.credenciais()

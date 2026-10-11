@@ -142,6 +142,46 @@ def conectar_whatsapp(progresso):
     progresso("Conexão preparada. Escaneie o QR Code se solicitado; se já estiver conectado, a sessão será reutilizada.")
 
 
+def renovar_webhook_publico() -> bool:
+    """Atualiza o destino da sessão existente quando o túnel muda de endereço."""
+    if (config.WHATSAPP_PROVIDER != "WAHA" or config.WAHA_WEBHOOK_BASE_URL
+            or url_local(config.WAHA_URL) or not config.WEBHOOK_SECRET):
+        return False
+    callback = url_webhook()
+    info = _waha("GET", _sessao_path(), aceitar_404=True)
+    if info is None:
+        return False
+    if not isinstance(info, dict) or not isinstance(info.get("config") or {}, dict):
+        raise ValueError("Resposta inválida do serviço WAHA.")
+
+    cfg = copy.deepcopy(info.get("config") or {})
+    webhooks = cfg.get("webhooks") or []
+    if not isinstance(webhooks, list) or any(not isinstance(w, dict) for w in webhooks):
+        raise ValueError("Configuração de webhooks inválida no serviço WAHA.")
+    caminho = urlsplit(callback).path
+    proprios = [w for w in webhooks if urlsplit(w.get("url", "")).path == caminho]
+    if proprios and all(w.get("url") == callback for w in proprios):
+        return False
+
+    # Outros integradores podem usar esta mesma rota com segredos diferentes.
+    # Só troca o destino desta loja e preserva as opções já configuradas.
+    webhook = next((w for w in proprios if w.get("url") == callback), None)
+    if webhook is None:
+        webhook = proprios[0] if proprios else {
+            "events": ["message"],
+            "retries": {"policy": "constant", "delaySeconds": 3, "attempts": 5},
+        }
+    webhook = copy.deepcopy(webhook)
+    webhook["url"] = callback
+    cfg["webhooks"] = [w for w in webhooks if urlsplit(w.get("url", "")).path != caminho]
+    cfg["webhooks"].append(webhook)
+    payload = {"name": config.WAHA_SESSION, "config": cfg}
+    if "apps" in info:
+        payload["apps"] = copy.deepcopy(info["apps"])
+    _waha("PUT", _sessao_path(), payload)
+    return True
+
+
 def pausar_whatsapp():
     _waha("POST", _sessao_path() + "/stop")
     from .processamento import invalidar_conexao

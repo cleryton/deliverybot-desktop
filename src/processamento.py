@@ -8,6 +8,7 @@ import unicodedata
 
 from . import bot, whatsapp, config
 from .db import get_conn
+from .links import PaginaIndisponivel
 
 logger = logging.getLogger(__name__)
 _parar = threading.Event()
@@ -142,17 +143,20 @@ def processar_proxima():
             with get_conn() as conn:
                 conn.execute("UPDATE tarefas_bot SET estado='PENDENTE' WHERE id=?", (tarefa["id"],))
             return True
+        from .links import atualizar_resposta
+        resposta = atualizar_resposta(resposta, tarefa['telefone'])
         with get_conn() as conn:
-            conn.execute("UPDATE tarefas_bot SET estado='ENVIANDO', atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))
-        if tarefa['origem'] != 'HUMANO':
-            from .links import atualizar_resposta
-            resposta = atualizar_resposta(resposta, tarefa['telefone'])
-            with get_conn() as conn:
-                conn.execute("UPDATE tarefas_bot SET resposta=? WHERE id=?", (resposta, tarefa['id']))
+            conn.execute("UPDATE tarefas_bot SET resposta=?, estado='ENVIANDO', atualizado_em=datetime('now') WHERE id=?", (resposta, tarefa['id']))
         whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"])
         with get_conn() as conn:
             conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', erro=NULL, atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))
             conn.execute("INSERT INTO mensagens (telefone, direcao, conteudo) VALUES (?, 'SAIDA', ?)", (tarefa["telefone"], resposta))
+    except PaginaIndisponivel:
+        # Falha na validação anterior ao transporte: nenhum envio foi iniciado.
+        # Mantém a resposta pronta e o token para retomar sem chamar a IA outra vez.
+        with get_conn() as conn:
+            conn.execute("UPDATE tarefas_bot SET estado='PENDENTE', erro='Aguardando a reconexão da página HTTPS.', atualizado_em=datetime('now') WHERE id=?", (tarefa['id'],))
+        return False
     except Exception:
         logger.exception("Falha na tarefa de atendimento %s", tarefa["id"])
         with get_conn() as conn:

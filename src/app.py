@@ -4,6 +4,7 @@ import logging
 import threading
 import secrets
 from functools import wraps
+from decimal import Decimal, ROUND_HALF_UP
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from werkzeug.security import check_password_hash
@@ -43,6 +44,13 @@ app.jinja_env.globals["icone_categoria"] = cardapio.icone_categoria
 @app.context_processor
 def dados_da_loja():
     return {"formas_pagamento": [p.strip() for p in config.FORMAS_PAGAMENTO.split(",") if p.strip()]}
+
+
+@app.template_filter('dinheiro')
+def dinheiro(valor, quantidade=1):
+    """Apresenta o valor da linha com o mesmo arredondamento usado no pedido."""
+    total = (Decimal(str(valor)) * Decimal(str(quantidade))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return format(total, '.2f').replace('.', ',')
 
 if config.IA_PROVIDER == "OLLAMA" and config.OLLAMA_AQUECER_AO_INICIAR:
     threading.Thread(target=aquecer_ollama, daemon=True).start()

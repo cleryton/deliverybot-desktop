@@ -1,35 +1,5 @@
 <!doctype html>
-<html lang="pt-br">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Link inválido</title>
-<style>
-  :root { --tinta:#f1f6f3; --pergaminho:#ffffff; --rum:#a53d3d; --carvao:#192d36; }
-  * { box-sizing: border-box; }
-  body {
-    font-family: 'Inter', -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    background: var(--tinta);
-    display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; margin: 0; padding: 24px;
-  }
-  .card {
-    background: var(--pergaminho); color: var(--carvao);
-    border-radius: 18px; padding: 34px 26px; max-width: 420px; text-align: center;
-    border-top: 4px solid var(--rum);
-  }
-  .icon { font-size: 2.6rem; }
-  h1 { font-family: 'Segoe UI', sans-serif; font-weight: 700; font-size: 1.15rem; margin: 10px 0 10px; color: var(--rum); }
-  p { color: #4a453a; line-height: 1.55; font-size: .92rem; }
-  strong { color: var(--carvao); }
-</style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">⚠️</div>
-    <h1>Este link de pedido não está mais disponível</h1>
-    <p>{{ mensagem }}</p>
-    <p>Volte à conversa do WhatsApp e mande uma mensagem dizendo que quer fazer um pedido para gerar um novo link.</p>
-  </div>
-</body>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>Peça um novo link</title><link rel="stylesheet" href="{{ url_for('static', filename='pedido.css') }}"></head>
+<body class="pagina-estado"><main class="cartao-estado"><div class="estado-cabecalho"><div class="icone-estado icone-indisponivel" aria-hidden="true">↻</div><p class="sobretitulo">Vamos continuar pelo WhatsApp</p><h1>Você precisa de um novo link</h1><p>{{ mensagem }}</p></div><ol class="passos-reabrir"><li><span>Volte à sua <strong>conversa com a loja no WhatsApp</strong>.</span></li><li><span>Se já confirmou um pedido, informe o número para acompanhar.</span></li><li><span>Para fazer uma nova compra, escreva <strong>“quero fazer um pedido”</strong> e abra o novo link recebido.</span></li></ol><p class="nota-estado">Cada link é pessoal e confirma um único pedido.</p><p class="rodape-estado"><a href="{{ url_for('aviso_privacidade') }}" target="_blank" rel="noopener">Aviso de privacidade<span class="sr-only"> (abre em outra aba)</span></a></p></main></body>
 </html>

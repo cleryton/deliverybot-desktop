@@ -1,430 +1,88 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ nome_restaurante }} — Fazer pedido</title>
-<style>
-  :root {
-    --tinta: #f1f6f3;
-    --tinta-clara: #e3efe8;
-    --pergaminho: #ffffff;
-    --pergaminho-escuro: #e4ede7;
-    --latao: #187d64;
-    --latao-claro: #187d64;
-    --mar: #2f6b5e;
-    --rum: #a53d3d;
-    --carvao: #192d36;
-    --sombra: rgba(0,0,0,.25);
-    --raio-card: 16px;
-    --raio-imagem: 10px;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    font-family: 'Inter', -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    background: var(--tinta);
-    color: var(--carvao);
-    margin: 0;
-    padding: 0 0 110px;
-  }
-
-  header {
-    background: #ffffff;
-    padding: 28px 20px 18px;
-    text-align: center;
-    border-bottom: 3px solid var(--latao);
-  }
-  header .brasao { font-size: 1.8rem; line-height: 1; }
-  header h1 {
-    font-family: 'Segoe UI', sans-serif;
-    font-weight: 700;
-    font-size: 1.6rem;
-    letter-spacing: .5px;
-    margin: 6px 0 4px;
-    color: var(--latao-claro);
-    text-shadow: none;
-  }
-  header p { margin: 0; font-size: .82rem; color: #73858b; }
-
-  nav.categorias {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding: 10px 16px;
-    background: var(--tinta);
-    border-bottom: 1px solid rgba(200,150,62,.25);
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  nav.categorias::-webkit-scrollbar { display: none; }
-  nav.categorias a {
-    flex: 0 0 auto;
-    padding: 7px 14px;
-    border-radius: 999px;
-    background: var(--tinta-clara);
-    color: var(--carvao);
-    text-decoration: none;
-    font-size: .82rem;
-    font-weight: 600;
-    border: 1px solid transparent;
-    transition: background .15s, border-color .15s;
-    scroll-snap-align: start;
-  }
-  nav.categorias a.ativa {
-    background: var(--latao);
-    color: #ffffff;
-    border-color: var(--latao-claro);
-  }
-
-  main { max-width: 540px; margin: 0 auto; padding: 4px 16px 0; }
-
-  .categoria { margin-top: 26px; scroll-margin-top: 60px; }
-  .categoria h2 {
-    font-size: 1.02rem;
-    color: var(--latao-claro);
-    margin: 0 0 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .categoria h2 .contagem {
-    font-size: .72rem;
-    color: #8a958f;
-    font-weight: 500;
-  }
-
-  .item {
-    display: flex;
-    gap: 12px;
-    background: var(--pergaminho);
-    color: var(--carvao);
-    border-radius: var(--raio-card);
-    padding: 12px;
-    margin-bottom: 10px;
-  }
-  .item .retrato {
-    flex: 0 0 72px;
-    width: 72px;
-    height: 72px;
-    border-radius: var(--raio-imagem);
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.9rem;
-    background: linear-gradient(145deg, var(--mar), #1d433a);
-    color: #e9f3ef;
-  }
-  .item .retrato img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-  .item .info { flex: 1; min-width: 0; }
-  .item .nome { font-weight: 700; font-size: .95rem; }
-  .item .desc {
-    font-size: .78rem;
-    color: #5a5346;
-    margin-top: 2px;
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .item .linha-inferior {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 8px;
-  }
-  .item .preco { font-weight: 700; color: #1f5e3f; font-size: .92rem; }
-
-  .stepper {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    background: var(--pergaminho-escuro);
-    border-radius: 999px;
-    overflow: hidden;
-  }
-  .stepper button {
-    width: 28px;
-    height: 28px;
-    border: none;
-    background: transparent;
-    color: var(--carvao);
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    line-height: 1;
-  }
-  .stepper button:active { background: rgba(0,0,0,.08); }
-  .stepper .qtd {
-    width: 26px;
-    text-align: center;
-    font-weight: 700;
-    font-size: .9rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  fieldset {
-    border: none;
-    background: var(--pergaminho);
-    color: var(--carvao);
-    border-radius: var(--raio-card);
-    padding: 16px;
-    margin-top: 28px;
-  }
-  legend {
-    font-weight: 700;
-    padding: 0 4px;
-    font-size: .95rem;
-  }
-  label { display: block; margin: 12px 0 5px; font-size: .85rem; color: #4a453a; font-weight: 600; }
-  input[type=text], select {
-    width: 100%;
-    font: inherit;
-    padding: 11px;
-    border: 1px solid #cfc4a4;
-    border-radius: 8px;
-    background: #fff;
-    color: var(--carvao);
-  }
-  input[type=text]:focus, select:focus {
-    outline: 2px solid var(--mar);
-    outline-offset: 1px;
-  }
-  .ajuda { font-size: .76rem; color: #7a7262; margin-top: 4px; }
-
-  .erro {
-    background: #3a1e1e;
-    border: 1px solid var(--rum);
-    color: #f6d9d9;
-    padding: 10px 14px;
-    border-radius: 10px;
-    margin-top: 16px;
-    font-size: .88rem;
-  }
-
-  #campo-endereco { display: none; }
-
-  .barra-total {
-    position: fixed;
-    left: 0; right: 0; bottom: 0;
-    background: var(--carvao);
-    border-top: 2px solid var(--latao);
-    box-shadow: 0 -4px 16px var(--sombra);
-    padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-    z-index: 20;
-  }
-  .barra-total .resumo {
-    max-width: 540px;
-    margin: 0 auto 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-size: .85rem;
-    color: #cfd6d1;
-  }
-  .barra-total .resumo strong {
-    color: var(--latao-claro);
-    font-size: 1.05rem;
-  }
-  .barra-total button {
-    width: 100%;
-    max-width: 540px;
-    display: block;
-    margin: 0 auto;
-    padding: 14px;
-    background: var(--latao);
-    color: #ffffff;
-    border: none;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .barra-total button:disabled { opacity: .45; cursor: not-allowed; }
-  .barra-total button:not(:disabled):active { background: var(--latao-claro); }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{{ nome_restaurante }} — Seu pedido</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='pedido.css') }}">
+  <script src="{{ url_for('static', filename='pedido.js') }}" defer></script>
 </head>
-<body>
-  <header>
-    <div class="brasao">📦</div>
-    <h1>{{ nome_restaurante }}</h1>
-    <p>Link de pedido único — use uma vez só</p>
-  </header>
-
-  <nav class="categorias" id="nav-categorias">
-    {% for categoria in grupos.keys() %}
-    <a href="#cat-{{ loop.index }}" data-cat="cat-{{ loop.index }}">{{ icone_categoria(categoria) }} {{ categoria }}</a>
-    {% endfor %}
-  </nav>
-
-  <main>
-    {% if erro %}<div class="erro">⚠️ {{ erro }}</div>{% endif %}
-    {% if not grupos %}<p>Nenhum produto está disponível no momento. Consulte a loja pelo WhatsApp.</p>{% endif %}
-
-    <form method="post" action="" id="form-pedido">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      {% for categoria, itens in grupos.items() %}
-      <div class="categoria" id="cat-{{ loop.index }}">
-        <h2>{{ icone_categoria(categoria) }} {{ categoria }} <span class="contagem">{{ itens|length }} iten(s)</span></h2>
-        {% for item in itens %}
-        <div class="item">
-          <div class="retrato">
-            {% if item.imagem %}
-              <img src="{{ url_for('static', filename='produtos/' + item.imagem) }}" alt="{{ item.nome }}" loading="lazy">
-            {% else %}
-              <span aria-hidden="true">{{ icone_categoria(categoria) }}</span>
-            {% endif %}
-          </div>
-          <div class="info">
-            <div class="nome">{{ item.nome }}</div>
-            {% if item.descricao %}<div class="desc">{{ item.descricao }}</div>{% endif %}
-            {% if item.estoque is not none %}<div class="desc">Disponível: {{ item.estoque }} {{ item.unidade }}</div>{% endif %}
-            <div class="linha-inferior">
-              <div class="preco">R$ {{ "%.2f"|format(item.preco) }}</div>
-              <div class="stepper" data-preco="{{ item.preco }}" data-passo="{{ 0.001 if item.fracionado else 1 }}">
-                <button type="button" class="menos" aria-label="Diminuir quantidade de {{ item.nome }}">−</button>
-                <span class="qtd">0</span>
-                <button type="button" class="mais" aria-label="Aumentar quantidade de {{ item.nome }}">+</button>
-              </div>
-              <input type="number" name="qtd_{{ item.id }}" min="0" max="{{ item.estoque if item.estoque is not none else 999999 }}" value="0" hidden>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% endfor %}
-
-      <fieldset>
-        <legend>Seus dados</legend>
-        <label for="nome">Nome</label>
-        <input type="text" id="nome" name="nome" required maxlength="160" placeholder="Como podemos te chamar?">
-
-        <label for="forma_entrega">Entrega</label>
-        <select id="forma_entrega" name="forma_entrega">
-          <option value="RETIRADA BALCAO">Retirar no balcão</option>
-          <option value="ENTREGA">Entregar no meu endereço (+ R$ {{ "%.2f"|format(taxa_entrega) }})</option>
-        </select>
-
-        <div id="campo-endereco">
-          <label for="cep">CEP</label>
-          <input type="text" id="cep" name="cep" placeholder="00000-000" inputmode="numeric">
-          <div class="ajuda">Confirmamos se seu endereço está na área de entrega.</div>
-          <label for="numero">Número do endereço</label>
-          <input type="text" id="numero" name="numero" maxlength="30" placeholder="Ex.: 123 ou s/n">
-          <label for="complemento">Complemento (opcional)</label>
-          <input type="text" id="complemento" name="complemento" maxlength="150" placeholder="Apartamento, bloco ou referência">
-        </div>
-
-        <label for="forma_pagamento">Forma de pagamento</label>
-        <select id="forma_pagamento" name="forma_pagamento">
-          {% for pagamento in formas_pagamento %}<option value="{{ pagamento }}">{{ pagamento }}</option>{% endfor %}
-        </select>
-      </fieldset>
-
-      <p class="ajuda">Usamos seu nome, telefone e dados de entrega para atender e concluir esta compra. Informe apenas o necessário e evite dados sensíveis. Conheça as finalidades, o responsável e como exercer seus direitos no <a href="{{ url_for('aviso_privacidade') }}" target="_blank" rel="noopener">aviso de privacidade</a>.</p>
-    </form>
-  </main>
-
-  <div class="barra-total">
-    <div class="resumo">
-      <span id="resumo-itens">Nenhum item selecionado</span>
-      <strong id="resumo-total">R$ 0,00</strong>
+<body class="pagina-pedido">
+  <a class="pular-conteudo" href="#catalogo">Ir para os produtos</a>
+  <header class="cabecalho-loja">
+    <div class="largura-pagina marca-loja">
+      <span class="marca-simbolo" aria-hidden="true">✦</span>
+      <div><span class="sobretitulo">Sua próxima boa escolha</span><h1>{{ nome_restaurante }}</h1></div>
+      <span class="selo-loja"><span aria-hidden="true">●</span> Pedido direto com a loja</span>
     </div>
-    <button type="submit" form="form-pedido" id="botao-confirmar" disabled>Confirmar pedido</button>
-  </div>
-
-  <script nonce="{{ csp_nonce }}">
-    (function () {
-      const taxaEntrega = {{ taxa_entrega }};
-      const form = document.getElementById('form-pedido');
-      const resumoItens = document.getElementById('resumo-itens');
-      const resumoTotal = document.getElementById('resumo-total');
-      const botaoConfirmar = document.getElementById('botao-confirmar');
-      const selectEntrega = document.getElementById('forma_entrega');
-      const campoEndereco = document.getElementById('campo-endereco');
-
-      function formatarReais(valor) {
-        return 'R$ ' + valor.toFixed(2).replace('.', ',');
-      }
-
-      function atualizarResumo() {
-        let totalItens = 0;
-        let totalReais = 0;
-        form.querySelectorAll('.stepper').forEach(function (stepper) {
-          const qtd = parseFloat(stepper.querySelector('.qtd').textContent) || 0;
-          const preco = parseFloat(stepper.dataset.preco) || 0;
-          totalItens += qtd > 0 ? 1 : 0;
-          totalReais += qtd * preco;
-        });
-
-        if (selectEntrega.value === 'ENTREGA' && totalItens > 0) {
-          totalReais += taxaEntrega;
-        }
-
-        resumoItens.textContent = totalItens === 0
-          ? 'Nenhum item selecionado'
-          : totalItens + (totalItens === 1 ? ' produto selecionado' : ' produtos selecionados');
-        resumoTotal.textContent = formatarReais(totalReais);
-        botaoConfirmar.disabled = totalItens === 0;
-      }
-
-      form.querySelectorAll('.stepper').forEach(function (stepper) {
-        const input = stepper.parentElement.querySelector('input[type=number]');
-        const span = stepper.querySelector('.qtd');
-        const max = parseFloat(input.max) || 20; const passo = Number(stepper.dataset.passo); input.step = passo; input.hidden = false; input.min = 0; input.addEventListener('input',()=>{span.textContent=input.value;atualizarResumo();});
-
-        stepper.querySelector('.mais').addEventListener('click', function () {
-          const atual = parseFloat(span.textContent) || 0;
-          if (atual + passo <= max) {
-            span.textContent = Number((atual + passo).toFixed(3));
-            input.value = Number((atual + passo).toFixed(3));
-            atualizarResumo();
-          }
-        });
-        stepper.querySelector('.menos').addEventListener('click', function () {
-          const atual = parseFloat(span.textContent) || 0;
-          if (atual > 0) {
-            span.textContent = Math.max(0,Number((atual - passo).toFixed(3)));
-            input.value = Math.max(0,Number((atual - passo).toFixed(3)));
-            atualizarResumo();
-          }
-        });
-      });
-
-      selectEntrega.addEventListener('change', function () {
-        campoEndereco.style.display = this.value === 'ENTREGA' ? 'block' : 'none';
-        document.getElementById('numero').required = this.value === 'ENTREGA';
-        document.getElementById('cep').required = this.value === 'ENTREGA';
-        atualizarResumo();
-      });
-
-      // Navegação por categoria: destaca a pílula da categoria visível.
-      const links = Array.from(document.querySelectorAll('nav.categorias a'));
-      const secoes = links.map(function (a) { return document.getElementById(a.dataset.cat); });
-      if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver(function (entradas) {
-          entradas.forEach(function (entrada) {
-            if (entrada.isIntersecting) {
-              const link = links.find(function (a) { return a.dataset.cat === entrada.target.id; });
-              links.forEach(function (a) { a.classList.remove('ativa'); });
-              if (link) link.classList.add('ativa');
-            }
-          });
-        }, { rootMargin: '-45% 0px -50% 0px' });
-        secoes.forEach(function (s) { if (s) observer.observe(s); });
-      }
-      if (links[0]) links[0].classList.add('ativa');
-
-      atualizarResumo();
-      form.addEventListener('submit', function () { botaoConfirmar.disabled = true; });
-    })();
-  </script>
+  </header>
+  <main class="largura-pagina">
+    <section class="apresentacao" aria-labelledby="titulo-boas-vindas">
+      <div><p class="sobretitulo">Escolha no seu ritmo</p><h2 id="titulo-boas-vindas">O que vai no seu pedido?</h2><p>Encontre seus produtos, confira os detalhes e deixe o resto com a gente.</p></div>
+      <ol class="etapas" aria-label="Como fazer seu pedido"><li><span>1</span> Escolha</li><li><span>2</span> Confira</li><li><span>3</span> Confirme</li></ol>
+    </section>
+    {% if erro %}<div class="aviso aviso-erro" id="erro-pedido" role="alert" tabindex="-1"><strong>Vamos ajustar seu pedido</strong><p>{{ erro }}</p><span>Confira os dados abaixo e tente novamente.</span></div>{% endif %}
+    <noscript><p class="aviso">Preencha a quantidade desejada em cada produto e confirme no fim da página. Ative o JavaScript para usar a busca e acompanhar o total antes de enviar.</p></noscript>
+    <form method="post" action="" id="form-pedido" data-taxa-entrega="{{ taxa_entrega }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="layout-pedido">
+        <div class="catalogo" id="catalogo" tabindex="-1">
+          {% if grupos %}
+          <div class="ferramentas-catalogo" hidden>
+            <label class="sr-only" for="busca-produtos">Buscar produtos</label>
+            <div class="campo-busca"><span aria-hidden="true">⌕</span><input type="search" id="busca-produtos" placeholder="Encontre o que você procura" autocomplete="off" maxlength="160"><button type="button" id="limpar-busca" class="botao-texto" aria-label="Limpar busca" hidden>Limpar</button></div>
+            <nav class="categorias" aria-label="Filtrar por categoria"><button type="button" class="categoria-filtro ativa" data-categoria="" aria-pressed="true">Todos</button>{% for categoria in grupos.keys() %}<button type="button" class="categoria-filtro" data-categoria="{{ loop.index }}" aria-pressed="false"><span aria-hidden="true">{{ icone_categoria(categoria) }}</span> {{ categoria }}</button>{% endfor %}</nav>
+          </div>
+          <p id="resultado-busca" class="resultado-busca" role="status" aria-live="polite" hidden></p>
+          <div id="busca-vazia" class="estado-vazio" hidden><span class="estado-simbolo" aria-hidden="true">⌕</span><h3>Nenhum produto por aqui</h3><p>Tente outro nome ou escolha outra categoria.</p><button type="button" id="resetar-filtros" class="botao-secundario">Ver todos os produtos</button></div>
+          {% for categoria, itens in grupos.items() %}
+          <section class="categoria" data-categoria="{{ loop.index }}" aria-labelledby="cat-{{ loop.index }}">
+            <div class="titulo-categoria"><h2 id="cat-{{ loop.index }}"><span aria-hidden="true">{{ icone_categoria(categoria) }}</span> {{ categoria }}</h2><span>{{ itens|length }} {{ 'produto' if itens|length == 1 else 'produtos' }}</span></div>
+            <div class="grade-produtos">
+              {% for item in itens %}
+              <article class="produto" data-produto-id="{{ item.id }}" data-nome="{{ item.nome }}" data-busca="{{ item.nome }} {{ item.descricao or '' }} {{ categoria }}" data-preco="{{ item.preco }}" data-unidade="{{ item.unidade }}">
+                <div class="retrato">{% if item.imagem %}<img src="{{ url_for('static', filename='produtos/' + item.imagem) }}" alt="" loading="lazy" decoding="async" width="88" height="88">{% else %}<span aria-hidden="true">{{ icone_categoria(categoria) }}</span>{% endif %}</div>
+                <div class="produto-conteudo"><h3>{{ item.nome }}</h3>
+                  {% if item.descricao %}{% if item.descricao|length > 140 %}<details class="descricao-completa"><summary>Sobre o produto</summary><p class="descricao">{{ item.descricao }}</p></details>{% else %}<p class="descricao">{{ item.descricao }}</p>{% endif %}{% endif %}
+                  <p class="disponibilidade">{% if item.estoque is not none %}Disponível: {{ ('%g'|format(item.estoque)).replace('.', ',') }} {{ item.unidade }}{% else %}Venda por {{ item.unidade }}{% endif %}{% if item.fracionado %} · quantidade fracionada{% endif %}</p>
+                  <div class="produto-compra"><span class="preco">R$ {{ ('%.2f'|format(item.preco)).replace('.', ',') }}<small>/ {{ item.unidade }}</small></span>
+                    <div class="stepper" data-passo="{{ 0.1 if item.fracionado else 1 }}">
+                      <button type="button" class="menos" aria-label="Diminuir quantidade de {{ item.nome }}" hidden>−</button>
+                      <label class="sr-only" for="qtd-{{ item.id }}">Quantidade de {{ item.nome }} em {{ item.unidade }}</label>
+                      <input type="number" id="qtd-{{ item.id }}" name="qtd_{{ item.id }}" min="0" max="{{ item.estoque if item.estoque is not none else 999999 }}" step="{{ 0.001 if item.fracionado else 1 }}" value="{{ request.form.get('qtd_' ~ item.id, '0')[:10] }}" inputmode="{{ 'decimal' if item.fracionado else 'numeric' }}" aria-describedby="dica-qtd-{{ item.id }}">
+                      <button type="button" class="mais" aria-label="Aumentar quantidade de {{ item.nome }}" hidden>+</button>
+                    </div>
+                  </div>
+                  <span class="sr-only" id="dica-qtd-{{ item.id }}">{% if item.fracionado %}Você pode digitar até três casas decimais.{% else %}Informe uma quantidade inteira.{% endif %} A disponibilidade será conferida na confirmação.</span>
+                </div>
+              </article>
+              {% endfor %}
+            </div>
+          </section>
+          {% endfor %}
+          {% else %}<div class="estado-vazio"><span class="estado-simbolo" aria-hidden="true">📦</span><h2>O catálogo está sendo preparado</h2><p>Nenhum produto está disponível agora. Fale com a loja na sua conversa do WhatsApp.</p></div>{% endif %}
+        </div>
+        <aside class="checkout" id="checkout" aria-labelledby="titulo-checkout">
+          <div class="cartao-checkout">
+            <div class="titulo-checkout"><span class="sobretitulo">Tudo pronto por aqui?</span><h2 id="titulo-checkout">Seu pedido</h2><p>Confira sua seleção e como quer receber.</p></div>
+            <div id="carrinho" class="carrinho" hidden><p class="carrinho-vazio" id="carrinho-vazio">Seu pedido começa com uma boa escolha. Adicione um produto para continuar.</p><ul id="lista-carrinho" aria-label="Produtos selecionados"></ul></div>
+            <fieldset class="dados-cliente"><legend>Como podemos te chamar?</legend><label for="nome">Seu nome</label><input type="text" id="nome" name="nome" value="{{ request.form.get('nome', '')[:160] }}" required maxlength="160" autocomplete="given-name" placeholder="Digite seu nome"></fieldset>
+            <fieldset><legend>Como quer receber?</legend><label for="forma_entrega">Entrega ou retirada</label><select id="forma_entrega" name="forma_entrega"><option value="RETIRADA BALCAO"{% if request.form.get('forma_entrega') != 'ENTREGA' %} selected{% endif %}>Retirar na loja</option><option value="ENTREGA"{% if request.form.get('forma_entrega') == 'ENTREGA' %} selected{% endif %}>Receber no endereço (+ R$ {{ ('%.2f'|format(taxa_entrega)).replace('.', ',') }})</option></select>
+              <div id="campo-endereco"><label for="cep">CEP</label><input type="text" id="cep" name="cep" value="{{ request.form.get('cep', '')[:9] }}" maxlength="9" pattern="[0-9]{5}-?[0-9]{3}" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" aria-describedby="dica-cep"><p class="ajuda" id="dica-cep">Vamos conferir se seu CEP está na área de entrega.</p><label for="numero">Número do endereço</label><input type="text" id="numero" name="numero" value="{{ request.form.get('numero', '')[:30] }}" maxlength="30" placeholder="Ex.: 123 ou s/n"><label for="complemento">Complemento <span class="opcional">(opcional)</span></label><input type="text" id="complemento" name="complemento" value="{{ request.form.get('complemento', '')[:150] }}" maxlength="150" placeholder="Apartamento, bloco ou referência" autocomplete="address-line2"></div>
+            </fieldset>
+            <fieldset><legend>Como prefere pagar?</legend><label for="forma_pagamento">Forma de pagamento</label><select id="forma_pagamento" name="forma_pagamento">{% for pagamento in formas_pagamento %}<option value="{{ pagamento }}"{% if request.form.get('forma_pagamento') == pagamento %} selected{% endif %}>{{ pagamento }}</option>{% endfor %}</select><p class="ajuda">A loja combina o pagamento com você. Não informe dados de cartão aqui.</p></fieldset>
+            <div class="valores-pedido" id="valores-pedido" hidden><div><span>Produtos</span><span id="subtotal-produtos">R$ 0,00</span></div><div><span id="label-taxa">Retirada na loja</span><span id="subtotal-entrega">Sem taxa</span></div><div class="linha-total"><strong>Total do pedido</strong><strong id="total-checkout">R$ 0,00</strong></div><p class="ajuda">Preço e estoque são conferidos antes de salvar seu pedido.</p></div>
+            <p class="ajuda privacidade-pedido">Usamos seu nome, telefone e dados de entrega para concluir esta compra. Informe apenas o necessário e evite dados sensíveis. Consulte nosso <a href="{{ url_for('aviso_privacidade') }}" target="_blank" rel="noopener">aviso de privacidade<span class="sr-only"> (abre em outra aba)</span></a>.</p>
+            <button type="submit" id="botao-confirmar" class="botao-principal"{% if not grupos %} disabled{% endif %}>Confirmar meu pedido <span aria-hidden="true">→</span></button>
+            <p class="ajuda nota-link">Seu link é pessoal e pode confirmar um único pedido.</p>
+          </div>
+        </aside>
+      </div>
+    </form>
+    <footer class="rodape-publico">Feito para facilitar sua compra. <a href="{{ url_for('aviso_privacidade') }}" target="_blank" rel="noopener">Privacidade<span class="sr-only"> (abre em outra aba)</span></a></footer>
+  </main>
+  <div class="barra-pedido" id="barra-pedido" hidden><div class="largura-pagina conteudo-barra"><div><span id="resumo-itens">Nenhum produto selecionado</span><strong id="resumo-total">R$ 0,00</strong></div><button type="button" id="botao-revisar" class="botao-principal" disabled>Revisar pedido <span aria-hidden="true">→</span></button></div></div>
+  <p id="feedback-pedido" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
 </body>
 </html>

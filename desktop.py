@@ -81,7 +81,19 @@ def smoke_test(destino, janela=False):
         assert client.get("/gestao?acesso=" + token, follow_redirects=True).status_code == 200
         produto = estoque.salvar_produto({"nome": "Camiseta teste", "categoria": "Vestuário", "preco": "49.90", "estoque": 5})
         assert client.get("/gestao/api/produtos").json[0]["id"] == produto["id"]
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True}
+        # Confere também os recursos públicos incluídos no executável, sem publicar
+        # um túnel ou conectar contas reais durante a verificação da distribuição.
+        from src.links import gerar_link_pedido
+        from src.publicacao import PaginaPublica
+        from werkzeug.test import Client
+        from werkzeug.wrappers import Response
+        caminho_pedido = '/m/' + gerar_link_pedido('5511999990000').rsplit('/', 1)[-1]
+        publico = Client(PaginaPublica(app, lambda: 'https://loja-ficticia.example'), Response)
+        assert publico.get(caminho_pedido).status_code == 200
+        assert publico.get('/static/pedido.css').status_code == 200
+        assert publico.get('/static/pedido.js').status_code == 200
+        assert publico.get('/static/gestao.js').status_code == 404
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local

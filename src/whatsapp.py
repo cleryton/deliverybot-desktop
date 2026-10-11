@@ -94,6 +94,8 @@ def _sessao_conhecida(telefone: str) -> str | None:
 def enviar_mensagem(
     telefone: str, texto: str, chat_id: str | None = None, session: str | None = None
 ) -> dict:
+    from .links import atualizar_resposta
+    texto = atualizar_resposta(texto, telefone)
     if config.MODO_TESTE:
         logger.info("Modo de teste: envio simulado, conteúdo omitido por privacidade")
         return {"modo_teste": True}
