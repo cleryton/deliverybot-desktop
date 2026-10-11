@@ -17,6 +17,7 @@ from .db import get_conn
 
 _FORMATO_DATA = "%Y-%m-%d %H:%M:%S"
 _URL = re.compile(r'[a-z][a-z0-9+.-]*://[^\s<>"\']+', re.I)
+_DOMINIO_SOLTO = re.compile(r'(?i)(?<![\w@.-])(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:com|net|org|io|app|dev|br|shop|online|site|example)(?![\w.-])')
 
 
 class PaginaIndisponivel(ValueError):
@@ -64,9 +65,14 @@ def obter_link(token: str):
     return dict(row) if row else None
 
 
-def atualizar_resposta(resposta, telefone):
+def atualizar_resposta(resposta, telefone, *, permitir_externos=False):
     """Valida todos os links, em qualquer frase, antes de chegarem ao cliente."""
     renovados = {}
+    # Links comerciais cadastrados pelo responsável são dados de referência.
+    # A IA não pode criar novos sites; mensagens humanas podem trazer links externos.
+    cadastrados = set()
+    for campo in ('ENDERECO_RESTAURANTE', 'HORARIO_FUNCIONAMENTO', 'FORMAS_PAGAMENTO', 'LGPD_CONTATO'):
+        cadastrados.update(m[0].rstrip('.,;!?)]}*') for m in _URL.finditer(getattr(config, campo, '')))
 
     def substituir(m):
         bruto = m[0]
@@ -94,11 +100,15 @@ def atualizar_resposta(resposta, telefone):
                 return _base_pedido() + '/privacidade' + sufixo
             if not config.MODO_TESTE and (_endereco_local(host) or partes.scheme != 'https'):
                 raise ValueError('A resposta contém um endereço local ou sem HTTPS, que não pode ser enviado ao cliente.')
+            if not permitir_externos and url not in cadastrados:
+                raise ValueError('O endereço da resposta não foi gerado pelo aplicativo nem cadastrado pela loja.')
             return bruto
         except (TypeError, AttributeError):
             raise ValueError('A resposta contém um endereço inválido.') from None
 
     resultado = _URL.sub(substituir, resposta)
+    if not permitir_externos and _DOMINIO_SOLTO.search(_URL.sub('', resultado)):
+        raise ValueError('A resposta contém um domínio sem link autorizado.')
     if not config.MODO_TESTE:
         local_nome = re.search(r'(?i)(?<![\w.-])(?:[\w.-]+\.)?localhost(?:\b|:)|\[::1\]', resultado)
         ips = re.findall(r'(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])', resultado)

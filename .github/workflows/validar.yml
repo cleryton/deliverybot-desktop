@@ -95,8 +95,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar aplicativo.' }
           python packaging/criar_instalador.py --distpath dist/ci
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar instalador.' }
-          python packaging/gerar_hashes.py --distpath dist/ci
-          if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar hashes.' }
+          python packaging/distribuicao.py --distpath dist/ci
+          if ($LASTEXITCODE -ne 0) { throw 'Distribuição incompleta ou integridade divergente.' }
       - name: Testar perfil de comercio no instalador
         run: |
           $taskCompiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'

@@ -179,7 +179,7 @@ def processar_mensagem(telefone: str, texto: str) -> str | None:
         resposta = atualizar_resposta(resposta, telefone)
     except ValueError:
         logger.warning("Resposta com link indisponível ou não autorizado; atendimento seguro aplicado")
-        resposta = ia.PEDIDO_INDISPONIVEL
+        resposta = (_resposta_opcao('2', telefone) if ia.intencao_pedido(texto, ia._historico_mensagens(telefone)) else ia.PEDIDO_INDISPONIVEL)
     from .db import get_conn
     with get_conn() as conn:
         novo = conn.execute("INSERT OR IGNORE INTO sessoes_bot (telefone, estado) VALUES (?, 'AVISO_PRIVACIDADE')", (telefone,)).rowcount

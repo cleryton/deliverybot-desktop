@@ -67,7 +67,7 @@ def test_falha_reenvia_resposta_sem_repetir_ia(monkeypatch):
     assert processamento.processar_proxima()
     gerar.assert_called_once()
     assert enviar.call_count == 2
-    assert enviar.call_args.kwargs == {"chat_id":"5547999990000@lid", "session":"default"}
+    assert enviar.call_args.kwargs == {"chat_id":"5547999990000@lid", "session":"default", "permitir_externos":False}
     assert processamento.situacao()["falhas"] == []
 
 

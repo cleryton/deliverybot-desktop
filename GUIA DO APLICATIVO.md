@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.26.0
+# DeliveryBot Desktop 2.26.1
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -216,6 +216,8 @@ A branch principal exige o resultado **DeliveryBot / validacao obrigatoria**. Um
 As Actions não publicam uma nova distribuição automaticamente. O instalador só deve ser publicado depois da validação e da revisão da versão. Os testes reduzem o risco de regressões, mas ainda é necessário conferir a experiência real em um computador de teste. O Dependabot propõe semanalmente atualizações dos componentes do próprio Actions; cada proposta passa pelas mesmas verificações.
 
 ### Preparação de uma distribuição assinada
+
+A distribuição é organizada em `dist/v<versão>/`; `dist/LEIA-ME.txt` indica a versão finalizada. `packaging/distribuicao.py` copia os guias e licenças, registra a versão e confere hashes do aplicativo, instalador e documentos. O mantenedor pode usar `packaging/limpar_pasta.py` para simular a limpeza e acrescentar `--aplicar` para remover versões antigas e caches reconhecidos. A ferramenta mantém a versão atual e a anterior íntegra, exige integridade da atual e preserva dados e arquivos desconhecidos.
 
 O mantenedor deve obter um certificado confiável de assinatura de código, manter a chave privada no repositório de certificados Windows e configurar apenas seu thumbprint público em `packaging/assinatura.json` **antes** de reconstruir o aplicativo. Não inclua certificados com chave privada no Git. Use `packaging/assinar.ps1 -Arquivo caminho -SignTool caminho-do-signtool.exe` para assinar o aplicativo, compile o instalador para incorporar o aplicativo assinado e assine também o instalador. Execute `packaging/gerar_hashes.py` por último. Publique o instalador e `SHA256SUMS.txt` na mesma release, sem substituir assets de uma versão já publicada. Consulte a [documentação de assinatura da Microsoft](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature) e a [API de releases do GitHub](https://docs.github.com/en/rest/releases/releases).
 
