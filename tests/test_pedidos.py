@@ -14,7 +14,9 @@ def banco_temporario(tmp_path, monkeypatch):
     db_path = tmp_path / "teste.db"
     monkeypatch.setattr(config, "DATABASE_PATH", str(db_path))
     from src.db import init_db
-    init_db()
+    # Estes testes usam explicitamente os produtos fictícios do catálogo de exemplo.
+    # O ambiente de CI mantém a carga automática de catálogo desligada.
+    init_db(seed_cardapio=True)
     yield
 
 

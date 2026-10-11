@@ -15,6 +15,13 @@ Repositório: `https://github.com/cleryton/deliverybot-desktop`. Branch principa
 - Informe na resposta final a versão, o hash do commit e as verificações realizadas. Se não houver mudança em arquivos versionados, não crie commit vazio; informe isso quando relevante.
 - O usuário autorizou a criação e o envio inicial para um novo repositório no GitHub. Para envios futuros, siga a autorização vigente na conversa; o pedido de commits por si só não autoriza publicação de novas versões ou releases.
 
+## Validação no GitHub
+
+- A `main` exige o check `DeliveryBot / validacao obrigatoria`. Trabalhe em uma branch `codex/`, preserve o commit e a tag de versão e use pull request para integrar alterações.
+- Nunca desative a proteção ou force um envio para contornar testes com falha. Corrija o problema e aguarde a validação do commit atual.
+- O workflow valida versões e sintaxe, roda os testes Python e WhatsApp simulados, compila o aplicativo e o instalador Windows e testa o executável com dados fictícios.
+- Relatórios de CI ficam nos artifacts do Actions por sete dias. A execução não publica releases nem instaladores e não conecta contas reais.
+
 ## Aplicativo
 
 - Mantenha a experiência de instalação e uso sem exigir Docker, Node.js ou Python do usuário final.

@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.24.2
+# DeliveryBot Desktop 2.24.3
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -186,6 +186,14 @@ Baixe o instalador em [Releases do DeliveryBot](https://github.com/cleryton/deli
 Em **Atualizações**, consulte a última versão publicada. A consulta automática é opcional, ocorre uma vez por dia enquanto o app está aberto e usa a API pública do GitHub. Nenhum dado dos clientes é enviado; o GitHub recebe os dados normais de uma conexão de internet, como endereço IP. O download confere tamanho, origem e SHA-256 conforme o manifesto da release, e cria um backup portátil criptografado e verificado com sua senha. Isso verifica a integridade conforme a publicação; não substitui a confiança na conta do editor no GitHub.
 
 A instalação automática exige uma assinatura Authenticode válida e o certificado do editor fixado na distribuição. A distribuição atual ainda não possui certificado comercial; o botão de instalar automaticamente permanece bloqueado. O instalador manual e o manifesto continuam disponíveis no GitHub. Para voltar aos dados anteriores, encerre o app, abra uma versão compatível e use **Restaurar backup** com a senha guardada. A restauração substitui alterações posteriores à cópia. Não há reversão automática do executável.
+
+### Validação de alterações no GitHub
+
+Cada pull request para `main` e cada envio para `main` ou uma branch `codex/` executa **Validar DeliveryBot** no GitHub Actions. O fluxo confere versões e dependências, valida a sintaxe, testa estoque, pedidos, privacidade, documentos e a conexão WhatsApp simulada. Também compila o aplicativo e o instalador no Windows e verifica o catálogo, as fotos e o PDF dentro do executável.
+
+A branch principal exige o resultado **DeliveryBot / validacao obrigatoria**. Uma falha bloqueia a integração; corrija a alteração e aguarde a nova execução. Use uma branch e um pull request para colaborar. Na aba **Actions**, abra a execução para ver o erro e baixar os relatórios, mantidos por sete dias. Os testes usam dados fictícios e não conectam contas reais, iniciam um túnel público ou enviam mensagens a clientes.
+
+As Actions não publicam uma nova distribuição automaticamente. O instalador só deve ser publicado depois da validação e da revisão da versão. Os testes reduzem o risco de regressões, mas ainda é necessário conferir a experiência real em um computador de teste. O Dependabot propõe semanalmente atualizações dos componentes do próprio Actions; cada proposta passa pelas mesmas verificações.
 
 ### Preparação de uma distribuição assinada
 
