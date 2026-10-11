@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import socket
 import subprocess
 import sys
 import threading
@@ -25,6 +26,8 @@ def validar_dominio(url):
     try:
         p = urlsplit(url)
         host = (p.hostname or '').lower()
+        if host == 'whatsapp.com' or host.endswith('.whatsapp.com') or host == 'wa.me' or host.endswith('.wa.me'):
+            raise ValueError('O WhatsApp não hospeda a página de pedidos. Use o túnel temporário ou um domínio próprio configurado na Cloudflare.')
         if p.scheme != 'https' or p.username or p.password or p.query or p.fragment or p.path not in {'', '/'} or p.port not in {None, 443}:
             raise ValueError()
         if not re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?', host) or '.' not in host or host.endswith(('.localhost', '.local', '.internal', '.lan', '.home')) or all(parte.isdigit() for parte in host.split('.')):
@@ -37,7 +40,9 @@ def validar_dominio(url):
             pass
         else:
             raise ValueError()
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as exc:
+        if str(exc).startswith('O WhatsApp não hospeda'):
+            raise ValueError(str(exc)) from None
         raise ValueError('Informe um domínio público HTTPS, sem caminho, porta especial ou credenciais.') from None
     return 'https://' + host
 
@@ -146,6 +151,7 @@ class Publicacao:
         self._verificacao = secrets.token_urlsafe(32)
         self._webhook_chave = None
         self._webhook_apos = 0.0
+        self._diagnostico_https = ''
 
     def situacao(self):
         with self._lock:
@@ -158,6 +164,7 @@ class Publicacao:
 
     def _verificar_https(self, http, url):
         """Confirma o destino real, sem clientes, tokens de compra ou redirecionamentos."""
+        self._diagnostico_https = ''
         try:
             base = validar_dominio(url)
             with http.get(base + '/_deliverybot/health/' + self._verificacao,
@@ -170,7 +177,17 @@ class Publicacao:
                     if len(conteudo) > 128:
                         return False
                 return conteudo == self._verificacao.encode('ascii')
-        except (requests.RequestException, ValueError, TypeError):
+        except (requests.RequestException, ValueError, TypeError) as exc:
+            pendentes, vistos = [exc], set()
+            while pendentes:
+                erro = pendentes.pop()
+                if id(erro) in vistos:
+                    continue
+                vistos.add(id(erro))
+                if isinstance(erro, socket.gaierror) or type(erro).__name__ == 'NameResolutionError':
+                    self._diagnostico_https = 'DNS'
+                    break
+                pendentes.extend(e for e in (getattr(erro,'reason',None), getattr(erro,'__cause__',None), *getattr(erro,'args',())) if isinstance(e, BaseException))
             return False
 
     def _atualizar_webhook(self, url):
@@ -300,7 +317,8 @@ class Publicacao:
                                 self._status('ONLINE', 'Página HTTPS pronta. Reconectando o recebimento das mensagens do WAHA externo; confira esse servidor se a demora continuar.', url)
                         else:
                             https_ate = 0.0
-                            self._status('RECONECTANDO' if time.monotonic()-inicio > 15 else 'INICIANDO', 'Verificando o acesso HTTPS aos pedidos. Confira a internet; no domínio fixo, confira também o destino na Cloudflare.')
+                            mensagem = ('O endereço não foi encontrado no DNS. No domínio fixo, configure o registro do seu domínio na Cloudflare. No temporário, o aplicativo tentará gerar outra conexão automaticamente.' if self._diagnostico_https == 'DNS' else 'Verificando o acesso HTTPS aos pedidos. Confira a internet; no domínio fixo, confira também o destino na Cloudflare.')
+                            self._status('RECONECTANDO' if time.monotonic()-inicio > 15 else 'INICIANDO', mensagem)
                         if not pronto and time.monotonic()-ultimo_pronto > 120:
                             break
                 self._status('RECONECTANDO', 'Conexão interrompida. O aplicativo tentará novamente automaticamente.')

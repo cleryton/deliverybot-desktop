@@ -296,3 +296,19 @@ def test_guardrail_final_trata_link_nao_autorizado(monkeypatch):
     resposta = bot.processar_mensagem(TELEFONE, "me sugira um produto")
     assert ia.PEDIDO_INDISPONIVEL in resposta
     assert "localhost" not in resposta and "inventado" not in resposta
+
+
+@pytest.mark.parametrize('url', ['https://pizzaria-peruzzolo.whatsapp.com', 'pizzaria-peruzzolo.whatsapp.com', 'www.loja-inventada.com/pedidos', 'https://loja.example/pedido-inventado', 'https://loja-inventada.example/m/token-inventado'])
+def test_resposta_da_ia_nao_envia_site_inventado(monkeypatch, url):
+    monkeypatch.setattr(ia, 'responder', Mock(return_value='Confira aqui: '+url))
+    resposta = bot.processar_mensagem(TELEFONE, 'me sugira um produto')
+    assert url not in resposta and ia.PEDIDO_INDISPONIVEL in resposta
+
+
+def test_pedido_com_url_inventada_recebe_link_real_do_cliente(monkeypatch):
+    from src import links
+    monkeypatch.setattr(bot, '_processar', lambda *args:'Peça em https://pizzaria-peruzzolo.whatsapp.com')
+    resposta = bot.processar_mensagem(TELEFONE, 'quero fazer um pedido')
+    assert 'https://loja.example/m/' in resposta and 'whatsapp.com' not in resposta
+    token = resposta.split('/m/')[1].split()[0]
+    assert links.link_valido(token)[0] and links.obter_link(token)['telefone'] == TELEFONE

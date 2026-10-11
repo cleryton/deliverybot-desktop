@@ -65,6 +65,7 @@ def preparar_dados(pasta):
 
 def smoke_test(destino, janela=False):
     """Verifica o executável sem tocar no estoque do usuário."""
+    os.environ.update(WHATSAPP_PROVIDER='TESTE', IA_PROVIDER='', TUNEL_AUTOMATICO='NAO', OLLAMA_AQUECER_AO_INICIAR='false')
     with tempfile.TemporaryDirectory(prefix="deliverybot-check-") as temporario:
         pasta = Path(temporario)
         preparar_dados(pasta)

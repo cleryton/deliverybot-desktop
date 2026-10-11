@@ -300,6 +300,90 @@ def test_producao_nunca_gera_link_sem_https_publico(base):
         assert banco.execute('SELECT COUNT(*) FROM links_pedido').fetchone()[0] == 0
 
 
+@pytest.mark.parametrize('url', ['https://pizzaria-peruzzolo.whatsapp.com','https://WHATSAPP.COM','https://wa.me','https://loja.wa.me'])
+def test_whatsapp_nao_pode_ser_dominio_de_pedidos(url):
+    with pytest.raises(ValueError, match='WhatsApp não hospeda'):
+        publicacao.validar_dominio(url)
+
+
+@pytest.mark.parametrize('texto', ['Peça: https://pizzaria-peruzzolo.whatsapp.com', 'Peça: pizzaria-peruzzolo.whatsapp.com', 'Abra www.site-inventado.com/pedido'])
+def test_transporte_nao_envia_dominios_inventados(aplicativo, monkeypatch, texto):
+    from src import whatsapp
+    gerente_online(aplicativo,monkeypatch)
+    config.MODO_TESTE=False
+    config.WHATSAPP_PROVIDER='LOCAL'
+    enviar=Mock()
+    monkeypatch.setattr(whatsapp,'_enviar_via_waha',enviar)
+    with pytest.raises(ValueError):
+        whatsapp.enviar_mensagem('5511999990033',texto)
+    enviar.assert_not_called()
+
+
+def test_links_cadastrados_e_humanos_preservados(aplicativo,monkeypatch):
+    from src import links
+    gerente_online(aplicativo,monkeypatch)
+    config.MODO_TESTE=False
+    config.ENDERECO_RESTAURANTE='Veja https://maps.example/local?x=1'
+    assert links.atualizar_resposta(config.ENDERECO_RESTAURANTE,'5511999990033')==config.ENDERECO_RESTAURANTE
+    with pytest.raises(ValueError):
+        links.atualizar_resposta('https://maps.example/outro','5511999990033')
+    assert links.atualizar_resposta('https://manual.example/orcamento','5511999990033',permitir_externos=True)=='https://manual.example/orcamento'
+    with pytest.raises(ValueError):
+        links.atualizar_resposta('https://localhost/orcamento','5511999990033',permitir_externos=True)
+
+
+def test_fila_corrige_resposta_antiga_inventada_sem_chamar_ia(aplicativo,monkeypatch):
+    from src import links, processamento, whatsapp, bot
+    gerente_online(aplicativo,monkeypatch)
+    config.MODO_TESTE=False
+    config.WHATSAPP_PROVIDER='LOCAL'
+    telefone='5511999990033'
+    tarefa=processamento.enfileirar({'telefone':telefone,'texto':'quero fazer um pedido'},'ficticia-dns')
+    with get_conn() as c:
+        c.execute('UPDATE tarefas_bot SET resposta=? WHERE id=?',('Peça em https://pizzaria-peruzzolo.whatsapp.com',tarefa['id']))
+    envio=Mock()
+    monkeypatch.setattr(processamento,'_servico_pronto',lambda:True)
+    monkeypatch.setattr(whatsapp,'enviar_mensagem',envio)
+    monkeypatch.setattr(bot,'processar_mensagem',Mock(side_effect=AssertionError('Não chamar a IA outra vez.')))
+    processamento._parar.clear()
+    assert processamento.processar_proxima()
+    assert envio.call_count==1
+    resposta=envio.call_args.args[1]
+    assert 'whatsapp.com' not in resposta and 'https://loja-ficticia.trycloudflare.com/m/' in resposta
+    token=resposta.split('/m/')[1].split()[0]
+    assert links.obter_link(token)['telefone']==telefone
+
+
+def test_fila_humana_preserva_link_externo_explicito(aplicativo,monkeypatch):
+    from src import processamento, whatsapp
+    gerente_online(aplicativo,monkeypatch)
+    config.MODO_TESTE=False
+    config.WHATSAPP_PROVIDER='LOCAL'
+    texto='Veja https://manual.example/documento'
+    tarefa=processamento.enfileirar({'telefone':'5511999990033','texto':texto},'ficticia-humana')
+    with get_conn() as c:
+        c.execute("UPDATE tarefas_bot SET origem='HUMANO', resposta=? WHERE id=?",(texto,tarefa['id']))
+    envio=Mock()
+    monkeypatch.setattr(processamento,'_servico_pronto',lambda:True)
+    monkeypatch.setattr(whatsapp,'enviar_mensagem',envio)
+    processamento._parar.clear()
+    assert processamento.processar_proxima()
+    assert envio.call_args.kwargs['permitir_externos'] is True
+    assert envio.call_args.args[1]==texto
+
+
+def test_probe_informa_falha_dns_sem_publicar_endereco(aplicativo):
+    import socket
+    import requests
+    g=publicacao.Publicacao(aplicativo)
+    erro=requests.ConnectionError('Falha de acesso')
+    erro.__cause__=socket.gaierror(-2,'Domínio fictício inexistente')
+    http=Mock()
+    http.get.side_effect=erro
+    assert not g._verificar_https(http,'https://ficticio.example')
+    assert g._diagnostico_https=='DNS' and g.situacao()['url']==''
+
+
 def test_links_em_frases_naturais_markdown_e_aviso_usam_https_atual(aplicativo, monkeypatch):
     from src import links
     g = gerente_online(aplicativo, monkeypatch)

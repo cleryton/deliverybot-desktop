@@ -29,12 +29,15 @@ if ($LASTEXITCODE -ne 0) { throw 'Falha ao incluir o túnel da página de pedido
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar o aplicativo.' }
 & $taskPython packaging\criar_instalador.py --distpath $taskDist
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar o instalador.' }
-& $taskPython packaging\gerar_hashes.py --distpath $taskDist
-if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar os hashes da distribuição.' }
-Copy-Item -LiteralPath 'GUIA DO APLICATIVO.md' -Destination (Join-Path $taskDist 'Como usar o DeliveryBot.txt') -Force
-Copy-Item -LiteralPath 'PRIVACIDADE E SEGURANÇA.md' -Destination (Join-Path $taskDist 'Privacidade e seguranca.txt') -Force
-Copy-Item -LiteralPath 'whatsapp-native\LICENCAS.txt' -Destination (Join-Path $taskDist 'LICENCAS WhatsApp.txt') -Force
-Copy-Item -LiteralPath 'cloudflare\runtime\LICENSE.txt' -Destination (Join-Path $taskDist 'LICENCA Cloudflare.txt') -Force
-Copy-Item -LiteralPath 'packaging\LICENCA Pillow.txt' -Destination (Join-Path $taskDist 'LICENCA Pillow.txt') -Force
-Copy-Item -LiteralPath 'packaging\LICENCAS documentos.txt' -Destination (Join-Path $taskDist 'LICENCAS documentos.txt') -Force
-Write-Host "Aplicativo e instalador disponíveis em $taskDist."
+& $taskPython packaging\distribuicao.py --distpath $taskDist
+if ($LASTEXITCODE -ne 0) { throw 'A distribuição está incompleta ou falhou na conferência de integridade.' }
+$taskSmoke = Join-Path $PSScriptRoot 'artifacts\executavel-local.json'
+New-Item -ItemType Directory -Path (Split-Path $taskSmoke) -Force | Out-Null
+$taskProcess = Start-Process -FilePath (Join-Path $taskDist 'DeliveryBot.exe') -ArgumentList @('--smoke-test', ('"'+$taskSmoke+'"')) -WindowStyle Hidden -PassThru
+if (-not $taskProcess.WaitForExit(120000)) {
+    Stop-Process -Id $taskProcess.Id -Force
+    throw 'O teste do aplicativo excedeu dois minutos.'
+}
+if ($taskProcess.ExitCode -ne 0 -or -not (Get-Content -LiteralPath $taskSmoke -Raw | ConvertFrom-Json).ok) { throw 'O aplicativo compilado falhou no teste com dados fictícios.' }
+Write-Host "Aplicativo e instalador testados disponíveis em $taskDist."
+Write-Host 'Para simular a limpeza de versões e caches: python packaging\limpar_pasta.py'

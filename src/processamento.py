@@ -144,10 +144,25 @@ def processar_proxima():
                 conn.execute("UPDATE tarefas_bot SET estado='PENDENTE' WHERE id=?", (tarefa["id"],))
             return True
         from .links import atualizar_resposta
-        resposta = atualizar_resposta(resposta, tarefa['telefone'])
+        humano_externo = tarefa['origem'] == 'HUMANO'
+        try:
+            resposta = atualizar_resposta(resposta, tarefa['telefone'], permitir_externos=humano_externo)
+        except PaginaIndisponivel:
+            raise
+        except ValueError:
+            if humano_externo:
+                raise
+            # Respostas automáticas antigas também passam pela correção, sem
+            # pedir outra inferência nem reaproveitar um endereço inventado.
+            from . import ia
+            from .links import gerar_link_pedido
+            historico = ia._historico_mensagens(tarefa['telefone'])
+            resposta = (ia.resposta_link(gerar_link_pedido(tarefa['telefone']), historico)
+                        if ia.intencao_pedido(tarefa['texto'], historico) else ia.PEDIDO_INDISPONIVEL)
+            resposta = atualizar_resposta(resposta, tarefa['telefone'])
         with get_conn() as conn:
             conn.execute("UPDATE tarefas_bot SET resposta=?, estado='ENVIANDO', atualizado_em=datetime('now') WHERE id=?", (resposta, tarefa['id']))
-        whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"])
+        whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"], permitir_externos=humano_externo)
         with get_conn() as conn:
             conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', erro=NULL, atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))
             conn.execute("INSERT INTO mensagens (telefone, direcao, conteudo) VALUES (?, 'SAIDA', ?)", (tarefa["telefone"], resposta))
