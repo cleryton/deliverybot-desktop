@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.28.0 — 2026-10-11
+
+Inicia a preparação de HTTPS e WhatsApp ao salvar uma nova conexão no desktop, valida a página antes do serviço e do QR Code, regenera túneis temporários com falha DNS dentro do prazo de login e organiza automaticamente o mapa do Obsidian Graph sem alterar as notas da equipe. Inclui testes de ordem, configuração, acesso ao QR, recuperação DNS e sincronização do mapa.
+
 ## 2.27.0 — 2026-10-11
 
 Permite montar e confirmar pedidos diretamente pelo WhatsApp, com resumo oficial, validação transacional de preços e estoque, confirmação idempotente e integração com o painel e a fila. Inclui guia no cofre Obsidian, leitor protegido de notas no aplicativo e privacidade dos rascunhos; amplia testes de conversa, concorrência e retentativas.

@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import tempfile
 import unicodedata
 from datetime import date
 from pathlib import Path
@@ -19,6 +20,8 @@ _MAX_ARQUIVOS_BACKUP = 256
 _MAX_BACKUP_BYTES = 16 * 1024 * 1024
 _MAX_LEITURA_NOTA = 64 * 1024
 _MAX_NOTAS_POR_PERGUNTA = 6
+_ARQUIVO_MAPA = 'Mapa do atendimento.md'
+_MARCA_MAPA = '<!-- DeliveryBot: mapa automático v1 -->'
 
 _NOTAS_INICIAIS = {
     "Início.md": """---
@@ -38,6 +41,8 @@ Este cofre guarda orientações editoriais e informações aprovadas para o Deli
 
 ## Pedidos na conversa
 - [[Pedidos pelo WhatsApp]] — como montar, revisar e confirmar uma compra sem abrir o link.
+- [[Conexão e página de pedidos]] — preparação automática do WhatsApp e do HTTPS.
+- [[Mapa do atendimento]] — conexões entre as notas para navegar no Obsidian Graph.
 
 ## Privacidade e precisão
 - Não inclua nomes, telefones, endereços residenciais, pedidos ou conversas de clientes.
@@ -201,6 +206,25 @@ def _preparar() -> Path:
     for nome, conteudo in _NOTAS_INICIAIS.items():
         _criar_se_ausente(pasta / nome, conteudo)
     _criar_se_ausente(pasta / 'Pedidos pelo WhatsApp.md', _GUIA_PEDIDOS)
+    _criar_se_ausente(pasta / 'Conexão e página de pedidos.md', '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Conexão e página de pedidos
+
+Ao configurar a conexão integrada do WhatsApp no aplicativo, a preparação inicia automaticamente. O botão Conectar WhatsApp também prepara tudo em segundo plano.
+
+1. O aplicativo inicia o túnel e recebe um endereço HTTPS do provedor.
+2. Confere o DNS e verifica se o HTTPS chega à página desta loja.
+3. Só depois prepara a sessão do WhatsApp e libera o QR Code no painel.
+4. A conexão é monitorada enquanto o aplicativo permanece aberto. Se o endereço temporário mudar, os novos links usam o destino atual.
+
+O modo temporário não exige comprar domínio ou preencher registros DNS. No modo fixo, o domínio próprio, o registro e o destino precisam estar configurados na Cloudflare; o aplicativo não inventa um domínio nem cria registros sem acesso à conta.
+
+Se houver falha, acompanhe o aviso em WhatsApp e IA e tente Conectar novamente. Não envie localhost ao cliente. Ele também pode montar e confirmar [[Pedidos pelo WhatsApp]] sem abrir o link.
+
+Veja [[Mapa do atendimento]], [[Informações da loja]] e [[Estilo de atendimento]]. Estas notas explicam o funcionamento; a conexão e os pedidos são executados pelo aplicativo.
+''')
     _criar_se_ausente(modelos / "Conhecimento aprovado.md", _MODELO_CONHECIMENTO)
     _criar_se_ausente(modelos / 'Lista de estoque.md', '''---
 tipo: lista-de-estoque
@@ -223,7 +247,50 @@ O lançamento será feito somente após a revisão no aplicativo. Esta nota não
         "newFileFolderPath": "Conhecimento",
         "attachmentFolderPath": "Anexos",
     }, ensure_ascii=False, indent=2) + "\n")
+    _sincronizar_mapa(pasta)
     return pasta
+
+
+def _sincronizar_mapa(pasta: Path) -> None:
+    """Índice derivado para o Graph, sem modificar as notas da equipe."""
+    destino = pasta / _ARQUIVO_MAPA
+    if destino.is_symlink() or (hasattr(destino, 'is_junction') and destino.is_junction()):
+        return
+    try:
+        anterior = destino.read_text(encoding='utf-8') if destino.exists() and destino.stat().st_size <= _MAX_LEITURA_NOTA else ''
+        if destino.exists() and _MARCA_MAPA not in anterior:
+            return  # A equipe assumiu a edição deste mapa.
+        grupos = {
+            'Voz e informações da loja': [pasta / n for n in _NOTAS_INICIAIS],
+            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Conexão e página de pedidos.md'],
+            'Modelos para revisão': [pasta / 'Modelos/Conhecimento aprovado.md', pasta / 'Modelos/Lista de estoque.md'],
+            'Conhecimento revisado': _notas_aprovadas(pasta),
+        }
+        linhas = ['---', 'tipo: mapa-do-cofre', 'atendimento: false', '---', _MARCA_MAPA,
+                  '# Mapa do atendimento', '',
+                  'Mapa atualizado pelo aplicativo. Edite as notas de origem para mudar o atendimento. As linhas no Obsidian Graph representam links entre notas, não treinamento do modelo.', '']
+        vistos = set()
+        for titulo, caminhos in grupos.items():
+            links = []
+            for caminho in caminhos:
+                relativo = caminho.relative_to(pasta).with_suffix('').as_posix()
+                if relativo in vistos or re.search(r'[\[\]|#^\r\n]', relativo) or not _ler(caminho)[1]:
+                    continue
+                vistos.add(relativo)
+                links.append(f'- [[{relativo}]]')
+            if links:
+                linhas.extend(['## ' + titulo, *links, ''])
+        conteudo = '\n'.join(linhas)
+        if conteudo != anterior:
+            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', newline='\n', dir=pasta, suffix='.tmp', delete=False) as arquivo:
+                temporario = Path(arquivo.name)
+                arquivo.write(conteudo)
+            try:
+                os.replace(temporario, destino)
+            finally:
+                temporario.unlink(missing_ok=True)
+    except OSError:
+        pass  # Um cofre aberto somente para leitura não interrompe o bot.
 
 
 def arquivo_estilo() -> Path:
@@ -274,7 +341,7 @@ def _remover_frontmatter(conteudo: str) -> tuple[str, str]:
 def visualizacao() -> dict:
     """Mostra notas editoriais ao administrador; nunca documentos de estoque."""
     pasta = _preparar()
-    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md')]
+    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Conexão e página de pedidos.md', _ARQUIVO_MAPA)]
     caminhos.extend(_notas_aprovadas(pasta))
     notas, vistos = [], set()
     for caminho in caminhos:

@@ -175,11 +175,13 @@ def test_cria_sessao_nova_com_webhook(monkeypatch):
 
 
 def test_inicializacao_integrada_nao_procura_docker(monkeypatch):
+    from src import publicacao
+    monkeypatch.setattr(publicacao, 'preparar_para_whatsapp', Mock())
     executar = Mock(side_effect=AssertionError("Não deve procurar executáveis externos"))
     monkeypatch.setattr(conexoes, "_executable", executar)
     iniciar = Mock()
     monkeypatch.setattr(conexoes.whatsapp_local, "iniciar", iniciar)
-    monkeypatch.setattr(conexoes, "conectar_whatsapp", Mock())
+    monkeypatch.setattr(conexoes, "_configurar_whatsapp", Mock())
     conexoes.iniciar_whatsapp_local(Mock())
     iniciar.assert_called_once()
     assert config.WHATSAPP_PROVIDER == "LOCAL"

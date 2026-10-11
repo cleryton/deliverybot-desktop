@@ -319,7 +319,10 @@ class Publicacao:
                             https_ate = 0.0
                             mensagem = ('O endereço não foi encontrado no DNS. No domínio fixo, configure o registro do seu domínio na Cloudflare. No temporário, o aplicativo tentará gerar outra conexão automaticamente.' if self._diagnostico_https == 'DNS' else 'Verificando o acesso HTTPS aos pedidos. Confira a internet; no domínio fixo, confira também o destino na Cloudflare.')
                             self._status('RECONECTANDO' if time.monotonic()-inicio > 15 else 'INICIANDO', mensagem)
-                        if not pronto and time.monotonic()-ultimo_pronto > 120:
+                        # Um domínio temporário sem DNS deve ser substituído dentro
+                        # do prazo de preparação do login, não somente após ele.
+                        espera = 30 if self._modo == 'RAPIDO' and self._diagnostico_https == 'DNS' and not https_url else 120
+                        if not pronto and time.monotonic()-ultimo_pronto > espera:
                             break
                 self._status('RECONECTANDO', 'Conexão interrompida. O aplicativo tentará novamente automaticamente.')
                 self._matar()
