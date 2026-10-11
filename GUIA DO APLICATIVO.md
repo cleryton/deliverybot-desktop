@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.24.3
+# DeliveryBot Desktop 2.25.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -13,6 +13,18 @@ Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de 
 Também pode abrir **DeliveryBot.exe** nessa pasta diretamente, sem instalar. O usuário final não precisa instalar Python, Node.js ou Docker nem abrir um terminal. O componente de conexão do WhatsApp já está incluído no executável.
 
 A janela usa o Microsoft Edge WebView2 Runtime, normalmente presente no Windows. Se faltar, instale pelo [site da Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/). Os arquivos gerados ainda não possuem assinatura digital de um editor comercial.
+
+## Seu comércio, do seu jeito
+
+Na primeira instalação, informe o nome, o segmento e uma descrição do que você oferece. Escolha **Revenda**, **Produção sob pedido**, **Serviços** ou **Misto**. O aplicativo usa esse perfil para organizar o catálogo e orientar o atendimento. Instalações anteriores continuam com os cadastros e saldos existentes; atualizações não pedem um perfil novo nem substituem o perfil salvo.
+
+**Produção sob pedido e serviços** começam sem contagem obrigatória nos novos itens: um prato preparado depois do pedido ou um serviço de oficina não precisa de um saldo fictício para aparecer no catálogo. **Revenda e misto** sugerem controle de quantidade. Você pode alterar essa escolha durante a instalação e em **Meu comércio**, e escolher o controle em cada item — por exemplo, pratos sem contagem e bebidas com saldo, ou serviços sem contagem e peças de reposição com estoque.
+
+Em **Meu comércio**, revise o segmento, a descrição e a operação sempre que precisar. Mudar o perfil altera apenas o padrão dos novos cadastros. Produtos, saldos, fotos, pedidos e históricos existentes são preservados. Para um item com quantidade controlada, saldo zero continua bloqueando novas vendas. Para itens sem contagem, use **Ativo** para controlar a disponibilidade no catálogo. O sistema não calcula ingredientes, capacidade de produção ou agenda automaticamente.
+
+O perfil acompanha os backups. O Ollama recebe a descrição como referência da operação; ela não é publicada na página do cliente. Para serviços, você pode usar unidades **Serviço** ou **Hora**. Cadastre preços definidos; orçamentos que exigem avaliação e horários de atendimento devem ser combinados com a equipe pelo atendimento humano.
+
+As importações de catálogo seguem o padrão do comércio. No CSV, a coluna opcional `controlar_estoque` aceita `sim` ou `nao`. Na leitura de PDF ou planilha, confira a opção de controle de cada novo item na revisão; entradas e contagens de produtos existentes continuam exigindo SKU e controle de estoque já cadastrado.
 
 ## Aparência
 

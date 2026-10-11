@@ -11,6 +11,7 @@ Repositório: `https://github.com/cleryton/deliverybot-desktop`. Branch principa
 - Use mensagens em português no formato `vX.Y.Z - descrição da alteração` e crie uma tag local `vX.Y.Z` para o commit correspondente. Não mova tags existentes.
 - A versão inicial deste repositório é `2.2.0`, que corresponde ao aplicativo já gerado. Ao gerar uma nova distribuição, sincronize também as versões do painel e do instalador.
 - Antes do commit, revise os arquivos preparados e execute as verificações adequadas à mudança. Preserve alterações do usuário e evite incluir arquivos sem relação com o pedido.
+- Cada commit deve ser acompanhado da execução de testes unitários pertinentes. Alterações de comportamento devem incluir testes que cubram o comportamento novo e as regressões relevantes; alterações apenas documentais podem executar os testes existentes relacionados. Informe o resultado e aguarde o Actions do commit atual antes da integração.
 - Nunca versione `.env`, credenciais, sessões do WhatsApp, bancos de dados de uso real, logs, ambientes virtuais, dependências instaladas ou executáveis gerados. Use `.env.example` apenas com valores de exemplo.
 - Informe na resposta final a versão, o hash do commit e as verificações realizadas. Se não houver mudança em arquivos versionados, não crie commit vazio; informe isso quando relevante.
 - O usuário autorizou a criação e o envio inicial para um novo repositório no GitHub. Para envios futuros, siga a autorização vigente na conversa; o pedido de commits por si só não autoriza publicação de novas versões ou releases.
