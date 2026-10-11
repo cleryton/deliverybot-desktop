@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.19.0 — 2026-10-10
+
+Cofre Markdown compatível com Obsidian para personalizar o estilo de atendimento; Ollama consulta a nota atual sem aprender automaticamente com conversas de clientes.
+
 ## 2.18.2 — 2026-10-10
 
 Ignora ruído sem conteúdo útil e mensagens comuns que envelhecem na fila; reduz o limite de geração do Ollama para agilizar respostas.

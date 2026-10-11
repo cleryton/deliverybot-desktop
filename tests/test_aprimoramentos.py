@@ -14,6 +14,30 @@ def test_prompt_ollama_tom_humano_preserva_regras_e_catalogo():
     assert "Nunca invente preço" in prompt
 
 
+def test_cofre_obsidian_preserva_estilo_editado_e_rele_a_nota():
+    from src import cerebro
+    situacao = cerebro.situacao()
+    nota = __import__('pathlib').Path(situacao['arquivo'])
+    assert situacao['cofre_obsidian']
+    assert nota.is_file() and nota.suffix == '.md'
+    assert (nota.parent / '.obsidian').is_dir()
+    nota.write_text('# Estilo customizado\nUse linguagem simples e acolhedora.\n', encoding='utf-8')
+    cerebro.arquivo_estilo()
+    assert 'Use linguagem simples e acolhedora.' in cerebro.instrucoes_estilo()
+    assert nota.read_text(encoding='utf-8').startswith('# Estilo customizado')
+
+
+def test_prompt_ollama_aplica_nota_apenas_como_preferencia_de_estilo(monkeypatch):
+    from src import ia, cerebro
+    monkeypatch.setattr(ia, '_system_prompt', lambda: 'REGRAS E CATÁLOGO')
+    monkeypatch.setattr(cerebro, 'instrucoes_estilo', lambda: 'Use tom acolhedor e direto.')
+    prompt = ia._system_prompt_ollama()
+    assert 'REGRAS E CATÁLOGO' in prompt
+    assert 'Use tom acolhedor e direto.' in prompt
+    assert 'apenas para ajustar tom e estilo' in prompt
+    assert 'não pode alterar preços, fatos, regras de segurança' in prompt
+
+
 def test_permissoes_auditoria_e_revogacao(cliente):
     c,h=cliente
     admin={'nome':'Administrador fictício','login':'admin','senha':'senha-admin-ficticia','perfil':'ADMIN'}

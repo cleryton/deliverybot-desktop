@@ -47,6 +47,10 @@ function stockInputs(){const f=$('#product-form'),p=state.products.find(p=>Strin
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||(!Object.keys(b.dataset).length&&b.id!=='refresh'))return;run(b,async()=>{
   if(b.dataset.connectionAction)await connectionAction(b.dataset.connectionAction);
   if(b.id==='diagnostic-export')await exportarDiagnostico();
+  if(b.dataset.action==='abrir-cerebro'){
+    if(window.pywebview?.api?.abrir_cerebro){const r=await window.pywebview.api.abrir_cerebro();toast(r?.aplicativo==='obsidian'?'Cofre aberto no Obsidian. Edite Estilo de atendimento.md.':'Pasta do cofre aberta. Edite Estilo de atendimento.md.');}
+    else {const caminho=state.cerebroPath||'Use a pasta exibida abaixo no computador do servidor.';try{await navigator.clipboard.writeText(caminho);}catch{}toast(`Cofre Markdown local: ${caminho}`);}
+  }
   if(b.dataset.action==='conexoes-atualizar')await refreshConnections();
   if(b.dataset.action==='qr-atualizar')await refreshQR();
   if(b.dataset.messageAction&&confirm(b.dataset.messageAction==='reenviar'?'Confira no celular se a resposta já chegou. Reenviar esta resposta?':'Marcar esta mensagem como resolvida e liberar o atendimento deste cliente?')){await api(`conexoes/mensagens/${b.dataset.messageId}/${b.dataset.messageAction}`,'POST',{});await refreshConnections();}
@@ -81,6 +85,7 @@ let connectionsBusy=false,qrBusy=false,lastQR=0;
 function connectionJob(selector,job){const el=$(selector);el.hidden=!job;if(job){el.textContent=job.mensagem;el.classList.toggle('error',job.estado==='ERRO');}}
 function renderConnections(c){
   const w=c.whatsapp,o=c.ollama,waBusy=c.tarefas.whatsapp?.estado==='EXECUTANDO',olBusy=c.tarefas.ollama?.estado==='EXECUTANDO';
+  state.cerebroPath=c.cerebro?.pasta||'';$('#brain-path').textContent=state.cerebroPath;
   $('#wa-status').textContent=w.mensagem+(w.numero?' · '+w.numero:'');
   $('#wa-badge').textContent=w.conectado?'Conectado':w.estado==='SCAN_QR_CODE'?'Aguardando QR':w.servico?'Disponível':'Desligado';
   $('#wa-badge').className='badge '+(w.conectado?'':w.servico?'warning':'gray');

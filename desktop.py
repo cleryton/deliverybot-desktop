@@ -303,6 +303,18 @@ def main():
             def abrir_pasta(self):
                 self._verificar()
                 os.startfile(str(pasta))
+            def abrir_cerebro(self):
+                self._verificar()
+                from src import cerebro
+                from urllib.parse import quote
+                nota = cerebro.arquivo_estilo()
+                uri = "obsidian://open?path=" + quote(str(nota), safe="")
+                try:
+                    os.startfile(uri)
+                    return {"ok": True, "aplicativo": "obsidian"}
+                except OSError:
+                    os.startfile(str(nota.parent))
+                    return {"ok": True, "aplicativo": "explorador"}
             def salvar_exportacao(self, relatorio):
                 self._verificar()
                 arquivos = window.create_file_dialog(webview.FileDialog.SAVE, save_filename="dados-do-titular.json", file_types=("Relatório JSON (*.json)",))

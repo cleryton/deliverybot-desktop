@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.18.2
+# DeliveryBot Desktop 2.19.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 

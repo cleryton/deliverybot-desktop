@@ -9,7 +9,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
-from . import conexoes, processamento, publicacao, aparencia
+from . import conexoes, processamento, publicacao, aparencia, cerebro
 from . import seguranca, privacidade, backups, operadores
 
 bp = Blueprint("gestao", __name__)
@@ -403,6 +403,7 @@ def status_conexoes():
         ol = executor.submit(conexoes.status_ollama)
         return jsonify(whatsapp=wa.result(), ollama=ol.result(), tarefas=conexoes.status_jobs(),
                        fila=processamento.situacao(), provedor=config.WHATSAPP_PROVIDER,
+                       cerebro=cerebro.situacao(),
                        pode_iniciar_local=bool(_local() and current_app.config.get("DESKTOP_TOKEN")),
                        whatsapp_local=config.WHATSAPP_PROVIDER in {"TESTE", "LOCAL"},
                        endereco_publico=publicacao.endereco(),
