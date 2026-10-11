@@ -254,6 +254,7 @@ def ler(arquivo, dono, modelo='', tipo='lista'):
             produto['acao'] = ('entrada' if tipo == 'compra' else 'contagem') if atual else 'novo'
             produto['saldo_conferido'] = atual['estoque'] if atual else None
             produto['nome_existente'] = atual['nome'] if atual else ''
+            produto['controlar_estoque'] = atual['estoque'] is not None if atual else config.COMERCIO_ESTOQUE_PADRAO == 'SIM'
         token = secrets.token_urlsafe(32)
         c.execute('INSERT INTO documentos_estoque(token,dono,origem_hash,produtos) VALUES(?,?,?,?)',
                   (token, dono, digest, json.dumps(produtos, ensure_ascii=False)))
@@ -306,9 +307,9 @@ def aplicar(dados, dono):
                 campos = {k:v for k,v in linha.items() if k in _CAMPOS}
                 campos['sku'] = sku
                 campos['ativo'] = True
-                campos['controlar_estoque'] = True
+                campos['controlar_estoque'] = linha.get('controlar_estoque', config.COMERCIO_ESTOQUE_PADRAO == 'SIM')
                 p = estoque.salvar_produto(campos, _conn=c)
-                quantidade = p['estoque']
+                quantidade = p['estoque'] if p['estoque'] is not None else 'sem contagem'
             elif acao in {'entrada', 'contagem'}:
                 p = c.execute('SELECT * FROM produtos WHERE sku=? AND sku!=\'\'', (sku,)).fetchone()
                 if not p or p['estoque'] is None:
@@ -335,7 +336,7 @@ def aplicar(dados, dono):
     estoque.invalidar_catalogo()
     salva = _registrar_nota(token, nota) if registrar else False
     return {'ok':True, 'quantidade':len(lancados), 'nota_salva':salva,
-            'aviso':'Estoque lançado. O registro no Obsidian está pendente; tente salvar a nota novamente.' if registrar and not salva else 'Produtos lançados no estoque.'}
+            'aviso':'Estoque lançado. O registro no Obsidian está pendente; tente salvar a nota novamente.' if registrar and not salva else 'Cadastro e lançamentos confirmados.'}
 
 
 def salvar_nota(token, dono):

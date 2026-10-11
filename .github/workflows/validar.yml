@@ -97,6 +97,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar instalador.' }
           python packaging/gerar_hashes.py --distpath dist/ci
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar hashes.' }
+      - name: Testar perfil de comercio no instalador
+        run: |
+          $taskCompiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
+          $taskTestExe = Join-Path $PWD 'artifacts\InstaladorTests.exe'
+          & $taskCompiler /nologo /target:exe /main:InstaladorTests /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Web.Extensions.dll ("/out:" + $taskTestExe) (Join-Path $PWD 'packaging\Instalador.cs') (Join-Path $PWD 'tests\InstaladorTests.cs')
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar teste do instalador.' }
+          & $taskTestExe
+          if ($LASTEXITCODE -ne 0) { throw 'O perfil do instalador falhou nos testes.' }
       - name: Testar executavel com dados ficticios
         run: |
           $taskExe = Join-Path $PWD 'dist/ci/DeliveryBot.exe'
@@ -108,7 +116,7 @@ jobs:
           }
           if ($taskProcess.ExitCode -ne 0) { throw 'O teste do executavel falhou.' }
           $taskResult = Get-Content -LiteralPath $taskReport -Raw | ConvertFrom-Json
-          if ($taskResult.ok -ne $true -or $taskResult.documentos_pdf -ne $true) { throw 'Relatorio do executavel incompleto.' }
+          if ($taskResult.ok -ne $true -or $taskResult.documentos_pdf -ne $true -or $taskResult.perfil_comercio -ne $true) { throw 'Relatorio do executavel incompleto.' }
           Get-Content -LiteralPath $taskReport
       - name: Guardar relatorios de validacao
         if: always()

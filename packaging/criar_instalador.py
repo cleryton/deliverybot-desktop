@@ -19,6 +19,7 @@ uninstaller = root / "build/Desinstalar.exe"
 def compilar(source, output, resources=()):
     args = [str(compiler), "/nologo", "/target:winexe", "/platform:anycpu", "/optimize+",
             "/reference:System.Windows.Forms.dll", "/reference:System.Drawing.dll",
+            "/reference:System.Web.Extensions.dll",
             "/win32icon:" + str(packaging / "DeliveryBot.ico"),
             "/win32manifest:" + str(packaging / "app.manifest"), "/out:" + str(output)]
     args.extend("/resource:"+str(path)+","+name for path,name in resources)

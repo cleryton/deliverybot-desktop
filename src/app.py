@@ -40,6 +40,14 @@ seguranca.instalar(app)
 # era um desperdício de I/O sem necessidade nenhuma).
 init_db()
 preferencias.carregar()
+
+
+@app.context_processor
+def catalogo_do_comercio():
+    from .perfil_comercio import obter
+    modelo = config.COMERCIO_MODELO
+    singular, plural = ('produto', 'produtos') if modelo == 'REVENDA' else ('item', 'itens')
+    return {'catalogo_titulo': obter()['titulo_catalogo'], 'catalogo_item': singular, 'catalogo_itens': plural}
 app.jinja_env.globals["icone_categoria"] = cardapio.icone_categoria
 
 

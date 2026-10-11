@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.25.0 — 2026-10-11
+
+Personaliza o comércio na instalação e no painel com descrição, segmento e operação de revenda, produção, serviços ou mista; estoque opcional por item, preservação de dados existentes e novos testes unitários e do instalador.
+
 ## 2.24.3 — 2026-10-11
 
 Adiciona GitHub Actions com testes Python e WhatsApp, conferência de versões, compilação Windows e teste do executável; documenta a validação obrigatória da main e atualizações dos componentes do Actions.

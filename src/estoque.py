@@ -4,7 +4,7 @@ from contextlib import nullcontext
 from decimal import Decimal, InvalidOperation
 
 from .db import get_conn
-from . import fotos
+from . import fotos, config
 
 
 def inteiro(valor, campo, minimo=0):
@@ -104,8 +104,6 @@ def salvar_produto(dados, produto_id=None, _conn=None, _foto=None):
         if campo in dados and not isinstance(dados[campo], bool):
             raise ValueError(f"{campo}: informe verdadeiro ou falso.")
     ativo = int(dados.get("ativo", True))
-    saldo = medida(dados.get("estoque", 0), "Estoque",fracionado) if dados.get("controlar_estoque", True) else None
-    minimo = medida(dados.get("estoque_minimo", 0), "Estoque mínimo",fracionado)
     try:
         with (get_conn() if _conn is None else nullcontext(_conn)) as conn:
             if _conn is None:
@@ -115,6 +113,10 @@ def salvar_produto(dados, produto_id=None, _conn=None, _foto=None):
                 anterior = conn.execute("SELECT * FROM produtos WHERE id = ?", (produto_id,)).fetchone()
                 if anterior is None:
                     raise ValueError("Produto não encontrado.")
+            controle = dados.get('controlar_estoque', anterior['estoque'] is not None if anterior else config.COMERCIO_ESTOQUE_PADRAO == 'SIM')
+            saldo = medida(dados.get('estoque', 0), 'Estoque', fracionado) if controle else None
+            minimo = medida(dados.get('estoque_minimo', 0), 'Estoque mínimo', fracionado) if controle else 0
+            if anterior is not None:
                 if anterior["estoque"] is not None and saldo is not None:
                     # Edição de descrição/preço não sobrescreve vendas feitas enquanto o formulário estava aberto.
                     saldo = anterior["estoque"]
@@ -128,7 +130,7 @@ def salvar_produto(dados, produto_id=None, _conn=None, _foto=None):
                     "INSERT INTO produtos (nome, categoria, descricao, preco, sku, unidade, ativo, estoque, estoque_minimo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (nome, categoria, descricao, preco, sku, unidade, ativo, saldo, minimo),
                 ).lastrowid
-            if anterior is None or anterior["estoque"] != saldo:
+            if (anterior is None and saldo is not None) or (anterior is not None and anterior['estoque'] != saldo):
                 registrar_movimento(conn, produto_id, "CADASTRO" if anterior is None else "AJUSTE",
                                      (saldo or 0) - ((anterior["estoque"] or 0) if anterior else 0), saldo,
                                      "Cadastro inicial" if anterior is None else "Saldo alterado no cadastro")

@@ -70,6 +70,10 @@ def smoke_test(destino, janela=False):
         preparar_dados(pasta)
         from src.app import app
         from src import estoque, config
+        from src import perfil_comercio
+        (pasta / 'perfil-instalacao.json').write_text(json.dumps({'nome':'Loja teste', 'segmento':'Comércio misto', 'descricao':'Produtos e serviços para testes fictícios.', 'modelo':'MISTO', 'controlar_estoque':True}), encoding='utf-8')
+        assert perfil_comercio.importar_instalacao(pasta)
+        assert perfil_comercio.obter()['configurado'] and not (pasta / 'perfil-instalacao.json').exists()
         from src.preferencias import salvar
         from waitress import create_server
         import webview
@@ -111,7 +115,7 @@ def smoke_test(destino, janela=False):
         # Exercita também o leitor nativo de PDF incluído na distribuição.
         from src.documentos_estoque import _ler_pdf
         assert 'Camiseta' in _ler_pdf(pdf_cliente.data)[0]
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True}
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local
@@ -287,6 +291,11 @@ def main():
         from src import config
         from src.preferencias import salvar
         from src.gestao import criar_backup
+        from src import perfil_comercio
+        try:
+            perfil_comercio.importar_instalacao(pasta)
+        except (ValueError, OSError):
+            logging.getLogger(__name__).warning('Perfil inicial não aplicado. Configure Meu comércio no painel.')
         from src import processamento
         from src import conexoes, whatsapp_local
         from waitress import create_server

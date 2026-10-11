@@ -10,7 +10,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
-from . import conexoes, processamento, publicacao, aparencia, cerebro
+from . import conexoes, processamento, publicacao, aparencia, cerebro, perfil_comercio
 from . import seguranca, privacidade, backups, operadores, fotos
 
 bp = Blueprint("gestao", __name__)
@@ -107,6 +107,7 @@ def painel():
     session.setdefault("csrf", secrets.token_urlsafe(32))
     return render_template("gestao.html", csrf=session["csrf"], administrador=operadores.admin(),
                            tema=aparencia.tema(),
+                           perfil_pendente=config.COMERCIO_CONFIGURADO != 'SIM',
                            provedor_whatsapp=config.WHATSAPP_PROVIDER if token else "")
 
 
@@ -210,6 +211,8 @@ def resumo():
     return jsonify(produtos=len(produtos), ativos=sum(p["ativo"] for p in produtos),
                    baixos=sum(p["ativo"] and p["estoque"] is not None and p["estoque"] <= p["estoque_minimo"] for p in produtos),
                    pendentes=len(fila.listar_fila()), **total, nome=config.NOME_RESTAURANTE,
+                   comercio={k: v for k, v in perfil_comercio.obter().items() if k != 'descricao'},
+                   produtos_controlados=sum(p['estoque'] is not None for p in produtos),
                    modo_teste=config.MODO_TESTE, whatsapp=config.WHATSAPP_PROVIDER,
                    privacidade_configurada=bool(config.LGPD_RESPONSAVEL and config.LGPD_CONTATO),
                    base_url=publicacao.endereco(), pasta=str(Path(config.DATABASE_PATH).resolve().parent),
@@ -221,6 +224,12 @@ def _webhook_exibicao():
         return conexoes.url_webhook()
     except ValueError:
         return "Informe o endereço do aplicativo visto pelo WAHA em Configurações."
+
+
+@bp.route('/gestao/api/comercio', methods=['GET', 'PUT'])
+@protegido
+def comercio_api():
+    return jsonify(perfil_comercio.obter() if request.method == 'GET' else perfil_comercio.salvar(dados_json()))
 
 
 @bp.route("/gestao/api/produtos", methods=["GET", "POST"])
