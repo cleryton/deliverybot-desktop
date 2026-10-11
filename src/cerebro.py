@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from pathlib import PurePosixPath
 
-from . import config
+from . import config, padroes_atendimento
 
 _ARQUIVO_ESTILO = "Estilo de atendimento.md"
 _ARQUIVO_LOJA = "Informações da loja.md"
@@ -22,6 +22,32 @@ _MAX_LEITURA_NOTA = 64 * 1024
 _MAX_NOTAS_POR_PERGUNTA = 6
 _ARQUIVO_MAPA = 'Mapa do atendimento.md'
 _MARCA_MAPA = '<!-- DeliveryBot: mapa automático v1 -->'
+_GUIA_PADROES = '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Personalizar os atendimentos
+
+Em Meu comércio, descreva seu segmento e escolha como trabalha. O aplicativo cria uma pasta em `Atendimentos` adequada ao perfil: restaurantes e alimentos, moda, eletrônicos, oficinas, revenda, produção, serviços, comércio misto ou atendimento geral.
+
+## Uma nota para cada atendimento
+- Perfil: orientações específicas do segmento.
+- 01 Recepção: acolher quando ainda não houver uma intenção clara.
+- 02 Dúvidas: esclarecer informações sem pressionar a compra.
+- 03 Escolha: orientar produtos, variações, encomendas ou serviços.
+- 04 Fechamento: ajudar a revisar e seguir o fluxo oficial do pedido.
+- 05 Pós-venda: acompanhar uma compra existente.
+- 06 Atendimento humano: reclamações e situações que precisam da equipe.
+
+Edite individualmente o tom, perguntas e exemplos fictícios nas notas da pasta ativa. O Ollama lê o perfil e a etapa correspondente à mensagem, junto com [[Estilo de atendimento]] e o conhecimento aprovado. Não envia todas as etapas ou segmentos de uma vez. A seleção da etapa é uma orientação editorial aproximada; as operações da loja continuam no aplicativo.
+
+## Revisão e preservação
+As edições entram na próxima resposta, sem treinar pesos da rede neural. Mude `atendimento: true` para `atendimento: false` para suspender uma nota. Opcionalmente, adicione `valido_ate: AAAA-MM-DD` para limitar sua validade. Preserve `categoria_atendimento` e `etapa_atendimento`: uma nota com identificação incorreta não entra no contexto.
+
+Se o perfil da loja mudar, outra pasta será preparada. As edições antigas são preservadas e ficam fora do atendimento da nova categoria. O painel WhatsApp e IA mostra a categoria ativa e permite ler suas notas. O [[Mapa do atendimento]] conecta os padrões ativos no Obsidian Graph.
+
+Não copie conversas, nomes, telefones, endereços ou pedidos de clientes. Não invente preços, descontos, disponibilidade, ingredientes, compatibilidade, prazos ou reservas. Notas orientam a escrita; [[Pedidos pelo WhatsApp]] e [[Conexão e página de pedidos]] explicam ações executadas pelo aplicativo.
+'''
 
 _NOTAS_INICIAIS = {
     "Início.md": """---
@@ -33,6 +59,7 @@ Este cofre guarda orientações editoriais e informações aprovadas para o Deli
 
 ## Personalidade
 - [[Estilo de atendimento]] — voz, tom e exemplos de conversa.
+- [[Atendimentos/Como personalizar]] — padrões individuais por segmento e etapa.
 
 ## Conhecimento aprovado
 - [[Informações da loja]] — horários, entrega e políticas confirmadas.
@@ -194,7 +221,9 @@ def _criar_se_ausente(caminho: Path, conteudo: str) -> None:
 
 def _preparar() -> Path:
     pasta = diretorio()
-    for caminho in (pasta, pasta/'Conhecimento', pasta/'Modelos', pasta/'.obsidian'):
+    categoria = padroes_atendimento.categoria()
+    padroes = pasta / 'Atendimentos' / padroes_atendimento.PERFIS[categoria][0]
+    for caminho in (pasta, pasta/'Conhecimento', pasta/'Modelos', pasta/'.obsidian', pasta/'Atendimentos', padroes):
         if caminho.is_symlink() or (hasattr(caminho, 'is_junction') and caminho.is_junction()):
             raise ValueError('O cofre Obsidian não pode usar atalhos para pastas externas.')
     pasta.mkdir(parents=True, exist_ok=True)
@@ -205,6 +234,9 @@ def _preparar() -> Path:
     (pasta / ".obsidian").mkdir(exist_ok=True)
     for nome, conteudo in _NOTAS_INICIAIS.items():
         _criar_se_ausente(pasta / nome, conteudo)
+    _criar_se_ausente(pasta / 'Atendimentos/Como personalizar.md', _GUIA_PADROES)
+    for nome, conteudo in padroes_atendimento.arquivos(categoria).items():
+        _criar_se_ausente(padroes / nome, conteudo)
     _criar_se_ausente(pasta / 'Pedidos pelo WhatsApp.md', _GUIA_PEDIDOS)
     _criar_se_ausente(pasta / 'Conexão e página de pedidos.md', '''---
 tipo: guia-operacional
@@ -265,6 +297,7 @@ def _sincronizar_mapa(pasta: Path) -> None:
             'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Conexão e página de pedidos.md'],
             'Modelos para revisão': [pasta / 'Modelos/Conhecimento aprovado.md', pasta / 'Modelos/Lista de estoque.md'],
             'Conhecimento revisado': _notas_aprovadas(pasta),
+            'Padrões de atendimento ativos': [pasta / 'Atendimentos/Como personalizar.md', *_padroes_aprovados(pasta)],
         }
         linhas = ['---', 'tipo: mapa-do-cofre', 'atendimento: false', '---', _MARCA_MAPA,
                   '# Mapa do atendimento', '',
@@ -322,7 +355,9 @@ def registrar_documento_estoque(token: str, linhas: str) -> Path:
 def situacao() -> dict:
     pasta = _preparar()
     estilo = instrucoes_estilo()
-    ativos = bool(estilo) + len(_notas_aprovadas(pasta))
+    categoria = padroes_atendimento.categoria()
+    padroes = _padroes_aprovados(pasta)
+    ativos = bool(estilo) + len(_notas_aprovadas(pasta)) + len(padroes)
     return {
         "pasta": str(pasta),
         "arquivo": str(arquivo_inicio()),
@@ -330,6 +365,7 @@ def situacao() -> dict:
         "notas_contexto": ativos,
         "consulta_por_assunto": True,
         "limite_contexto": _LIMITE_TOTAL,
+        "atendimento": {"categoria": categoria, "titulo": padroes_atendimento.PERFIS[categoria][0], "padroes": len(padroes)},
     }
 
 
@@ -342,7 +378,9 @@ def visualizacao() -> dict:
     """Mostra notas editoriais ao administrador; nunca documentos de estoque."""
     pasta = _preparar()
     caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Conexão e página de pedidos.md', _ARQUIVO_MAPA)]
-    caminhos.extend(_notas_aprovadas(pasta))
+    # Mostra os padrões antes do conhecimento extra para não ocultá-los no limite.
+    padroes = _padroes_aprovados(pasta)
+    caminhos.extend([pasta / 'Atendimentos/Como personalizar.md', *padroes, *_notas_aprovadas(pasta)])
     notas, vistos = [], set()
     for caminho in caminhos:
         nome = caminho.relative_to(pasta).as_posix()
@@ -350,6 +388,8 @@ def visualizacao() -> dict:
             continue
         vistos.add(nome)
         metadados, corpo = _ler(caminho)
+        if caminho in padroes and not _aprovada(metadados):
+            continue
         if corpo:
             notas.append({'nome':nome,'conteudo':corpo,'uso': 'Estilo' if caminho.name==_ARQUIVO_ESTILO else 'Contexto aprovado' if _aprovada(metadados) else 'Guia; não enviado ao modelo'})
         if len(notas)>=32:
@@ -470,6 +510,24 @@ def _notas_aprovadas(pasta: Path) -> list[Path]:
     return aprovadas
 
 
+def _padroes_aprovados(pasta: Path, etapa: str | None = None) -> list[Path]:
+    """Somente arquivos conhecidos do perfil ativo, com identificação e revisão válidas."""
+    categoria = padroes_atendimento.categoria()
+    base = pasta / 'Atendimentos' / padroes_atendimento.PERFIS[categoria][0]
+    esperados = {'Perfil.md': 'perfil', **{dados[0]: slug for slug, dados in padroes_atendimento.ETAPAS.items()}}
+    aprovados = []
+    for nome, esperado in esperados.items():
+        if etapa is not None and esperado not in {'perfil', etapa}:
+            continue
+        caminho = base / nome
+        metadados, corpo = _ler(caminho)
+        if (corpo and _aprovada(metadados)
+                and _metadado(metadados, 'categoria_atendimento') == categoria
+                and _metadado(metadados, 'etapa_atendimento') == esperado):
+            aprovados.append(caminho)
+    return aprovados
+
+
 def instrucoes_estilo() -> str:
     """Mantém uma API simples para leitores que precisam somente da voz."""
     _, conteudo = _ler(arquivo_estilo())
@@ -483,6 +541,16 @@ def instrucoes_contexto(pergunta: str = '') -> str:
     _, estilo = _ler(pasta / _ARQUIVO_ESTILO)
     if estilo:
         secoes.append(("Estilo de atendimento", estilo))
+    selecionada = padroes_atendimento.etapa(pergunta)
+    for caminho in _padroes_aprovados(pasta, selecionada):
+        # Revalida após a seleção: uma edição/revogação pode ocorrer entre leituras.
+        metadados, corpo = _ler(caminho)
+        categoria = padroes_atendimento.categoria()
+        esperado = 'perfil' if caminho.name == 'Perfil.md' else selecionada
+        if (corpo and _aprovada(metadados)
+                and _metadado(metadados, 'categoria_atendimento') == categoria
+                and _metadado(metadados, 'etapa_atendimento') == esperado):
+            secoes.append((caminho.relative_to(pasta).as_posix(), corpo))
     termos = _termos(pergunta)
     candidatas = []
     for caminho in _notas_aprovadas(pasta):

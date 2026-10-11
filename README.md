@@ -58,3 +58,13 @@ O cofre Obsidian inclui um guia operacional e o painel possui leitor de notas ex
 Ao salvar uma nova conexão LOCAL ou WAHA no aplicativo Windows, a preparação começa automaticamente. O túnel temporário fornece o endereço HTTPS; o aplicativo verifica DNS e destino antes de iniciar a sessão e liberar o QR Code no painel. Conectar WhatsApp repete a preparação em caso de falha. Domínio fixo exige configuração na Cloudflare. Mantenha o aplicativo aberto e a internet disponível para receber pedidos pelo link.
 
 No cofre Obsidian, abra `Mapa do atendimento.md` ou a visualização em gráfico. O mapa liga os guias, o estilo e o conhecimento aprovado, e remove referências a conhecimento revogado ou vencido na próxima consulta do aplicativo. As notas existentes são preservadas. O mapa é gerado automaticamente; para mantê-lo manualmente, remova o comentário `DeliveryBot: mapa automático v1`. Os guias operacionais e o mapa não são enviados ao modelo e não executam pedidos ou conexões.
+
+### Padrões individuais por segmento e atendimento
+
+Configure **Meu comércio** com o segmento, a descrição e o modo de operação. O aplicativo prepara em `Atendimentos` o perfil adequado: restaurantes e alimentos, moda e acessórios, eletrônicos, oficinas e peças, lojas de produtos, produção e encomendas, serviços e agendamentos, produtos e serviços ou atendimento geral. O segmento cadastrado tem preferência; a descrição e o modo de operação servem como apoio. Uma pergunta de cliente não muda o segmento da loja.
+
+Cada pasta contém `Perfil.md` e seis notas: **Recepção**, **Dúvidas**, **Escolha**, **Fechamento**, **Pós-venda** e **Atendimento humano**. Edite cada uma com seu tom, perguntas úteis e exemplos fictícios. O Ollama lê o perfil e a etapa relacionada à mensagem, além do estilo e do conhecimento pertinente; a classificação da etapa é aproximada e orienta somente a escrita. Pedidos e outras operações continuam no fluxo oficial do aplicativo.
+
+Em **WhatsApp e IA**, confira o perfil ativo e clique em **Visualizar notas**. `Atendimentos/Como personalizar.md` explica a organização, e `Mapa do atendimento.md` conecta os padrões ativos no Graph. Para suspender uma nota, use `atendimento: false`; para limitar sua validade, acrescente `valido_ate: AAAA-MM-DD`. Preserve `categoria_atendimento` e `etapa_atendimento`. Identificação incorreta, validade vencida ou aprovação ambígua impedem o uso.
+
+Ao mudar o perfil, as edições antigas ficam preservadas na pasta anterior e saem do contexto da nova categoria. Os backups criptografados incluem essas notas. A próxima resposta lê suas alterações sem treinar a rede neural. Não inclua conversas nem dados de clientes; preços, estoque, reservas e condições comerciais precisam de confirmação no cadastro ou pela equipe.
