@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.21.0
+# DeliveryBot Desktop 2.22.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -84,7 +84,11 @@ Em **WhatsApp e IA → Conexões**, clique em **Abrir o cofre no Obsidian**. O a
 
 O Ollama consulta a nota de estilo e as notas de loja aprovadas a cada resposta. Para incluir uma nota própria, crie-a em `Conhecimento` usando `Modelos/Conhecimento aprovado.md`; depois de revisar, altere no início do arquivo `atendimento: false` para `atendimento: true`. Notas não aprovadas ficam fora do contexto. O conteúdo orienta as respostas, mas não treina o modelo. Produtos, preços, estoque e pedidos vêm do cadastro do aplicativo.
 
-Não guarde dados de clientes nesse cofre. A IA local recebe o texto das notas que estiverem aprovadas; o aplicativo não grava conversas nelas. Backups criptografados `.dbot` novos incluem as notas Markdown aprovadas, e a restauração as recupera sem apagar notas adicionais que existam no computador. Backups de versões anteriores continuam válidos, mas não contêm notas do Obsidian. Se ativar sincronização do Obsidian, revise as configurações e o serviço escolhido.
+A consulta seleciona até seis notas relacionadas ao assunto da pergunta, mantendo a nota de estilo. Use palavras claras no título e acrescente `tags: [troca, garantia]` no frontmatter para facilitar a busca. As listas de tags editadas nas propriedades do Obsidian também são reconhecidas, conforme o [formato de propriedades do Obsidian](https://obsidian.md/help/properties). `prioridade: 1` até `prioridade: 5` desempata notas sobre o mesmo assunto; 5 é a maior prioridade. Essas opções são facultativas, e notas antigas continuam funcionando. As notas de informações gerais e perguntas frequentes também podem fornecer contexto de apoio.
+
+Para regras com prazo, adicione `valido_ate: AAAA-MM-DD` no frontmatter. A nota vale até o fim desse dia no computador da loja; depois deixa de ser usada nas respostas, permanecendo no cofre e no backup. Datas inválidas e campos de aprovação ou validade duplicados impedem o uso da nota. Notas acima de 64 KB, conteúdo inválido ou arquivos que apontem para fora do cofre também são ignorados. O contexto enviado mantém um limite de 14 mil caracteres, incluindo os títulos, para reduzir distrações e custo de processamento. A pergunta é usada somente para selecionar referências e não é salva no cofre.
+
+Não guarde dados de clientes nesse cofre. A IA local recebe o texto das notas que estiverem aprovadas; o aplicativo não grava conversas nelas. Backups criptografados `.dbot` novos incluem as notas Markdown do cofre, inclusive rascunhos, e a restauração as recupera sem apagar notas adicionais que existam no computador. Backups de versões anteriores continuam válidos, mas não contêm notas do Obsidian. Se ativar sincronização do Obsidian, revise as configurações e o serviço escolhido.
 
 ## Iniciar Ollama pelo aplicativo
 

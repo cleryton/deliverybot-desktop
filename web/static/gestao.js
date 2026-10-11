@@ -85,7 +85,7 @@ let connectionsBusy=false,qrBusy=false,lastQR=0;
 function connectionJob(selector,job){const el=$(selector);el.hidden=!job;if(job){el.textContent=job.mensagem;el.classList.toggle('error',job.estado==='ERRO');}}
 function renderConnections(c){
   const w=c.whatsapp,o=c.ollama,waBusy=c.tarefas.whatsapp?.estado==='EXECUTANDO',olBusy=c.tarefas.ollama?.estado==='EXECUTANDO';
-  state.cerebroPath=c.cerebro?.pasta||'';$('#brain-path').textContent=state.cerebroPath;$('#brain-summary').textContent=` ${c.cerebro?.notas_contexto||0} notas no contexto do atendimento.`;
+  state.cerebroPath=c.cerebro?.pasta||'';$('#brain-path').textContent=state.cerebroPath;$('#brain-summary').textContent=` ${c.cerebro?.notas_contexto||0} notas revisadas disponíveis; a consulta seleciona as relacionadas à dúvida.`;
   $('#wa-status').textContent=w.mensagem+(w.numero?' · '+w.numero:'');
   $('#wa-badge').textContent=w.conectado?'Conectado':w.estado==='SCAN_QR_CODE'?'Aguardando QR':w.servico?'Disponível':'Desligado';
   $('#wa-badge').className='badge '+(w.conectado?'':w.servico?'warning':'gray');

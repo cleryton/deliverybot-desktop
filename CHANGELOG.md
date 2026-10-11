@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.22.0 — 2026-10-11
+
+Consulta do cérebro Obsidian por assunto, tags compatíveis com as propriedades e prioridade; validade opcional de conhecimento aprovado, leitura limitada e protegida, preservação das notas existentes e orçamento de contexto incluindo títulos.
+
 ## 2.21.0 — 2026-10-10
 
 Atendimento mais natural com respostas locais rápidas e contexto recente; validação de todos os links antes do envio, verificação HTTPS da origem, espera automática na reconexão e renovação do callback WAHA remoto; catálogo público redesenhado com busca, carrinho acessível e recibo com valores precisos.

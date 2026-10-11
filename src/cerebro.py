@@ -2,6 +2,8 @@
 import json
 import os
 import re
+import unicodedata
+from datetime import date
 from pathlib import Path
 from pathlib import PurePosixPath
 
@@ -15,6 +17,8 @@ _LIMITE_TOTAL = 14000
 _MAX_NOTAS_EXTRAS = 12
 _MAX_ARQUIVOS_BACKUP = 256
 _MAX_BACKUP_BYTES = 16 * 1024 * 1024
+_MAX_LEITURA_NOTA = 64 * 1024
+_MAX_NOTAS_POR_PERGUNTA = 6
 
 _NOTAS_INICIAIS = {
     "Início.md": """---
@@ -109,6 +113,8 @@ Fonte: política de entrega. Revisado em: AAAA-MM-DD.
 _MODELO_CONHECIMENTO = """---
 tipo: conhecimento-aprovado
 atendimento: false
+prioridade: 3
+tags: [assunto, palavras-chave]
 ---
 # Título do assunto
 
@@ -120,6 +126,8 @@ atendimento: false
 - Fonte:
 - Responsável:
 - Revisado em (AAAA-MM-DD):
+
+<!-- Opcional: adicione valido_ate: AAAA-MM-DD no frontmatter para suspender automaticamente o uso após essa data. Prioridade aceita 1 a 5; 5 é a maior. Tags ajudam a encontrar esta nota pela dúvida do cliente. -->
 
 <!-- Não inclua dados ou conversas de clientes. Produtos, preços e estoque devem ser consultados no cadastro do aplicativo. -->
 """
@@ -169,22 +177,21 @@ def arquivo_estilo() -> Path:
 
 def situacao() -> dict:
     pasta = _preparar()
-    ativos = 1 + len(_notas_aprovadas(pasta))
+    estilo = instrucoes_estilo()
+    ativos = bool(estilo) + len(_notas_aprovadas(pasta))
     return {
         "pasta": str(pasta),
         "arquivo": str(arquivo_inicio()),
         "cofre_obsidian": True,
         "notas_contexto": ativos,
+        "consulta_por_assunto": True,
+        "limite_contexto": _LIMITE_TOTAL,
     }
 
 
 def _remover_frontmatter(conteudo: str) -> tuple[str, str]:
-    if not conteudo.startswith("---"):
-        return "", conteudo
-    partes = conteudo.split("---", 2)
-    if len(partes) != 3:
-        return "", conteudo
-    return partes[1], partes[2]
+    bloco = re.match(r"\A\ufeff?---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|\Z)", conteudo, re.DOTALL)
+    return (bloco[1], conteudo[bloco.end():]) if bloco else ("", conteudo)
 
 
 def _limpar(conteudo: str) -> str:
@@ -208,11 +215,72 @@ def _limpar(conteudo: str) -> str:
 
 def _ler(caminho: Path) -> tuple[str, str]:
     try:
-        conteudo = caminho.read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
+        raiz = diretorio()
+        if raiz.is_symlink() or (hasattr(raiz, 'is_junction') and raiz.is_junction()):
+            return "", ""
+        relativo = caminho.relative_to(raiz)
+        atual = raiz
+        for parte in relativo.parts:
+            atual = atual / parte
+            if atual.is_symlink() or (hasattr(atual, 'is_junction') and atual.is_junction()):
+                return "", ""
+        caminho.resolve().relative_to(raiz.resolve())
+        with caminho.open('rb') as arquivo:
+            dados = arquivo.read(_MAX_LEITURA_NOTA + 1)
+        if len(dados) > _MAX_LEITURA_NOTA or b'\x00' in dados:
+            return "", ""
+        conteudo = dados.decode('utf-8-sig').replace('\r\n', '\n').replace('\r', '\n')
+    except (OSError, UnicodeError, ValueError):
         return "", ""
     metadados, corpo = _remover_frontmatter(conteudo)
     return metadados, _limpar(corpo)[:_LIMITE_NOTA]
+
+
+def _metadado(metadados: str, chave: str) -> str:
+    valores = re.findall(r'^' + re.escape(chave) + r'[ \t]*:[ \t]*([^\r\n]*)$', metadados, re.M | re.I)
+    return valores[0].strip() if len(valores) == 1 else ''
+
+
+def _aprovada(metadados: str) -> bool:
+    if _metadado(metadados, 'atendimento').casefold() != 'true':
+        return False
+    if re.search(r'^valido_ate[ \t]*:', metadados, re.M | re.I):
+        try:
+            validade = _metadado(metadados, 'valido_ate')
+            if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', validade) or date.fromisoformat(validade) < date.today():
+                return False
+        except ValueError:
+            return False
+    return True
+
+
+def _termos(texto: str) -> set[str]:
+    texto = ''.join(c for c in unicodedata.normalize('NFKD', texto.casefold()) if not unicodedata.combining(c))
+    ignorados = {'para', 'como', 'voces', 'queria', 'quero', 'gostaria', 'sobre', 'qual', 'quais', 'porque', 'posso', 'pode', 'essa', 'esse', 'isso', 'tenho', 'loja', 'produto', 'produtos', 'pedido', 'pedidos'}
+    return {t for t in re.findall(r'[a-z]{3,}', texto[:16000]) if t not in ignorados}
+
+
+def _prioridade(metadados: str) -> int:
+    valor = _metadado(metadados, 'prioridade')
+    return int(valor) if valor in {'1', '2', '3', '4', '5'} else 3
+
+
+def _tags(metadados: str) -> str:
+    """Aceita tanto a lista inline quanto a lista editada nas propriedades do Obsidian."""
+    campos = list(re.finditer(r'^tags[ \t]*:[ \t]*([^\n]*)$', metadados, re.M | re.I))
+    if len(campos) != 1:
+        return ''
+    if campos[0][1].strip():
+        return campos[0][1].strip()
+    valores = []
+    for linha in metadados[campos[0].end():].splitlines():
+        if not linha.strip():
+            continue
+        item = re.fullmatch(r'[ \t]*-[ \t]+(.+)', linha)
+        if not item:
+            break
+        valores.append(item[1])
+    return ' '.join(valores)
 
 
 def _notas_aprovadas(pasta: Path) -> list[Path]:
@@ -223,7 +291,7 @@ def _notas_aprovadas(pasta: Path) -> list[Path]:
             extras = sorted(base.rglob("*.md"), key=lambda p: str(p).casefold())
         except OSError:
             extras = []
-        candidatas.extend(p for p in extras if not p.is_symlink())
+        candidatas.extend(p for p in extras[:_MAX_ARQUIVOS_BACKUP] if not p.is_symlink())
     aprovadas = []
     raiz = pasta.resolve()
     for caminho in candidatas:
@@ -234,10 +302,8 @@ def _notas_aprovadas(pasta: Path) -> list[Path]:
         except (OSError, ValueError):
             continue
         metadados, corpo = _ler(caminho)
-        if corpo and re.search(r"(?im)^\s*atendimento\s*:\s*true\s*$", metadados):
+        if corpo and _aprovada(metadados):
             aprovadas.append(caminho)
-        if len(aprovadas) >= _MAX_NOTAS_EXTRAS + 2:
-            break
     return aprovadas
 
 
@@ -247,29 +313,42 @@ def instrucoes_estilo() -> str:
     return conteudo
 
 
-def instrucoes_contexto() -> str:
-    """Carrega apenas notas de estilo e conteúdo que o lojista aprovou."""
+def instrucoes_contexto(pergunta: str = '') -> str:
+    """Seleciona conhecimento aprovado pelo assunto; nunca grava a pergunta no cofre."""
     pasta = _preparar()
     secoes = []
     _, estilo = _ler(pasta / _ARQUIVO_ESTILO)
     if estilo:
         secoes.append(("Estilo de atendimento", estilo))
+    termos = _termos(pergunta)
+    candidatas = []
     for caminho in _notas_aprovadas(pasta):
-        _, corpo = _ler(caminho)
-        if corpo:
+        metadados, corpo = _ler(caminho)
+        if corpo and _aprovada(metadados):
             rotulo = caminho.relative_to(pasta).as_posix()[:120]
-            secoes.append((rotulo, corpo))
+            titulo = _termos(caminho.stem + ' ' + _tags(metadados))
+            afinidade = 4 * len(termos & titulo) + len(termos & _termos(corpo))
+            if termos and not afinidade and caminho.name not in {_ARQUIVO_LOJA, _ARQUIVO_FAQ}:
+                continue
+            candidatas.append((afinidade, _prioridade(metadados), rotulo, corpo))
+    candidatas.sort(key=lambda nota: (-nota[0], -nota[1], nota[2].casefold()))
+    if termos:
+        candidatas = candidatas[:_MAX_NOTAS_POR_PERGUNTA]
+    else:
+        candidatas = candidatas[:_MAX_NOTAS_EXTRAS + 2]
+    secoes.extend((rotulo, corpo) for _, _, rotulo, corpo in candidatas)
     partes = []
     restante = _LIMITE_TOTAL
     for rotulo, conteudo in secoes:
-        trecho = conteudo[:restante]
+        cabecalho = ('\n\n' if partes else '') + f'### {rotulo}\n'
+        trecho = conteudo[:max(0, restante - len(cabecalho))]
         if not trecho:
             break
-        partes.append(f"### {rotulo}\n{trecho}")
-        restante -= len(trecho)
+        partes.append(cabecalho + trecho)
+        restante -= len(cabecalho) + len(trecho)
         if restante <= 0:
             break
-    return "\n\n".join(partes)
+    return ''.join(partes)
 
 
 def snapshot() -> dict[str, bytes]:

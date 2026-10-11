@@ -24,7 +24,7 @@ def ambiente(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "FORMAS_PAGAMENTO", "Pix,Dinheiro")
     monkeypatch.setattr(config, "RATE_LIMIT_SEGUNDOS", 0)
     monkeypatch.setattr(publicacao, "_gerente", None)
-    monkeypatch.setattr(cerebro, "instrucoes_contexto", lambda: "Tom acolhedor e objetivo.")
+    monkeypatch.setattr(cerebro, "instrucoes_contexto", lambda pergunta='': "Tom acolhedor e objetivo.")
     bot._ultima_chamada_ia.clear()
     ia.invalidar_cache_prompt()
     init_db()
