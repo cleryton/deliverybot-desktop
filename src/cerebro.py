@@ -36,6 +36,9 @@ Este cofre guarda orientações editoriais e informações aprovadas para o Deli
 - [[Perguntas frequentes]] — respostas curtas revisadas pela equipe.
 - Para adicionar outros assuntos, crie uma nota em `Conhecimento` usando `Modelos/Conhecimento aprovado.md` e marque `atendimento: true` no frontmatter.
 
+## Pedidos na conversa
+- [[Pedidos pelo WhatsApp]] — como montar, revisar e confirmar uma compra sem abrir o link.
+
 ## Privacidade e precisão
 - Não inclua nomes, telefones, endereços residenciais, pedidos ou conversas de clientes.
 - Mantenha informações objetivas e atuais; indique a fonte e a data de revisão.
@@ -138,6 +141,39 @@ def diretorio() -> Path:
     return Path(config.DATABASE_PATH).expanduser().resolve().parent / "Cerebro Obsidian"
 
 
+_GUIA_PEDIDOS = """---
+tipo: guia-operacional
+atendimento: false
+---
+# Pedidos pelo WhatsApp
+
+O cliente pode dizer **pedido pelo WhatsApp**, **quero pedir por aqui** ou **não quero acessar o link**. Uma seleção concreta, como “quero 2 Calabresa Grande”, também inicia o rascunho.
+
+## Caminho da compra
+1. Informar quantidade, nome e variação dos produtos cadastrados.
+2. Informar o nome do cliente e escolher entrega ou retirada.
+3. Para entrega, informar rua, número e bairro. O telefone vem da própria conversa.
+4. Escolher uma das formas de pagamento cadastradas.
+5. Conferir o resumo com itens, valores atuais, taxa e total.
+6. Enviar **CONFIRMAR**. Só então o aplicativo salva o pedido no painel e na fila de preparo.
+
+## Ajustes antes de confirmar
+- **adicionar 1 Nome Variação** soma uma unidade.
+- **alterar 2 Nome Variação** define a quantidade desse item.
+- **remover Nome Variação** remove o item inteiro.
+- **nome: Nome** ou **endereço: Rua, número, bairro** corrigem os dados.
+- **CANCELAR** descarta o rascunho; não cancela pedidos já salvos.
+- **ATENDENTE** pausa o bot para a equipe assumir.
+
+## O que o cérebro pode fazer
+O Ollama consulta as notas aprovadas para adaptar o estilo e responder dúvidas. As ações comerciais pertencem ao aplicativo: esta nota não muda preços, saldo, taxa, dados de clientes ou regras de confirmação.
+
+O resumo expira em 30 minutos. Preço e saldo são conferidos novamente na confirmação. Se o cadastro mudar, o cliente precisa revisar. Confirmações repetidas do mesmo rascunho retornam o pedido existente.
+
+Não copie conversas, nomes, telefones ou endereços de clientes para o cofre. Os rascunhos ficam no banco privado e entram nas operações de privacidade do aplicativo. Pagamento escolhido não significa pagamento recebido.
+"""
+
+
 def arquivo_inicio() -> Path:
     return _preparar() / "Início.md"
 
@@ -164,6 +200,7 @@ def _preparar() -> Path:
     (pasta / ".obsidian").mkdir(exist_ok=True)
     for nome, conteudo in _NOTAS_INICIAIS.items():
         _criar_se_ausente(pasta / nome, conteudo)
+    _criar_se_ausente(pasta / 'Pedidos pelo WhatsApp.md', _GUIA_PEDIDOS)
     _criar_se_ausente(modelos / "Conhecimento aprovado.md", _MODELO_CONHECIMENTO)
     _criar_se_ausente(modelos / 'Lista de estoque.md', '''---
 tipo: lista-de-estoque
@@ -232,6 +269,25 @@ def situacao() -> dict:
 def _remover_frontmatter(conteudo: str) -> tuple[str, str]:
     bloco = re.match(r"\A\ufeff?---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|\Z)", conteudo, re.DOTALL)
     return (bloco[1], conteudo[bloco.end():]) if bloco else ("", conteudo)
+
+
+def visualizacao() -> dict:
+    """Mostra notas editoriais ao administrador; nunca documentos de estoque."""
+    pasta = _preparar()
+    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md')]
+    caminhos.extend(_notas_aprovadas(pasta))
+    notas, vistos = [], set()
+    for caminho in caminhos:
+        nome = caminho.relative_to(pasta).as_posix()
+        if nome in vistos:
+            continue
+        vistos.add(nome)
+        metadados, corpo = _ler(caminho)
+        if corpo:
+            notas.append({'nome':nome,'conteudo':corpo,'uso': 'Estilo' if caminho.name==_ARQUIVO_ESTILO else 'Contexto aprovado' if _aprovada(metadados) else 'Guia; não enviado ao modelo'})
+        if len(notas)>=32:
+            break
+    return {'pasta':str(pasta),'notas':notas}
 
 
 def _limpar(conteudo: str) -> str:

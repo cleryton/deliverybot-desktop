@@ -482,6 +482,12 @@ def qr_conexao():
     return jsonify(conexoes.qr_whatsapp())
 
 
+@bp.route('/gestao/api/cerebro/visualizar')
+@protegido
+def visualizar_cerebro():
+    return jsonify(cerebro.visualizacao())
+
+
 @bp.route("/gestao/api/conexoes/<acao>", methods=["POST"])
 @protegido
 def controlar_conexao(acao):

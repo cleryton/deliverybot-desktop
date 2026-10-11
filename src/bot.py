@@ -195,6 +195,11 @@ def _processar(telefone: str, texto: str) -> str:
     if texto_limpo == "9" or texto_limpo.casefold() in {"privacidade", "lgpd", "meus dados"}:
         return _resposta_opcao(texto_limpo, telefone)
 
+    from . import conversa_pedido
+    resposta_conversa = conversa_pedido.responder(telefone, texto_limpo)
+    if resposta_conversa is not None:
+        return resposta_conversa
+
     resposta_local = _resposta_rapida(telefone, texto_limpo)
     if resposta_local is not None:
         return resposta_local

@@ -39,3 +39,7 @@ artifacts/
 whatsapp-native/node_modules/
 whatsapp-native/runtime/
 cloudflare/runtime/
+
+# Memória e preferências locais do Obsidian
+.obsidian/
+Cerebro Obsidian/

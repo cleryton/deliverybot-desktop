@@ -1,10 +1,71 @@
 import random
+import json
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timezone
 
 from . import config
 from .db import get_conn
 from .estoque import inteiro, registrar_movimento, invalidar_catalogo, medida, somar, nome_completo
+
+
+class CotacaoAlterada(ValueError):
+    """O cadastro mudou após o resumo; o cliente deve revisar novamente."""
+
+
+def cotacao(itens, forma_entrega):
+    """Calcula o mesmo orçamento usado na gravação, sem reservar saldo."""
+    with get_conn() as conn:
+        total, resolvidos = _resolver_itens(conn, itens)
+    return _cotacao(total, resolvidos, forma_entrega)
+
+
+def _cotacao(total, itens, entrega):
+    taxa = Decimal(str(config.TAXA_ENTREGA)) if entrega == 'ENTREGA' else Decimal('0')
+    return {'itens':[{k:float(v) if isinstance(v, Decimal) else v for k,v in i.items() if k!='custo'} for i in itens],
+            'taxa_entrega':float(taxa), 'total_itens':float(total), 'total_pedido':float(total+taxa)}
+
+
+def _resolver_itens(conn, itens):
+    if not itens:
+        raise ValueError("O pedido precisa ter pelo menos um item.")
+    quantidades = {}
+    for item in itens:
+        if not isinstance(item, dict):
+            raise ValueError("Item inválido.")
+        produto_id = inteiro(item.get("produto_id"), "Produto", 1)
+        atual=conn.execute('SELECT fracionado FROM produtos WHERE id=?',(produto_id,)).fetchone()
+        fracionado=bool(atual and atual['fracionado'])
+        quantidade = medida(item.get("quantidade", 1), "Quantidade",fracionado,0.001 if fracionado else 1)
+        quantidades[produto_id] = somar(quantidades.get(produto_id, 0),quantidade)
+        if quantidades[produto_id] > 999999:
+            raise ValueError("Quantidade acima do limite permitido.")
+    total_itens = Decimal("0.00")
+    itens_resolvidos = []
+    for produto_id, quantidade in quantidades.items():
+        produto = conn.execute(
+            "SELECT * FROM produtos WHERE id = ? AND ativo = 1", (produto_id,)
+        ).fetchone()
+        if produto is None:
+            raise ValueError("Um produto selecionado não está mais disponível. Atualize o catálogo.")
+        if produto["estoque"] is not None and quantidade > produto["estoque"]:
+            raise ValueError(f"Estoque insuficiente para {produto['nome']}. Disponível: {produto['estoque']} {produto['unidade']}.")
+        subtotal = (Decimal(str(produto["preco"])) * Decimal(str(quantidade))).quantize(Decimal('0.01'),rounding=ROUND_HALF_UP)
+        total_itens += subtotal
+        itens_resolvidos.append(
+            {
+                "produto_id": produto["id"],
+                "nome": nome_completo(dict(produto)),
+                "quantidade": quantidade,
+                "preco_unitario": produto["preco"],
+                "subtotal": subtotal,
+                "custo": produto['custo'],
+            }
+        )
+
+    if not itens_resolvidos:
+        raise ValueError("Nenhum item válido foi encontrado no pedido.")
+
+    return total_itens, itens_resolvidos
 
 
 def gerar_numero_pedido() -> str:
@@ -39,6 +100,7 @@ def criar_pedido(
     cep: str = "",
     endereco: str = "",
     token: str | None = None,
+    conversa: str | None = None,
 ) -> dict:
     """itens: lista de {'produto_id': int, 'quantidade': int}. Retorna o pedido criado com os itens."""
     if not itens:
@@ -46,6 +108,18 @@ def criar_pedido(
 
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        carrinho = None
+        if conversa is not None:
+            carrinho = conn.execute("SELECT *, atualizado_em > datetime('now','-30 minutes') AS valido FROM carrinhos_conversa WHERE telefone=? AND token=?", (telefone, conversa)).fetchone()
+            if not carrinho or not carrinho['valido']:
+                raise ValueError('O resumo expirou. Monte e revise seu pedido novamente.')
+            if carrinho['pedido_id'] is not None:
+                return obter_pedido(carrinho['pedido_id'])
+            dados = json.loads(carrinho['dados'])
+            if not dados.get('cotacao'):
+                raise ValueError('Revise o resumo antes de confirmar.')
+            if (itens, nome_cliente, forma_pagamento, forma_entrega, cep, endereco) != (dados['itens'], dados['nome'], dados['pagamento'], dados['entrega'], dados.get('cep',''), dados.get('endereco','')):
+                raise ValueError('Os dados devem corresponder ao resumo revisado.')
         if forma_entrega not in {"RETIRADA BALCAO", "ENTREGA"}:
             raise ValueError("Forma de entrega inválida.")
         if forma_pagamento not in [v.strip() for v in config.FORMAS_PAGAMENTO.split(",")]:
@@ -57,45 +131,12 @@ def criar_pedido(
             agora = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
             if link is None or link["usado"] or link["expira_em"] <= agora or link["telefone"] != telefone:
                 raise ValueError("Este link já foi usado ou expirou. Solicite um novo link ao bot.")
-        quantidades = {}
-        for item in itens:
-            if not isinstance(item, dict):
-                raise ValueError("Item inválido.")
-            produto_id = inteiro(item.get("produto_id"), "Produto", 1)
-            atual=conn.execute('SELECT fracionado FROM produtos WHERE id=?',(produto_id,)).fetchone()
-            fracionado=bool(atual and atual['fracionado'])
-            quantidade = medida(item.get("quantidade", 1), "Quantidade",fracionado,0.001 if fracionado else 1)
-            quantidades[produto_id] = somar(quantidades.get(produto_id, 0),quantidade)
-            if quantidades[produto_id] > 999999:
-                raise ValueError("Quantidade acima do limite permitido.")
-        total_itens = Decimal("0.00")
-        itens_resolvidos = []
-        for produto_id, quantidade in quantidades.items():
-            produto = conn.execute(
-                "SELECT * FROM produtos WHERE id = ? AND ativo = 1", (produto_id,)
-            ).fetchone()
-            if produto is None:
-                raise ValueError("Um produto selecionado não está mais disponível. Atualize o catálogo.")
-            if produto["estoque"] is not None and quantidade > produto["estoque"]:
-                raise ValueError(f"Estoque insuficiente para {produto['nome']}. Disponível: {produto['estoque']} {produto['unidade']}.")
-            subtotal = (Decimal(str(produto["preco"])) * Decimal(str(quantidade))).quantize(Decimal('0.01'),rounding=ROUND_HALF_UP)
-            total_itens += subtotal
-            itens_resolvidos.append(
-                {
-                    "produto_id": produto["id"],
-                    "nome": nome_completo(dict(produto)),
-                    "quantidade": quantidade,
-                    "preco_unitario": produto["preco"],
-                    "subtotal": subtotal,
-                    "custo": produto['custo'],
-                }
-            )
-
-        if not itens_resolvidos:
-            raise ValueError("Nenhum item válido foi encontrado no pedido.")
+        total_itens, itens_resolvidos = _resolver_itens(conn, itens)
 
         taxa_entrega = Decimal(str(config.TAXA_ENTREGA)) if forma_entrega == "ENTREGA" else Decimal("0")
         total_pedido = total_itens + taxa_entrega
+        if carrinho is not None and dados['cotacao'] != _cotacao(total_itens, itens_resolvidos, forma_entrega):
+            raise CotacaoAlterada('Os preços ou produtos mudaram. Confira o novo resumo antes de confirmar.')
 
         conn.execute(
             "INSERT INTO clientes (nome, telefone, cep, endereco) VALUES (?, ?, ?, ?) "
@@ -149,6 +190,11 @@ def criar_pedido(
         )
         if token is not None:
             conn.execute("UPDATE links_pedido SET usado=1, pedido_id=? WHERE token=?", (pedido_id, token))
+            conn.execute("UPDATE carrinhos_conversa SET pedido_id=?, dados='{}' WHERE telefone=? AND pedido_id IS NULL", (pedido_id, telefone))
+        if conversa is not None:
+            conn.execute("UPDATE carrinhos_conversa SET pedido_id=?, dados='{}' WHERE telefone=? AND token=?", (pedido_id, telefone, conversa))
+            # A mesma conversa não pode concluir de novo um link antigo aberto.
+            conn.execute("UPDATE links_pedido SET usado=1, pedido_id=? WHERE telefone=? AND usado=0", (pedido_id, telefone))
 
     invalidar_catalogo()
     return obter_pedido(pedido_id)
