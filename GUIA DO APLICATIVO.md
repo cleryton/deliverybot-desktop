@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.12.0
+# DeliveryBot Desktop 2.13.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -64,7 +64,7 @@ A conexão por QR Code usa Baileys, uma biblioteca comunitária de WhatsApp Web,
 
 ## Página de pedidos pela internet
 
-Em **Página de pedidos**, clique em **Iniciar página de pedidos**. O conector Cloudflare incluído no executável trabalha em segundo plano, sem instalação separada ou janela de terminal. Marque **Iniciar a página junto com o aplicativo** para retomar automaticamente nas próximas aberturas. Salvar ou iniciar grava essa preferência. A atualização deixa o início automático desligado até você habilitá-lo; não substitui o domínio manual existente.
+Em **Página de pedidos**, clique em **Iniciar página de pedidos**. O conector Cloudflare incluído no executável trabalha em segundo plano, sem instalação separada ou janela de terminal. Ao clicar em **Conectar WhatsApp**, o aplicativo também inicia o túnel e aguarda o HTTPS ficar pronto antes de preparar o QR Code. Se a conexão falhar, o painel informa o motivo; corrija a internet, o firewall ou as configurações e tente novamente. Marque **Iniciar a página junto com o aplicativo** para retomar automaticamente nas próximas aberturas. Salvar ou iniciar grava essa preferência. A atualização deixa o início automático desligado até você habilitá-lo; não substitui o domínio manual existente.
 
 **Temporário:** cria um endereço HTTPS sem conta. Serve para começar e testar; o domínio muda a cada novo túnel. Links já enviados deixam de abrir após essa mudança: o cliente deve digitar `2` novamente. Uma resposta automática ainda na fila passa a usar o domínio atual quando enviada; respostas manuais não são alteradas. [Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) não oferecem garantia de disponibilidade e têm limite de 200 requisições simultâneas, sem suporte a SSE.
 

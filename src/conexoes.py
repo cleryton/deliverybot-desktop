@@ -110,6 +110,10 @@ def qr_whatsapp():
 
 
 def conectar_whatsapp(progresso):
+    # No app desktop, conclui o túnel antes de criar/retomar a sessão que pode
+    # exibir o QR Code. Assim a URL de pedidos já estará acessível no login.
+    from .publicacao import preparar_para_whatsapp
+    preparar_para_whatsapp(progresso)
     if not config.WEBHOOK_SECRET:
         preferencias.salvar({"WEBHOOK_SECRET": secrets.token_urlsafe(32)})
     if config.WHATSAPP_PROVIDER == "LOCAL":

@@ -53,6 +53,33 @@ def situacao():
     return _gerente.situacao() if _gerente else {'disponivel': False, 'ativo': False, 'estado': 'DESLIGADO', 'url': '', 'mensagem': 'O túnel integrado está disponível no aplicativo Windows.', 'porta': config.TUNEL_PORTA}
 
 
+def preparar_para_whatsapp(progresso, timeout=120):
+    """Deixa o HTTPS público pronto antes de iniciar a sessão do WhatsApp."""
+    gerente = _gerente
+    if gerente is None:
+        # Em instalações sem o gerenciador integrado, preserva o endereço manual.
+        return endereco()
+
+    atual = gerente.situacao()
+    if atual['estado'] != 'ONLINE':
+        progresso('Iniciando a página HTTPS para receber pedidos…')
+        if not gerente.ativo or atual['estado'] == 'ERRO':
+            gerente.iniciar()
+
+    limite = time.monotonic() + timeout
+    while True:
+        atual = gerente.situacao()
+        if atual['estado'] == 'ONLINE' and atual['url']:
+            progresso('Página HTTPS pronta. Preparando o login do WhatsApp…')
+            return atual['url']
+        if atual['estado'] == 'ERRO':
+            raise ValueError('Não foi possível iniciar a página HTTPS: ' + atual['mensagem'])
+        if time.monotonic() >= limite:
+            raise ValueError('A página HTTPS ainda não ficou pronta. Confira a internet e o firewall e tente conectar o WhatsApp novamente.')
+        progresso('Aguardando a página HTTPS ficar pronta antes do login do WhatsApp…')
+        time.sleep(1)
+
+
 class PaginaPublica:
     """Permite somente endpoints públicos conhecidos; ignora identidade de proxy."""
     ENDPOINTS = {'pagina_pedido', 'enviar_pedido', 'aviso_privacidade', 'primeiros_passos.confirmar', 'verificar_webhook', 'receber_webhook', 'receber_webhook_waha'}

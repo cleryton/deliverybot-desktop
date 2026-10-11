@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.13.0 — 2026-10-10
+
+Início automático do túnel HTTPS antes de preparar o login do WhatsApp, aguardando a disponibilidade do endereço público e exibindo falhas com orientação para nova tentativa.
+
 ## 2.12.0 — 2026-10-10
 
 Modo claro, escuro e automático conforme o Windows, com preferência persistida na instalação, tela de login e contraste adaptado no painel. Verificações de acesso, CSRF e funcionamento na janela nativa.
