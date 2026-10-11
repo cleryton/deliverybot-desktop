@@ -116,7 +116,7 @@ jobs:
           }
           if ($taskProcess.ExitCode -ne 0) { throw 'O teste do executavel falhou.' }
           $taskResult = Get-Content -LiteralPath $taskReport -Raw | ConvertFrom-Json
-          if ($taskResult.ok -ne $true -or $taskResult.documentos_pdf -ne $true -or $taskResult.perfil_comercio -ne $true -or $taskResult.pedido_conversa -ne $true -or $taskResult.obsidian_visual -ne $true -or $taskResult.obsidian_graph -ne $true) { throw 'Relatorio do executavel incompleto.' }
+          if ($taskResult.ok -ne $true -or $taskResult.documentos_pdf -ne $true -or $taskResult.perfil_comercio -ne $true -or $taskResult.pedido_conversa -ne $true -or $taskResult.obsidian_visual -ne $true -or $taskResult.obsidian_graph -ne $true -or $taskResult.padroes_atendimento -ne $true) { throw 'Relatorio do executavel incompleto.' }
           Get-Content -LiteralPath $taskReport
       - name: Guardar relatorios de validacao
         if: always()

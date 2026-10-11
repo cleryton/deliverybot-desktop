@@ -111,7 +111,7 @@ let connectionsBusy=false,qrBusy=false,lastQR=0;
 function connectionJob(selector,job){const el=$(selector);el.hidden=!job;if(job){el.textContent=job.mensagem;el.classList.toggle('error',job.estado==='ERRO');}}
 function renderConnections(c){
   const w=c.whatsapp,o=c.ollama,waBusy=c.tarefas.whatsapp?.estado==='EXECUTANDO',olBusy=c.tarefas.ollama?.estado==='EXECUTANDO';
-  state.cerebroPath=c.cerebro?.pasta||'';$('#brain-path').textContent=state.cerebroPath;$('#brain-summary').textContent=` ${c.cerebro?.notas_contexto||0} notas revisadas disponíveis; a consulta seleciona as relacionadas à dúvida.`;
+  state.cerebroPath=c.cerebro?.pasta||'';$('#brain-path').textContent=state.cerebroPath;const atendimento=c.cerebro?.atendimento;$('#brain-summary').textContent=` ${c.cerebro?.notas_contexto||0} notas revisadas disponíveis; a consulta seleciona as relacionadas à dúvida.${atendimento?` Perfil ativo: ${atendimento.titulo}. ${atendimento.padroes} padrões por segmento e etapa.`:''}`;
   $('#wa-status').textContent=w.mensagem+(w.numero?' · '+w.numero:'');
   $('#wa-badge').textContent=w.conectado?'Conectado':w.estado==='SCAN_QR_CODE'?'Aguardando QR':w.servico?'Disponível':'Desligado';
   $('#wa-badge').className='badge '+(w.conectado?'':w.servico?'warning':'gray');

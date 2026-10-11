@@ -131,8 +131,14 @@ def smoke_test(destino, janela=False):
         assert any(n['nome']=='Pedidos pelo WhatsApp.md' for n in notas)
         mapa = next(n['conteudo'] for n in notas if n['nome'] == 'Mapa do atendimento.md')
         assert '[[Pedidos pelo WhatsApp]]' in mapa and '[[Conexão e página de pedidos]]' in mapa
+        assert any(n['nome']=='Atendimentos/Produtos e serviços/Perfil.md' for n in notas)
+        from src import cerebro
+        contexto = cerebro.instrucoes_contexto('quero conhecer as opções')
+        assert '### Atendimentos/Produtos e serviços/03 Escolha.md' in contexto
+        assert '### Atendimentos/Produtos e serviços/04 Fechamento.md' not in contexto
+        assert '[[Atendimentos/Produtos e serviços/Perfil]]' in mapa
         assert publico.get('/gestao/api/cerebro/visualizar').status_code == 404
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True}
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local

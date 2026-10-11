@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.29.0 — 2026-10-11
+
+Cria padrões Obsidian individuais por segmento de comércio e etapa de atendimento. O Ollama consulta somente o perfil ativo e a etapa relacionada à mensagem, preservando personalizações e isolando categorias anteriores. O painel exibe o perfil e as notas, o Graph liga os padrões ativos e os backups preservam a estrutura. Inclui testes de seleção, revogação, validade, privacidade, preservação e integração no executável.
+
 ## 2.28.0 — 2026-10-11
 
 Inicia a preparação de HTTPS e WhatsApp ao salvar uma nova conexão no desktop, valida a página antes do serviço e do QR Code, regenera túneis temporários com falha DNS dentro do prazo de login e organiza automaticamente o mapa do Obsidian Graph sem alterar as notas da equipe. Inclui testes de ordem, configuração, acesso ao QR, recuperação DNS e sincronização do mapa.
