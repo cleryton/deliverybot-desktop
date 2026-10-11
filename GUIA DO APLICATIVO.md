@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.24.1
+# DeliveryBot Desktop 2.24.2
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -89,6 +89,32 @@ A consulta seleciona até seis notas relacionadas ao assunto da pergunta, manten
 Para regras com prazo, adicione `valido_ate: AAAA-MM-DD` no frontmatter. A nota vale até o fim desse dia no computador da loja; depois deixa de ser usada nas respostas, permanecendo no cofre e no backup. Datas inválidas e campos de aprovação ou validade duplicados impedem o uso da nota. Notas acima de 64 KB, conteúdo inválido ou arquivos que apontem para fora do cofre também são ignorados. O contexto enviado mantém um limite de 14 mil caracteres, incluindo os títulos, para reduzir distrações e custo de processamento. A pergunta é usada somente para selecionar referências e não é salva no cofre.
 
 Não guarde dados de clientes nesse cofre. A IA local recebe o texto das notas que estiverem aprovadas; o aplicativo não grava conversas nelas. Backups criptografados `.dbot` novos incluem as notas Markdown do cofre, inclusive rascunhos, e a restauração as recupera sem apagar notas adicionais que existam no computador. Backups de versões anteriores continuam válidos, mas não contêm notas do Obsidian. Se ativar sincronização do Obsidian, revise as configurações e o serviço escolhido.
+
+### Escrever orientações que ajudem o atendimento
+
+Comece por **Estilo de atendimento.md**. Descreva como sua loja conversa e acrescente exemplos fictícios de respostas que você aprova. Prefira instruções concretas: “responda primeiro à dúvida, use frases curtas e faça uma pergunta por vez” ajuda mais que “seja humanizado”. Não é preciso preencher o cofre inteiro para começar.
+
+Você pode adaptar estas orientações ao jeito da sua loja:
+
+> Fale com simpatia e clareza, em português brasileiro. Use uma ou duas frases quando a pergunta for simples. Varie a abertura e evite repetir a saudação em toda mensagem. Use emojis com moderação. Se faltar uma informação, diga o que precisa confirmar e ofereça ajuda da equipe. Em reclamações, reconheça o problema e mantenha um tom respeitoso, sem brincadeiras.
+
+Acrescente exemplos do tom desejado, sem inventar informações comerciais:
+
+- **Cliente:** “Quero ver os produtos.” **Tom desejado:** “Claro! Vou te mostrar as opções para você escolher com calma.”
+- **Cliente:** “Preciso falar com alguém.” **Tom desejado:** “Claro, vou chamar a equipe para continuar com você.”
+- **Cliente:** “Meu pedido veio errado.” **Tom desejado:** “Sinto muito pelo problema. Vou chamar a equipe para conferir o que aconteceu.”
+
+Esses exemplos orientam a escrita; o aplicativo é responsável por executar o encaminhamento e gerar links válidos. Mantenha preços, quantidades e informações do pedido no cadastro do aplicativo.
+
+Para ensinar uma política da loja, crie uma nota separada em **Conhecimento**, usando **Modelos/Conhecimento aprovado.md**. Dê um título específico, escreva a regra e suas condições, informe a fonte e a data da revisão. Deixe `atendimento: false` enquanto houver informações a confirmar. Depois da aprovação da equipe, mude para `atendimento: true`. Para uma regra temporária, preencha também `valido_ate`.
+
+Após salvar, use **Testar atendimento** com o Ollama ativo e perguntas fictícias. Confira se a resposta segue o tom escolhido e respeita a regra. Ajuste a nota quando necessário: editar exemplos melhora as referências da próxima resposta, mas não garante que o modelo repetirá exatamente uma frase. Respostas rápidas do próprio aplicativo não dependem do texto do Obsidian.
+
+### Usar o Obsidian com documentos de estoque
+
+Use **Modelos/Lista de estoque.md** para preparar uma tabela, ou selecione diretamente seu PDF, XLSX ou CSV no painel. Confira os itens extraídos, escolha cadastro, entrada ou contagem e confirme o lançamento. Marcar **Registrar no Obsidian** cria um histórico da operação em **Documentos de estoque**; editar esse histórico depois não altera os produtos nem o saldo.
+
+O fluxo para compartilhar com o cliente é: **importar → revisar → lançar → gerar o catálogo PDF**. O PDF é gerado pelo aplicativo com os dados atuais do cadastro e pode ser impresso ou enviado como anexo. O Obsidian guarda orientações e registros; o saldo atualizado continua em **Produtos e estoque**.
 
 ## Iniciar Ollama pelo aplicativo
 

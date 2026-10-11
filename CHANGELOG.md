@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.24.2 — 2026-10-11
+
+Melhora o guia do Obsidian com exemplos de tom de atendimento, aprovação de conhecimento e fluxo de importação de estoque e catálogo PDF.
+
 ## 2.24.1 — 2026-10-11
 
 Evita tratar a coluna genérica de preço em notas de compra como preço de venda; mantém a revisão obrigatória do valor de venda antes de cadastrar produtos.
