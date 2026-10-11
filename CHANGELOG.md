@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.24.0 — 2026-10-11
+
+Leitura local de PDF, XLSX, CSV e notas Obsidian com Ollama, revisão editável, entrada e contagem transacionais; registro no cofre e catálogo PDF com fotos para clientes pelo HTTPS.
+
 ## 2.23.0 — 2026-10-11
 
 Fotos opcionais no cadastro de produtos, com prévia, substituição e remoção; catálogo visual pelo HTTPS, imagens otimizadas sem metadados e preservadas nos backups e atualizações.

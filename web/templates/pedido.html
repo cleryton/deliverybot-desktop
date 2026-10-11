@@ -34,6 +34,7 @@
             <div class="campo-busca"><span aria-hidden="true">⌕</span><input type="search" id="busca-produtos" placeholder="Encontre o que você procura" autocomplete="off" maxlength="160"><button type="button" id="limpar-busca" class="botao-texto" aria-label="Limpar busca" hidden>Limpar</button></div>
             <nav class="categorias" aria-label="Filtrar por categoria"><button type="button" class="categoria-filtro ativa" data-categoria="" aria-pressed="true">Todos</button>{% for categoria in grupos.keys() %}<button type="button" class="categoria-filtro" data-categoria="{{ loop.index }}" aria-pressed="false"><span aria-hidden="true">{{ icone_categoria(categoria) }}</span> {{ categoria }}</button>{% endfor %}</nav>
           </div>
+          <p><a class="botao-texto" href="{{ url_for('catalogo_cliente_pdf', token=token) }}" download="Catalogo-DeliveryBot.pdf">Baixar catálogo em PDF ↗</a></p>
           <p id="resultado-busca" class="resultado-busca" role="status" aria-live="polite" hidden></p>
           <div id="busca-vazia" class="estado-vazio" hidden><span class="estado-simbolo" aria-hidden="true">⌕</span><h3>Nenhum produto por aqui</h3><p>Tente outro nome ou escolha outra categoria.</p><button type="button" id="resetar-filtros" class="botao-secundario">Ver todos os produtos</button></div>
           {% for categoria, itens in grupos.items() %}

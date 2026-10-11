@@ -6,7 +6,7 @@ import secrets
 from functools import wraps
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for, send_file
 
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
@@ -344,6 +344,44 @@ def criar_backup(senha):
 def importar_catalogo():
     from .catalogo_avancado import importar
     return jsonify(importar(dados_json()))
+
+
+def _dono_documento():
+    import hashlib
+    return hashlib.sha256((session.get('csrf','') + ':' + str(session.get('operador_id',''))).encode()).hexdigest()
+
+
+@bp.post('/gestao/api/documentos/ler')
+@protegido
+def ler_documento():
+    from .documentos_estoque import ler
+    arquivos = request.files.getlist('arquivo')
+    if len(arquivos) != 1 or set(request.files) != {'arquivo'}:
+        raise ValueError('Escolha um único documento de produtos ou estoque.')
+    return jsonify(ler(arquivos[0], _dono_documento(), request.form.get('modelo','').strip(), request.form.get('tipo','lista')))
+
+
+@bp.post('/gestao/api/documentos/lancar')
+@protegido
+def lancar_documento():
+    from .documentos_estoque import aplicar
+    return jsonify(aplicar(dados_json(), _dono_documento()))
+
+
+@bp.post('/gestao/api/documentos/nota')
+@protegido
+def salvar_nota_documento():
+    from .documentos_estoque import salvar_nota
+    return jsonify(salvar_nota(dados_json().get('token'), _dono_documento()))
+
+
+@bp.get('/gestao/api/catalogo.pdf')
+@protegido
+def catalogo_pdf():
+    from io import BytesIO
+    from .catalogo_pdf import gerar
+    return send_file(BytesIO(gerar(request.args.get('quantidades') == 'sim')),mimetype='application/pdf',
+        as_attachment=True,download_name='Catalogo-DeliveryBot.pdf')
 
 
 @bp.get('/gestao/api/relatorios')

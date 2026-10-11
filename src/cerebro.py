@@ -153,6 +153,9 @@ def _criar_se_ausente(caminho: Path, conteudo: str) -> None:
 
 def _preparar() -> Path:
     pasta = diretorio()
+    for caminho in (pasta, pasta/'Conhecimento', pasta/'Modelos', pasta/'.obsidian'):
+        if caminho.is_symlink() or (hasattr(caminho, 'is_junction') and caminho.is_junction()):
+            raise ValueError('O cofre Obsidian não pode usar atalhos para pastas externas.')
     pasta.mkdir(parents=True, exist_ok=True)
     conhecimento = pasta / "Conhecimento"
     modelos = pasta / "Modelos"
@@ -162,6 +165,21 @@ def _preparar() -> Path:
     for nome, conteudo in _NOTAS_INICIAIS.items():
         _criar_se_ausente(pasta / nome, conteudo)
     _criar_se_ausente(modelos / "Conhecimento aprovado.md", _MODELO_CONHECIMENTO)
+    _criar_se_ausente(modelos / 'Lista de estoque.md', '''---
+tipo: lista-de-estoque
+atendimento: false
+---
+# Lista para importar no aplicativo
+
+Preencha uma linha por produto e salve a nota. Em Produtos e estoque, escolha este arquivo Markdown para ler e revisar.
+Use preco para preço de venda e custo para preço de compra. Para atualizar um produto existente, preencha o SKU já cadastrado e a mesma unidade.
+
+| nome | categoria | preco | custo | sku | unidade | estoque | fracionado |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+|  |  |  |  |  | un |  | nao |
+
+O lançamento será feito somente após a revisão no aplicativo. Esta nota não substitui o saldo atual do sistema.
+''')
     configuracao = pasta / ".obsidian" / "app.json"
     _criar_se_ausente(configuracao, json.dumps({
         "newFileLocation": "folder",
@@ -173,6 +191,28 @@ def _preparar() -> Path:
 
 def arquivo_estilo() -> Path:
     return _preparar() / _ARQUIVO_ESTILO
+
+
+def registrar_documento_estoque(token: str, linhas: str) -> Path:
+    """Registro operacional separado das notas consultadas pelo atendimento."""
+    import hashlib
+    raiz = diretorio()
+    pasta = raiz / 'Documentos de estoque'
+    for caminho in (raiz, pasta):
+        if caminho.is_symlink() or (hasattr(caminho, 'is_junction') and caminho.is_junction()):
+            raise ValueError('A pasta de documentos não pode ser um atalho para outra pasta.')
+    if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{30,64}', token) or not isinstance(linhas,str) or len(linhas.encode('utf-8')) > 60000:
+        raise ValueError('Registro de estoque inválido.')
+    _preparar()
+    pasta.mkdir(exist_ok=True)
+    destino = pasta / ('Importação-' + hashlib.sha256(token.encode()).hexdigest()[:24] + '.md')
+    if destino.is_symlink() or (hasattr(destino, 'is_junction') and destino.is_junction()):
+        raise ValueError('Destino do registro inválido.')
+    conteudo = ('---\ntipo: registro-de-estoque\natendimento: false\n---\n# Lançamento de estoque revisado\n\n'
+        'Este registro é um histórico da importação. O saldo atual, os preços e os produtos devem ser consultados no aplicativo.\n\n'
+        + linhas + '\n')
+    _criar_se_ausente(destino, conteudo)
+    return destino
 
 
 def situacao() -> dict:

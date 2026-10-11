@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.23.0
+# DeliveryBot Desktop 2.24.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -172,3 +172,21 @@ Em **Produtos e estoque**, cadastre ou edite um produto e escolha sua foto. Acei
 O cliente vê as fotos no catálogo do link de pedido e pode ampliá-las. As imagens usam o próprio endereço HTTPS da loja, sem hospedar arquivos em outro serviço. Fotos de produtos inativos não ficam disponíveis pelo túnel.
 
 As fotos são otimizadas, têm os metadados da câmera removidos e ficam no banco de dados: acompanham as atualizações e os backups, inclusive a restauração em outro computador. Use fotos dos produtos que você tenha autorização para divulgar; elas ficam acessíveis publicamente enquanto o produto estiver ativo.
+
+### Ler PDF, planilha ou uma nota de estoque
+
+Em **Produtos e estoque → Ler uma nota ou documento de estoque**, escolha um PDF, XLSX, CSV ou Markdown (.md). O limite é 10 MB, 200 produtos e 10 páginas; arquivos XLS antigos devem ser salvos como XLSX e planilhas devem conter uma única aba. Colunas reconhecidas (nome, categoria, preco, custo, sku, unidade, estoque, fracionado) dispensam a IA. Valores calculados na planilha devem estar atualizados e salvos pelo editor antes da importação.
+
+Para PDF ou texto sem colunas reconhecidas, inicie o Ollama e selecione um modelo local já instalado. PDFs digitalizados precisam de um modelo com visão. O arquivo é processado neste computador, sem envio à nuvem. A leitura pode errar ou deixar valores em branco: revise todos os produtos, códigos, unidades, preços e quantidades antes de confirmar. O aplicativo não baixa modelos automaticamente para documentos.
+
+Escolha **Lista ou contagem** para uma contagem física ou **Nota de compra** para entrada de mercadoria. O valor unitário de uma compra é custo, não preço de venda. Para um SKU existente, Entrada soma a quantidade e Contagem define o saldo revisado, mantendo nomes, preços e fotos do cadastro. A contagem é bloqueada se houver mudança no saldo entre a leitura e a confirmação. Para novos produtos, preencha nome, categoria, preço de venda e quantidade. Ignore linhas que não sejam produtos.
+
+A confirmação é transacional: se algum item estiver inválido, nenhum é lançado. Uma mesma leitura ou arquivo já confirmado não é aplicado duas vezes. A revisão expira em duas horas. Os arquivos originais não são guardados: ficam apenas os produtos extraídos e o registro do lançamento.
+
+Você pode marcar **Registrar no Obsidian**. O registro revisado fica em `Documentos de estoque`, acompanha os backups e não entra como conhecimento de atendimento: o catálogo do aplicativo continua sendo a fonte do saldo atual. Se o cofre não puder ser gravado, o estoque permanece salvo e o botão de registro pendente permite tentar novamente sem repetir a entrada. Em `Modelos/Lista de estoque.md` há uma tabela para preencher no Obsidian e importar depois.
+
+### Catálogo em PDF para compartilhar ou imprimir
+
+Em **Produtos e estoque → Catálogo em PDF para o cliente**, baixe o arquivo com fotos, preços e disponibilidade dos produtos ativos com estoque. Você pode incluir as quantidades disponíveis. O PDF não lista custo, fornecedor, clientes ou pedidos. Ele registra a data de emissão: preços e estoque podem mudar depois de gerado.
+
+O cliente também encontra **Baixar catálogo em PDF** no link HTTPS de pedido, sem quantidade exata de estoque. Esse download exige um link de pedido válido. Links vencidos ou já usados não dão acesso ao arquivo. Envie o PDF baixado como anexo pelo canal que você preferir; o aplicativo não dispara anexos reais durante testes.

@@ -29,6 +29,18 @@ CREATE TABLE IF NOT EXISTS fotos_produto (
 );
 CREATE INDEX IF NOT EXISTS idx_fotos_produto_hash ON fotos_produto(hash);
 
+CREATE TABLE IF NOT EXISTS documentos_estoque (
+    token TEXT PRIMARY KEY,
+    dono TEXT NOT NULL,
+    origem_hash TEXT NOT NULL,
+    produtos TEXT NOT NULL,
+    criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+    concluido INTEGER NOT NULL DEFAULT 0,
+    nota TEXT NOT NULL DEFAULT '',
+    nota_salva INTEGER NOT NULL DEFAULT 0
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documento_aplicado ON documentos_estoque(origem_hash) WHERE concluido=1;
+
 CREATE TABLE IF NOT EXISTS pedidos (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     numero_pedido       TEXT NOT NULL UNIQUE,     -- ex: #21535858, exibido ao cliente

@@ -47,12 +47,14 @@ app.jinja_env.globals["icone_categoria"] = cardapio.icone_categoria
 def limite_upload_produto():
     if request.endpoint in {'gestao.produtos', 'gestao.editar_produto'} and request.mimetype == 'multipart/form-data':
         request.max_content_length = 6 * 1024 * 1024
+    if request.endpoint == 'gestao.ler_documento':
+        request.max_content_length = 11 * 1024 * 1024
 
 
 @app.errorhandler(413)
 def arquivo_grande(exc):
     if request.path.startswith('/gestao/api/'):
-        return jsonify(erro='Arquivo muito grande. Escolha uma foto de até 5 MB.'), 413
+        return jsonify(erro='Arquivo muito grande. Use até 10 MB para documentos ou até 5 MB para fotos.'), 413
     return 'Os dados enviados ultrapassam o limite permitido.', 413
 
 
@@ -314,6 +316,15 @@ def pagina_pedido(token):
         nome_restaurante=config.NOME_RESTAURANTE,
         taxa_entrega=config.TAXA_ENTREGA,
     )
+
+
+@app.get('/m/<token>/catalogo.pdf')
+def catalogo_cliente_pdf(token):
+    ok, _, _ = link_valido(token)
+    if not ok:
+        return 'Seu link expirou. Solicite um novo link à loja.',410
+    from .catalogo_pdf import gerar
+    return send_file(BytesIO(gerar()),mimetype='application/pdf',as_attachment=True,download_name='Catalogo-DeliveryBot.pdf')
 
 
 @app.after_request

@@ -91,7 +91,7 @@ def preparar_para_whatsapp(progresso, timeout=120):
 
 class PaginaPublica:
     """Permite somente endpoints públicos conhecidos; ignora identidade de proxy."""
-    ENDPOINTS = {'pagina_pedido', 'enviar_pedido', 'foto_produto', 'aviso_privacidade', 'primeiros_passos.confirmar', 'verificar_webhook', 'receber_webhook', 'receber_webhook_waha'}
+    ENDPOINTS = {'pagina_pedido', 'enviar_pedido', 'catalogo_cliente_pdf', 'foto_produto', 'aviso_privacidade', 'primeiros_passos.confirmar', 'verificar_webhook', 'receber_webhook', 'receber_webhook_waha'}
 
     ASSETS = {'pedido.css', 'pedido.js'}
 

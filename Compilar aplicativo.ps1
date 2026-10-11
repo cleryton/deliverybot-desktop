@@ -36,4 +36,5 @@ Copy-Item -LiteralPath 'PRIVACIDADE E SEGURANÇA.md' -Destination (Join-Path $ta
 Copy-Item -LiteralPath 'whatsapp-native\LICENCAS.txt' -Destination (Join-Path $taskDist 'LICENCAS WhatsApp.txt') -Force
 Copy-Item -LiteralPath 'cloudflare\runtime\LICENSE.txt' -Destination (Join-Path $taskDist 'LICENCA Cloudflare.txt') -Force
 Copy-Item -LiteralPath 'packaging\LICENCA Pillow.txt' -Destination (Join-Path $taskDist 'LICENCA Pillow.txt') -Force
+Copy-Item -LiteralPath 'packaging\LICENCAS documentos.txt' -Destination (Join-Path $taskDist 'LICENCAS documentos.txt') -Force
 Write-Host "Aplicativo e instalador disponíveis em $taskDist."

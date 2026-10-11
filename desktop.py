@@ -102,7 +102,16 @@ def smoke_test(destino, janela=False):
         assert publico.get('/static/gestao.js').status_code == 404
         assert publico.get(produto['foto_url']).mimetype == 'image/jpeg'
         assert produto['foto_url'].encode() in publico.get(caminho_pedido).data
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True}
+        pdf_cliente = publico.get(caminho_pedido + '/catalogo.pdf')
+        assert pdf_cliente.status_code == 200 and pdf_cliente.data.startswith(b'%PDF-')
+        from src.documentos_estoque import ler, aplicar
+        from werkzeug.datastructures import FileStorage
+        revisao = ler(FileStorage(stream=BytesIO(b'nome;categoria;preco;sku;unidade;estoque\nCaderno;Papelaria;15.90;QA-PDF;un;2'),filename='estoque.csv'),'smoke')
+        assert aplicar({'token':revisao['token'],'produtos':revisao['produtos']},'smoke')['nota_salva']
+        # Exercita também o leitor nativo de PDF incluído na distribuição.
+        from src.documentos_estoque import _ler_pdf
+        assert 'Camiseta' in _ler_pdf(pdf_cliente.data)[0]
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local
