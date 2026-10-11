@@ -134,3 +134,5 @@ async function connectionAction(action){
   setTimeout(()=>run(null,refreshConnections),500);
 }
 setInterval(()=>{if(document.visibilityState==='visible'&&state.page==='conexoes')run(null,refreshConnections);},4000);
+const paginaInicial=isAdmin&&['LOCAL','WAHA'].includes(document.body.dataset.whatsappProvider)?'conexoes':'inicio';
+run(null,()=>navigate(paginaInicial));

@@ -277,8 +277,13 @@ def main():
         processamento.iniciar()
         from src import rotinas
         rotinas.iniciar()
-        if config.WHATSAPP_PROVIDER == "LOCAL":
-            conexoes.iniciar_tarefa("whatsapp", lambda progresso: whatsapp_local.iniciar(progresso))
+        if config.WHATSAPP_PROVIDER in {"LOCAL", "WAHA"}:
+            preparar_whatsapp = (conexoes.iniciar_whatsapp_local
+                                 if config.WHATSAPP_PROVIDER == "LOCAL"
+                                 else conexoes.conectar_whatsapp)
+            conexoes.iniciar_tarefa("whatsapp", preparar_whatsapp)
+        if config.IA_PROVIDER == "OLLAMA" and conexoes.url_local(config.OLLAMA_URL):
+            conexoes.iniciar_tarefa("ollama", conexoes.iniciar_ollama)
         class API:
             def instalar_atualizacao(self):
                 self._verificar()

@@ -88,7 +88,9 @@ def painel():
             return pagina_login()
         return "Abra o aplicativo DeliveryBot ou entre com a conta administrativa.", 401, {"WWW-Authenticate": 'Basic realm="DeliveryBot"'}
     session.setdefault("csrf", secrets.token_urlsafe(32))
-    return render_template("gestao.html", csrf=session["csrf"],administrador=operadores.admin(),tema=aparencia.tema())
+    return render_template("gestao.html", csrf=session["csrf"], administrador=operadores.admin(),
+                           tema=aparencia.tema(),
+                           provedor_whatsapp=config.WHATSAPP_PROVIDER if token else "")
 
 
 def pagina_login(erro=None,status=200):

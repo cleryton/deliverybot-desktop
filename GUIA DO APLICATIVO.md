@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.13.0
+# DeliveryBot Desktop 2.14.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -49,7 +49,7 @@ O teste de compra usa o mesmo banco de verdade: também baixa estoque. Cancele o
 
 O aplicativo começa em **modo de teste** e não envia mensagens reais. Para receber clientes:
 
-- **Conexão integrada (recomendada):** abra **WhatsApp e IA → Conectar WhatsApp**. No celular, abra **WhatsApp → Aparelhos conectados → Conectar um aparelho** e escaneie o QR Code exibido no aplicativo. Ele é atualizado automaticamente enquanto aguarda o celular. O componente inicia em segundo plano e não abre outro programa. Ao atualizar de uma versão com Docker local, o aplicativo seleciona a conexão integrada e será necessário escanear um novo QR Code uma vez. Os demais dados são preservados.
+- **Conexão integrada (recomendada):** na primeira vez, abra **WhatsApp e IA → Conectar WhatsApp**. No celular, abra **WhatsApp → Aparelhos conectados → Conectar um aparelho** e escaneie o QR Code exibido no aplicativo. Ele é atualizado automaticamente enquanto aguarda o celular. O componente inicia em segundo plano e não abre outro programa. Depois dessa escolha, ao abrir o DeliveryBot, ele prepara automaticamente o túnel HTTPS, o serviço integrado e a sessão, e abre a tela do WhatsApp; quando o WhatsApp pedir autenticação, basta escanear o QR Code. Ao atualizar de uma versão com Docker local, o aplicativo seleciona a conexão integrada e será necessário escanear um novo QR Code uma vez. Os demais dados são preservados.
 - **Servidor WAHA externo (opcional):** para quem já utiliza um servidor próprio, selecione WAHA em Configurações e salve endereço, sessão e chave. Em um servidor remoto, preencha o endereço público da loja ou **Endereço visto pelo WAHA externo**. Depois clique em **Conectar WhatsApp**. Para voltar ao modo integrado, use **Usar conexão integrada** no painel.
 - **Meta:** preencha as credenciais da WhatsApp Cloud API, incluindo o **App Secret** do aplicativo Meta, e configure a URL pública `/webhook` e o token de verificação no serviço. O App Secret permite verificar a assinatura das mensagens recebidas.
 - **Endereço público da loja:** use **Página de pedidos** para iniciar o túnel incluído no aplicativo. O bot usa automaticamente o endereço da conexão atual. Para manter um ngrok ou serviço externo, pare o túnel integrado e mantenha seu `BASE_URL` em Configurações.
@@ -64,7 +64,7 @@ A conexão por QR Code usa Baileys, uma biblioteca comunitária de WhatsApp Web,
 
 ## Página de pedidos pela internet
 
-Em **Página de pedidos**, clique em **Iniciar página de pedidos**. O conector Cloudflare incluído no executável trabalha em segundo plano, sem instalação separada ou janela de terminal. Ao clicar em **Conectar WhatsApp**, o aplicativo também inicia o túnel e aguarda o HTTPS ficar pronto antes de preparar o QR Code. Se a conexão falhar, o painel informa o motivo; corrija a internet, o firewall ou as configurações e tente novamente. Marque **Iniciar a página junto com o aplicativo** para retomar automaticamente nas próximas aberturas. Salvar ou iniciar grava essa preferência. A atualização deixa o início automático desligado até você habilitá-lo; não substitui o domínio manual existente.
+Em **Página de pedidos**, clique em **Iniciar página de pedidos** para testar ou manter o túnel ligado mesmo antes de conectar o WhatsApp. O conector Cloudflare incluído no executável trabalha em segundo plano, sem instalação separada ou janela de terminal. Ao preparar uma conexão integrada já escolhida, o aplicativo inicia o túnel e aguarda o HTTPS ficar pronto antes de preparar o QR Code; nas próximas aberturas, isso ocorre automaticamente. Se a conexão falhar, o painel informa o motivo; corrija a internet, o firewall ou as configurações e tente novamente. Marque **Iniciar a página junto com o aplicativo** para retomar automaticamente nas próximas aberturas, mesmo antes da preparação do WhatsApp. Salvar ou iniciar grava essa preferência; a inicialização automática pelo WhatsApp não altera essa configuração. O túnel não substitui o domínio manual existente.
 
 **Temporário:** cria um endereço HTTPS sem conta. Serve para começar e testar; o domínio muda a cada novo túnel. Links já enviados deixam de abrir após essa mudança: o cliente deve digitar `2` novamente. Uma resposta automática ainda na fila passa a usar o domínio atual quando enviada; respostas manuais não são alteradas. [Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) não oferecem garantia de disponibilidade e têm limite de 200 requisições simultâneas, sem suporte a SSE.
 
@@ -83,7 +83,7 @@ Na máquina de desenvolvimento, prepare o componente WhatsApp conforme o fluxo e
 1. Instale o [Ollama para Windows](https://ollama.com/download/windows) uma vez.
 2. Em **WhatsApp e IA**, escolha o modelo e clique em **Iniciar Ollama**. O aplicativo inicia o serviço em segundo plano ou reutiliza o serviço já aberto.
 3. Se o modelo faltar, clique em **Baixar modelo** e confirme. Acompanhe o progresso mantendo o aplicativo aberto. O download pode ocupar alguns GB; depende da sua internet e do espaço em disco.
-4. Ao terminar, o modelo é carregado na memória e a IA Ollama é ativada no bot. Se já estiver instalado, basta **Iniciar Ollama**.
+4. Ao terminar, o modelo é carregado na memória e a IA Ollama é ativada no bot. Depois que Ollama estiver selecionado, o aplicativo inicia automaticamente o serviço local e carrega o modelo nas próximas aberturas. Endereços remotos continuam dependendo do servidor externo estar ligado.
 
 A IA é opcional. Quando indisponível, o bot continua pelo menu. Anthropic requer uma chave de API e tem custo conforme o uso. Os limites e créditos do Codex são separados do atendimento Ollama local.
 

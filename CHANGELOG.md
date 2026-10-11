@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.14.0 — 2026-10-10
+
+Inicialização automática da conexão WhatsApp integrada e da página HTTPS quando o provedor já foi escolhido, abertura direta da tela de conexão para facilitar a leitura do QR Code e inicialização do Ollama local quando selecionado.
+
 ## 2.13.0 — 2026-10-10
 
 Início automático do túnel HTTPS antes de preparar o login do WhatsApp, aguardando a disponibilidade do endereço público e exibindo falhas com orientação para nova tentativa.
