@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.27.0 — 2026-10-11
+
+Permite montar e confirmar pedidos diretamente pelo WhatsApp, com resumo oficial, validação transacional de preços e estoque, confirmação idempotente e integração com o painel e a fila. Inclui guia no cofre Obsidian, leitor protegido de notas no aplicativo e privacidade dos rascunhos; amplia testes de conversa, concorrência e retentativas.
+
 ## 2.26.1 — 2026-10-11
 
 Corrige links de pedidos inventados pela IA e respostas antigas da fila, rejeita domínios WhatsApp como hospedagem, melhora o diagnóstico DNS e organiza distribuições com guias, metadados, integridade e limpeza conservadora; amplia os testes.

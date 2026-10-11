@@ -119,7 +119,18 @@ def smoke_test(destino, janela=False):
         # Exercita também o leitor nativo de PDF incluído na distribuição.
         from src.documentos_estoque import _ler_pdf
         assert 'Camiseta' in _ler_pdf(pdf_cliente.data)[0]
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True}
+        from src import bot
+        for mensagem in ('pedido pelo whatsapp','1 Camiseta teste','Cliente Fictício','retirada','Pix'):
+            resposta_chat = bot.processar_mensagem('5511999990027',mensagem)
+        assert 'CONFIRMAR' in resposta_chat and '49,90' in resposta_chat
+        assert 'realizado com sucesso' in bot.processar_mensagem('5511999990027','confirmar')
+        from src.db import get_conn
+        with get_conn() as conn:
+            assert conn.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0] == 1
+        notas = client.get('/gestao/api/cerebro/visualizar').json['notas']
+        assert any(n['nome']=='Pedidos pelo WhatsApp.md' for n in notas)
+        assert publico.get('/gestao/api/cerebro/visualizar').status_code == 404
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local

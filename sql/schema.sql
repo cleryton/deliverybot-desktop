@@ -108,6 +108,15 @@ CREATE TABLE IF NOT EXISTS sessoes_bot (
     atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Rascunho privado da compra pelo chat; nunca é usado como memória da IA.
+CREATE TABLE IF NOT EXISTS carrinhos_conversa (
+    telefone TEXT PRIMARY KEY,
+    token TEXT NOT NULL UNIQUE,
+    dados TEXT NOT NULL DEFAULT '{}',
+    pedido_id INTEGER REFERENCES pedidos(id),
+    atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS movimentos_estoque (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     produto_id INTEGER NOT NULL REFERENCES produtos(id),

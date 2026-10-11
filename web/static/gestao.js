@@ -5,6 +5,20 @@ const money = (v) => Number(v).toLocaleString('pt-BR',{style:'currency',currency
 const date = (v) => v ? new Date(v.replace(' ','T')+'Z').toLocaleString('pt-BR') : '—';
 const isAdmin = document.body.dataset.admin !== 'false';
 const state = {page:'inicio',products:[],orders:[],settings:null,summary:null};
+let brainNotes=[];
+function showBrainNote(){
+  const note=brainNotes[Number($('#brain-note-select').value)];
+  $('#brain-note-use').textContent=note?.uso||'';
+  $('#brain-note-content').textContent=note?.conteudo||'Nenhuma nota disponível.';
+}
+$('#brain-note-select').addEventListener('change',showBrainNote);
+$('#brain-preview').addEventListener('click',e=>run(e.currentTarget,async()=>{
+  const result=await api('cerebro/visualizar');
+  brainNotes=result.notas;
+  $('#brain-note-select').replaceChildren(...brainNotes.map((n,i)=>new Option(n.nome,String(i))));
+  $('#brain-reader').hidden=false;
+  showBrainNote();
+}));
 let toastTimer;
 let photoRemoved = false;
 function productPhoto(p){return /^\/produtos\/fotos\/[a-f0-9]{64}\.jpg$/.test(p.foto_url||'')?`<img class="product-avatar product-photo" src="${p.foto_url}" alt="" loading="lazy">`:'<span class="product-avatar">▦</span>';}
@@ -41,7 +55,7 @@ function renderProducts(){const term=$('#search').value.toLocaleLowerCase('pt-BR
 }
 const statusLabels={RECEBIDO:'Recebido',CONFIRMADO:'Confirmado',EM_PREPARO:'Em separação',PRONTO:'Pronto',RETIRADO:'Retirado',ENTREGUE:'Entregue',CANCELADO:'Cancelado'};
 async function orders(){state.orders=await api('pedidos');renderOrders();}
-function renderOrders(){const filter=$('#order-filter').value,final=['CANCELADO','RETIRADO','ENTREGUE'];const items=state.orders.filter(p=>filter==='todos'||filter==='abertos'&&!final.includes(p.status)||filter==='concluidos'&&['RETIRADO','ENTREGUE'].includes(p.status)||filter==='cancelados'&&p.status==='CANCELADO');$('#order-list').innerHTML=items.length?items.map(p=>`<article class="card order"><div class="order-heading"><b>${escapeHTML(p.numero_pedido)}</b><span class="badge ${p.status==='CANCELADO'?'red':''}">${statusLabels[p.status]||escapeHTML(p.status)}</span></div><strong>${escapeHTML(p.cliente_nome)}</strong><p>${escapeHTML(p.cliente_telefone)} · ${date(p.criado_em)}</p><p>${p.forma_entrega==='ENTREGA'?'Entrega':'Retirada'} · ${escapeHTML(p.forma_pagamento)}</p>${p.cliente_endereco&&p.forma_entrega==='ENTREGA'?`<p>${escapeHTML(p.cliente_endereco)}</p>`:''}<ul>${p.itens.map(i=>`<li><b>${i.quantidade}×</b> ${escapeHTML(i.produto_nome)}</li>`).join('')}</ul><div class="order-total"><span>Total do pedido</span><b>${money(p.total_pedido)}</b></div>${!final.includes(p.status)?`<div class="button-row"><button class="primary" data-advance="${p.id}">${['RECEBIDO','CONFIRMADO'].includes(p.status)?'Iniciar separação':p.status==='EM_PREPARO'?'Marcar como pronto':p.forma_entrega==='ENTREGA'?'Concluir entrega':'Concluir retirada'}</button><button ${isAdmin?'':'hidden'} class="danger" data-cancel="${p.id}">Cancelar</button></div>`:''}</article>`).join(''):'<div class="card empty"><div class="empty-icon">▤</div><h2>Nenhum pedido nesta seleção</h2><p>As compras pelo link do bot aparecerão aqui.</p></div>';}
+function renderOrders(){const filter=$('#order-filter').value,final=['CANCELADO','RETIRADO','ENTREGUE'];const items=state.orders.filter(p=>filter==='todos'||filter==='abertos'&&!final.includes(p.status)||filter==='concluidos'&&['RETIRADO','ENTREGUE'].includes(p.status)||filter==='cancelados'&&p.status==='CANCELADO');$('#order-list').innerHTML=items.length?items.map(p=>`<article class="card order"><div class="order-heading"><b>${escapeHTML(p.numero_pedido)}</b><span class="badge ${p.status==='CANCELADO'?'red':''}">${statusLabels[p.status]||escapeHTML(p.status)}</span></div><strong>${escapeHTML(p.cliente_nome)}</strong><p>${escapeHTML(p.cliente_telefone)} · ${date(p.criado_em)}</p><p>${p.forma_entrega==='ENTREGA'?'Entrega':'Retirada'} · ${escapeHTML(p.forma_pagamento)}</p>${p.cliente_endereco&&p.forma_entrega==='ENTREGA'?`<p>${escapeHTML(p.cliente_endereco)}</p>`:''}<ul>${p.itens.map(i=>`<li><b>${i.quantidade}×</b> ${escapeHTML(i.produto_nome)}</li>`).join('')}</ul><div class="order-total"><span>Total do pedido</span><b>${money(p.total_pedido)}</b></div>${!final.includes(p.status)?`<div class="button-row"><button class="primary" data-advance="${p.id}">${['RECEBIDO','CONFIRMADO'].includes(p.status)?'Iniciar separação':p.status==='EM_PREPARO'?'Marcar como pronto':p.forma_entrega==='ENTREGA'?'Concluir entrega':'Concluir retirada'}</button><button ${isAdmin?'':'hidden'} class="danger" data-cancel="${p.id}">Cancelar</button></div>`:''}</article>`).join(''):'<div class="card empty"><div class="empty-icon">▤</div><h2>Nenhum pedido nesta seleção</h2><p>As compras pelo link e pela conversa do WhatsApp aparecerão aqui.</p></div>';}
 async function movements(){const items=await api('movimentos');$('#movement-list').innerHTML=items.length?items.map(m=>`<tr><td>${date(m.criado_em)}</td><td>${escapeHTML(m.produto_nome)}</td><td><span class="badge ${m.quantidade<0?'warning':''}">${escapeHTML(m.tipo)}</span></td><td>${m.quantidade>0?'+':''}${m.quantidade} ${escapeHTML(m.unidade)}</td><td>${m.saldo??'Sem controle'}</td><td>${escapeHTML(m.motivo)}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">Nenhuma movimentação registrada.</td></tr>';}
 const groups=[
   ['Informações da loja','Esses dados aparecem no atendimento e nos pedidos.',[

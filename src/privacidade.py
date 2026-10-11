@@ -44,10 +44,11 @@ def exportar(dados):
         ids = [r[0] for r in conn.execute("SELECT id FROM pedidos WHERE cliente_id=?", (perfil["id"],))] if perfil else []
         mensagens = [dict(r) for r in conn.execute("SELECT direcao, conteudo, criado_em FROM mensagens WHERE telefone=? ORDER BY id", (telefone,))]
         fila = [dict(r) for r in conn.execute("SELECT texto, resposta, estado, recebido_em FROM tarefas_bot WHERE telefone=? ORDER BY id", (telefone,))]
+        rascunho = conn.execute('SELECT dados, atualizado_em FROM carrinhos_conversa WHERE telefone=? AND pedido_id IS NULL', (telefone,)).fetchone()
         auditar(conn, "EXPORTAR", perfil["id"] if perfil else None)
     compras = [pedidos.obter_pedido(i) for i in ids]
     # Um link de pedido é uma credencial de compra: não deve sair no relatório.
-    relatorio = {"cliente": perfil, "pedidos": compras, "mensagens": mensagens, "atendimentos": fila, "aviso": aviso()}
+    relatorio = {"cliente": perfil, "pedidos": compras, "mensagens": mensagens, "atendimentos": fila, "rascunho_pedido":{'dados':json.loads(rascunho['dados']), 'atualizado_em':rascunho['atualizado_em']} if rascunho else None, "aviso": aviso()}
     return json.loads(re.sub(r"(/m/)[A-Za-z0-9_-]+", r"\1[link removido]", json.dumps(relatorio, ensure_ascii=False)))
 
 
@@ -76,7 +77,7 @@ def remover_identificacao(dados):
             raise ValueError("Conclua ou cancele os pedidos em andamento antes de remover a identificação.")
         if conn.execute("SELECT 1 FROM tarefas_bot WHERE telefone=? AND estado IN ('PROCESSANDO','ENVIANDO')", (telefone,)).fetchone():
             raise ValueError("Aguarde o atendimento em processamento antes de remover os dados.")
-        for tabela in ("mensagens", "links_pedido", "sessoes_bot", "tarefas_bot", "atendimentos_humanos"):
+        for tabela in ("mensagens", "links_pedido", "sessoes_bot", "tarefas_bot", "atendimentos_humanos", "carrinhos_conversa"):
             conn.execute(f"DELETE FROM {tabela} WHERE telefone=?", (telefone,))
         if cliente:
             conn.execute("UPDATE clientes SET nome='Cliente sem identificação', telefone=?, cep='', endereco='', chat_id=NULL, waha_session=NULL WHERE id=?",
@@ -100,6 +101,7 @@ def limpar_historico():
         mensagens = conn.execute("DELETE FROM mensagens WHERE criado_em < datetime('now', ?) AND telefone NOT IN (SELECT telefone FROM tarefas_bot WHERE estado!='CONCLUIDA')", (f"-{dias} days",)).rowcount
         tarefas = conn.execute("UPDATE tarefas_bot SET telefone='', texto='', resposta=NULL, chat_id=NULL, sessao=NULL, erro=NULL WHERE estado='CONCLUIDA' AND telefone!='' AND atualizado_em < datetime('now', ?)", (f"-{dias} days",)).rowcount
         links = conn.execute("DELETE FROM links_pedido WHERE expira_em < datetime('now')").rowcount
+        conn.execute("DELETE FROM carrinhos_conversa WHERE atualizado_em <= datetime('now','-30 minutes')")
         auditar(conn, "LIMPAR_HISTORICO")
     return {"mensagens": mensagens, "atendimentos": tarefas, "links_expirados": links}
 

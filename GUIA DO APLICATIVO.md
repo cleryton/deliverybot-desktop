@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.26.1
+# DeliveryBot Desktop 2.27.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -246,3 +246,11 @@ Você pode marcar **Registrar no Obsidian**. O registro revisado fica em `Docume
 Em **Produtos e estoque → Catálogo em PDF para o cliente**, baixe o arquivo com fotos, preços e disponibilidade dos produtos ativos com estoque. Você pode incluir as quantidades disponíveis. O PDF não lista custo, fornecedor, clientes ou pedidos. Ele registra a data de emissão: preços e estoque podem mudar depois de gerado.
 
 O cliente também encontra **Baixar catálogo em PDF** no link HTTPS de pedido, sem quantidade exata de estoque. Esse download exige um link de pedido válido. Links vencidos ou já usados não dão acesso ao arquivo. Envie o PDF baixado como anexo pelo canal que você preferir; o aplicativo não dispara anexos reais durante testes.
+
+## Pedidos pelo WhatsApp
+
+O cliente pode dizer **PEDIDO PELO WHATSAPP** ou informar uma seleção concreta, como “quero 2 Calabresa Grande”. O aplicativo pede produtos com quantidade e variação, nome, entrega ou retirada, endereço quando necessário e pagamento. O resumo mostra os valores do cadastro; a compra só entra no painel e na fila após **CONFIRMAR**. O fluxo não depende do túnel ou da IA.
+
+Use **adicionar**, **alterar** ou **remover** seguido de quantidade, nome e variação para ajustar itens. **CANCELAR** descarta o rascunho e **ATENDENTE** pausa o bot. Confirmações repetidas retornam o pedido existente. O resumo expira após 30 minutos; preço e estoque são conferidos novamente na gravação. Pagamento combinado não significa pagamento recebido.
+
+Em **WhatsApp e IA → Cérebro local → Visualizar notas**, escolha uma nota para ler seu conteúdo e verificar se ela orienta o estilo, o contexto aprovado ou apenas o guia. O cofre inclui **Pedidos pelo WhatsApp.md**; as notas não substituem ações, preços ou saldo do aplicativo. Dados de clientes não são copiados para o Obsidian.
