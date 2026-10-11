@@ -493,6 +493,11 @@ def aviso_privacidade():
     return render_template("privacidade.html", aviso=privacidade.aviso())
 
 
+@app.get('/jogar')
+def pagina_minijogo():
+    return render_template('jogar.html')
+
+
 @app.errorhandler(500)
 def erro_interno(_erro):
     return jsonify(erro="Não foi possível concluir a operação. Tente novamente ou contate a loja."), 500

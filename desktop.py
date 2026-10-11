@@ -108,6 +108,10 @@ def smoke_test(destino, janela=False):
         assert publico.get('/static/pedido.js').status_code == 200
         assert publico.get('/static/gestao.js').status_code == 404
         assert publico.get('/static/tutorial.js').status_code == 404
+        assert publico.get('/jogar').status_code == 200
+        assert b'data-pong' in publico.get('/jogar').data
+        for recurso_jogo in ('pong.css', 'pong-core.js', 'pong.js'):
+            assert publico.get('/static/' + recurso_jogo).status_code == 200
         assert publico.get(produto['foto_url']).mimetype == 'image/jpeg'
         assert produto['foto_url'].encode() in publico.get(caminho_pedido).data
         pdf_cliente = publico.get(caminho_pedido + '/catalogo.pdf')
@@ -138,7 +142,7 @@ def smoke_test(destino, janela=False):
         assert '### Atendimentos/Produtos e serviços/04 Fechamento.md' not in contexto
         assert '[[Atendimentos/Produtos e serviços/Perfil]]' in mapa
         assert publico.get('/gestao/api/cerebro/visualizar').status_code == 404
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True}
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True, "minijogo":True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local

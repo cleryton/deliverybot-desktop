@@ -68,3 +68,9 @@ Cada pasta contém `Perfil.md` e seis notas: **Recepção**, **Dúvidas**, **Esc
 Em **WhatsApp e IA**, confira o perfil ativo e clique em **Visualizar notas**. `Atendimentos/Como personalizar.md` explica a organização, e `Mapa do atendimento.md` conecta os padrões ativos no Graph. Para suspender uma nota, use `atendimento: false`; para limitar sua validade, acrescente `valido_ate: AAAA-MM-DD`. Preserve `categoria_atendimento` e `etapa_atendimento`. Identificação incorreta, validade vencida ou aprovação ambígua impedem o uso.
 
 Ao mudar o perfil, as edições antigas ficam preservadas na pasta anterior e saem do contexto da nova categoria. Os backups criptografados incluem essas notas. A próxima resposta lê suas alterações sem treinar a rede neural. Não inclua conversas nem dados de clientes; preços, estoque, reservas e condições comerciais precisam de confirmação no cadastro ou pela equipe.
+
+### Jogar enquanto espera
+
+Após confirmar pelo site, abra **Jogar pingue-pongue** e toque em **Jogar**. No celular, arraste o dedo na mesa ou segure os botões de seta; no computador, use mouse, ↑/↓ ou W/S. A raquete verde é sua. A partida termina em cinco pontos e oferece dificuldade Leve ou Normal, pausa e reinício. Trocar de aba ou fechar a área do jogo pausa a partida; toque em Continuar para retomar.
+
+**Abrir somente o jogo em outra aba** abre `/jogar` no mesmo endereço HTTPS da loja, sem o link pessoal do pedido. Essa página também pode ser reaberta enquanto o túnel estiver disponível. A partida roda no navegador, sem cadastro, cookies próprios, gravação do placar ou envio de dados a terceiros. O jogo não consulta o preparo: acompanhe as atualizações do pedido pelo WhatsApp. Sem JavaScript, o recibo e a confirmação continuam disponíveis.
