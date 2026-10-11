@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.16.0 — 2026-10-10
+
+Assistente de domínio fixo com passos, validação visual do domínio/token/túnel e cópia rápida do destino HTTP exigido pela Cloudflare.
+
 ## 2.15.0 — 2026-10-10
 
 Checklist inicial com estado real do WhatsApp, HTTPS e fila de atendimento, com atalhos para corrigir componentes indisponíveis.

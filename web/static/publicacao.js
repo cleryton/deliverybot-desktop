@@ -1,10 +1,24 @@
 'use strict';
 let paginaCarregada=false;
+let tokenConfigurado=false;
+let estadoPublicacao=null;
 function camposPublicacao(){
   $('#public-fixed').hidden=$('#public-mode').value!=='FIXO';
+  atualizarAssistenteDominio();
+}
+function atualizarAssistenteDominio(s=estadoPublicacao){
+  if(!s||!$('#fixed-config-state'))return;
+  const dominio=Boolean($('#public-domain').value.trim());
+  const token=Boolean($('#public-token').value.trim())||tokenConfigurado;
+  const online=s.estado==='ONLINE';
+  const etapas=[['Domínio HTTPS informado',dominio],['Token do conector salvo',token],['Túnel conectado',online]];
+  $('#fixed-config-state').innerHTML=etapas.map(([nome,ok])=>`<p>${escapeHTML(nome)} <span class="badge ${ok?'':'warning'}">${ok?'Pronto':'Pendente'}</span></p>`).join('');
+  const concluidos=etapas.filter(([,ok])=>ok).length;
+  $('#fixed-setup-status').textContent=concluidos===3?'Configuração pronta. Gere o link de teste e confirme o acesso pelo celular.':`${concluidos} de 3 etapas concluídas. O token nunca é exibido novamente.`;
 }
 async function paginaPublica(atualizarFormulario=false){
   const s=await api('pagina-publica');
+  estadoPublicacao=s;
   $('#public-state').textContent=({ONLINE:'Conector ligado',DESLIGADO:'Desligada',INICIANDO:'Iniciando…',RECONECTANDO:'Reconectando…',ERRO:'Confira a conexão'})[s.estado]||s.estado;
   $('#public-status').textContent=s.mensagem;
   $('#public-url').value=s.url;
@@ -20,11 +34,16 @@ async function paginaPublica(atualizarFormulario=false){
     $('#public-auto').checked=s.automatico;
     $('#public-domain').value=s.dominio;
     $('#public-port').value=s.porta_configurada;
+    tokenConfigurado=s.token_configurado;
     camposPublicacao();paginaCarregada=true;
   }
+  atualizarAssistenteDominio(s);
 }
 $('#public-mode').addEventListener('change',camposPublicacao);
 $('#public-port').addEventListener('input',e=>$('#public-origin').textContent='http://127.0.0.1:'+e.target.value);
+$('#public-domain').addEventListener('input',()=>atualizarAssistenteDominio());
+$('#public-token').addEventListener('input',()=>atualizarAssistenteDominio());
+$('#public-copy-origin').addEventListener('click',e=>run(e.target,async()=>{const destino=$('#public-origin').textContent;try{await navigator.clipboard.writeText(destino);toast('Destino copiado. Cole-o como serviço HTTP na Cloudflare.');}catch{$('#public-origin').focus();toast('Destino: '+destino);}}));
 $('#public-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{
   await api('pagina-publica','PUT',{TUNEL_MODO:$('#public-mode').value,TUNEL_AUTOMATICO:$('#public-auto').checked?'SIM':'NAO',TUNEL_URL:$('#public-domain').value,TUNEL_TOKEN:$('#public-token').value,TUNEL_PORTA:Number($('#public-port').value)});
   $('#public-token').value='';await paginaPublica(true);toast('Configuração salva. Clique em Iniciar página de pedidos.');
