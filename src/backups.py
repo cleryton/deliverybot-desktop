@@ -55,6 +55,13 @@ def criar(senha):
         copia.execute("UPDATE configuracoes SET valor='NAO' WHERE chave='TUNEL_AUTOMATICO'")
         if copia.execute("SELECT 1 FROM sqlite_master WHERE name='rotinas'").fetchone():
             copia.execute("UPDATE rotinas SET senha='',backup_ativo=0,pasta=''")
+        from . import cerebro
+        copia.execute("CREATE TABLE IF NOT EXISTS deliverybot_cerebro_snapshot (caminho TEXT PRIMARY KEY, conteudo BLOB NOT NULL)")
+        copia.execute("DELETE FROM deliverybot_cerebro_snapshot")
+        copia.executemany(
+            "INSERT INTO deliverybot_cerebro_snapshot(caminho,conteudo) VALUES(?,?)",
+            list(cerebro.snapshot().items()),
+        )
         dados = _serializar(copia)
     pasta = Path(config.DATABASE_PATH).resolve().parent / "backups"
     pasta.mkdir(exist_ok=True)
@@ -102,3 +109,19 @@ def abrir_arquivo(caminho, senha):
             raise ValueError("Abra a cópia de recuperação na conta Windows de origem.")
         return _dpapi(dados[len(LOCAL_MAGIC):], True)
     return decifrar(dados, senha)
+
+
+def snapshot_no_banco(conn):
+    """Lê a cópia Obsidian embutida nos backups recentes; backups antigos continuam válidos."""
+    tabela = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='deliverybot_cerebro_snapshot'"
+    ).fetchone()
+    if not tabela:
+        return None
+    from .cerebro import _validar_snapshot
+    return _validar_snapshot({
+        caminho: bytes(conteudo)
+        for caminho, conteudo in conn.execute(
+            "SELECT caminho,conteudo FROM deliverybot_cerebro_snapshot"
+        )
+    })

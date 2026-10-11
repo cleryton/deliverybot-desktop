@@ -18,28 +18,85 @@ def test_prompt_ollama_tom_humano_preserva_regras_e_catalogo():
     assert "Nunca invente preço" in prompt
 
 
-def test_cofre_obsidian_preserva_estilo_editado_e_rele_a_nota():
+def test_cofre_obsidian_cria_estrutura_e_preserva_notas_editadas():
     from src import cerebro
     situacao = cerebro.situacao()
     nota = __import__('pathlib').Path(situacao['arquivo'])
     assert situacao['cofre_obsidian']
-    assert nota.is_file() and nota.suffix == '.md'
-    assert (nota.parent / '.obsidian').is_dir()
-    nota.write_text('# Estilo customizado\nUse linguagem simples e acolhedora.\n', encoding='utf-8')
+    assert nota.is_file() and nota.name == 'Início.md'
+    assert (nota.parent / '.obsidian' / 'app.json').is_file()
+    assert (nota.parent / 'Estilo de atendimento.md').is_file()
+    assert (nota.parent / 'Informações da loja.md').is_file()
+    assert '[[Perguntas frequentes]]' in nota.read_text(encoding='utf-8')
+    configuracao = nota.parent / '.obsidian' / 'app.json'
+    configuracao.write_text('{"vimMode": true}\n', encoding='utf-8')
+    cerebro.situacao()
+    assert configuracao.read_text(encoding='utf-8') == '{"vimMode": true}\n'
+    estilo = nota.parent / 'Estilo de atendimento.md'
+    estilo.write_text('# Estilo customizado\nUse linguagem simples e acolhedora.\n', encoding='utf-8')
     cerebro.arquivo_estilo()
-    assert 'Use linguagem simples e acolhedora.' in cerebro.instrucoes_estilo()
-    assert nota.read_text(encoding='utf-8').startswith('# Estilo customizado')
+    assert 'Use linguagem simples e acolhedora.' in cerebro.instrucoes_contexto()
+    assert estilo.read_text(encoding='utf-8').startswith('# Estilo customizado')
+
+
+def test_cofre_obsidian_so_le_conhecimento_explicitamente_aprovado():
+    from src import cerebro
+    cerebro.situacao()
+    pasta = cerebro.diretorio() / 'Conhecimento'
+    (pasta / 'Entrega.md').write_text('---\natendimento: true\n---\n# Entrega\n\nEntregamos na região central até 18h.\n', encoding='utf-8')
+    (pasta / 'Rascunho.md').write_text('---\natendimento: false\n---\n# Rascunho\n\nNão deve aparecer no prompt.\n', encoding='utf-8')
+    contexto = cerebro.instrucoes_contexto()
+    assert 'Entregamos na região central até 18h.' in contexto
+    assert 'Não deve aparecer no prompt.' not in contexto
+    assert 'Informe dias, horários e canais oficiais.' not in contexto
+
+
+def test_restaurar_snapshot_obsidian_e_seguro_e_preserva_notas_extras():
+    from src import cerebro
+    cerebro.situacao()
+    pasta = cerebro.diretorio()
+    extras = pasta / 'Conhecimento' / 'Nota adicional.md'
+    extras.write_text('Esta nota não está no snapshot.', encoding='utf-8')
+    quantidade = cerebro.restaurar_snapshot({'Estilo de atendimento.md': b'# Voz anterior\nTexto original.\n'})
+    assert quantidade == 1
+    assert 'Texto original.' in (pasta / 'Estilo de atendimento.md').read_text(encoding='utf-8')
+    assert extras.read_text(encoding='utf-8') == 'Esta nota não está no snapshot.'
+    with pytest.raises(ValueError):
+        cerebro.restaurar_snapshot({'../fora.md': b'nao gravar'})
+    assert not (pasta.parent / 'fora.md').exists()
+
+
+def test_backup_criptografado_inclui_notas_do_obsidian():
+    from src import backups, cerebro
+    import sqlite3
+    from contextlib import closing
+    with closing(sqlite3.connect(':memory:')) as backup_antigo:
+        assert backups.snapshot_no_banco(backup_antigo) is None
+    cerebro.situacao()
+    pasta = cerebro.diretorio()
+    nota = pasta / 'Conhecimento' / 'Entrega.md'
+    nota.write_text('---\natendimento: true\n---\n# Entrega\n\nÁrea central.\n', encoding='utf-8')
+    caminho = backups.criar('senha-ficticia-com-mais-de-12')
+    backups.verificar_arquivo(caminho, 'senha-ficticia-com-mais-de-12')
+    dados = backups.abrir_arquivo(caminho, 'senha-ficticia-com-mais-de-12')
+    with closing(sqlite3.connect(':memory:')) as banco:
+        banco.deserialize(dados)
+        snapshot = backups.snapshot_no_banco(banco)
+    assert snapshot['Conhecimento/Entrega.md'].decode('utf-8').find('Área central.') >= 0
+    assert '.obsidian/app.json' in snapshot
+    with get_conn() as banco_atual:
+        assert not banco_atual.execute("SELECT 1 FROM sqlite_master WHERE name='deliverybot_cerebro_snapshot'").fetchone()
 
 
 def test_prompt_ollama_aplica_nota_apenas_como_preferencia_de_estilo(monkeypatch):
     from src import ia, cerebro
     monkeypatch.setattr(ia, '_system_prompt', lambda: 'REGRAS E CATÁLOGO')
-    monkeypatch.setattr(cerebro, 'instrucoes_estilo', lambda: 'Use tom acolhedor e direto.')
+    monkeypatch.setattr(cerebro, 'instrucoes_contexto', lambda: 'Use tom acolhedor e direto.')
     prompt = ia._system_prompt_ollama()
     assert 'REGRAS E CATÁLOGO' in prompt
     assert 'Use tom acolhedor e direto.' in prompt
-    assert 'apenas para ajustar tom e estilo' in prompt
-    assert 'não pode alterar preços, fatos, regras de segurança' in prompt
+    assert 'informações locais explicitamente aprovadas pela equipe' in prompt
+    assert 'Catálogo, preços, estoque, pedidos e disponibilidade em tempo real' in prompt
 
 
 def test_permissoes_auditoria_e_revogacao(cliente):

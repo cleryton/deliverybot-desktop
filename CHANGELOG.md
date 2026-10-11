@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.20.0 — 2026-10-10
+
+Cofre Obsidian estruturado com notas aprovadas de estilo e conhecimento, contexto local protegido contra instruções e dados operacionais inconsistentes, além de inclusão cifrada do vault nos novos backups e restauração com preservação de notas adicionais.
+
 ## 2.19.1 — 2026-10-10
 
 Personalidade do atendimento mais calorosa e reconhecível, com respostas variadas e adaptação ao contexto, sem perder clareza, precisão e respeito.

@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.19.1
+# DeliveryBot Desktop 2.20.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -77,6 +77,14 @@ Use **Gerar link de teste**, copie o endereço e abra no celular com dados móve
 ### Compilar com o conector incluído
 
 Na máquina de desenvolvimento, prepare o componente WhatsApp conforme o fluxo existente e execute `.venv/Scripts/python.exe packaging/preparar_tunel.py` antes do PyInstaller. O script baixa o binário Windows oficial da versão fixada em `packaging/cloudflared.json`, valida tamanho e SHA-256 e inclui a licença Apache. Arquivos de runtime ficam ignorados pelo Git. Para atualizar o conector, revise uma nova release oficial e altere a versão, tamanho e hash fixados; não use executáveis locais arbitrários. O usuário final recebe tudo no aplicativo.
+
+## Cérebro local com Obsidian
+
+Em **WhatsApp e IA → Conexões**, clique em **Abrir o cofre no Obsidian**. O aplicativo cria a pasta `Cerebro Obsidian` junto aos dados locais, com as notas **Estilo de atendimento**, **Informações da loja**, **Perguntas frequentes** e a página **Início** com links entre elas. O Obsidian é opcional; sem ele, a pasta abre no Explorador e os arquivos podem ser editados em qualquer editor de Markdown.
+
+O Ollama consulta a nota de estilo e as notas de loja aprovadas a cada resposta. Para incluir uma nota própria, crie-a em `Conhecimento` usando `Modelos/Conhecimento aprovado.md`; depois de revisar, altere no início do arquivo `atendimento: false` para `atendimento: true`. Notas não aprovadas ficam fora do contexto. O conteúdo orienta as respostas, mas não treina o modelo. Produtos, preços, estoque e pedidos vêm do cadastro do aplicativo.
+
+Não guarde dados de clientes nesse cofre. A IA local recebe o texto das notas que estiverem aprovadas; o aplicativo não grava conversas nelas. Backups criptografados `.dbot` novos incluem as notas Markdown aprovadas, e a restauração as recupera sem apagar notas adicionais que existam no computador. Backups de versões anteriores continuam válidos, mas não contêm notas do Obsidian. Se ativar sincronização do Obsidian, revise as configurações e o serviço escolhido.
 
 ## Iniciar Ollama pelo aplicativo
 

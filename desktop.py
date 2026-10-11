@@ -307,7 +307,7 @@ def main():
                 self._verificar()
                 from src import cerebro
                 from urllib.parse import quote
-                nota = cerebro.arquivo_estilo()
+                nota = cerebro.arquivo_inicio()
                 uri = "obsidian://open?path=" + quote(str(nota), safe="")
                 try:
                     os.startfile(uri)
@@ -355,8 +355,22 @@ def main():
                             origem.backup(copia)
                     validar_backup(temporario)
                     criar_backup(senha)
-                    # SQLite backup também funciona se o arquivo escolhido estiver em WAL.
-                    os.replace(temporario, pasta / "restaurar.db")
+                    # Notas antigas dos backups seguem válidas; somente os novos contêm o snapshot do cofre.
+                    from src import backups, cerebro
+                    with closing(sqlite3.connect(temporario)) as banco_restaurado:
+                        snapshot = backups.snapshot_no_banco(banco_restaurado)
+                        banco_restaurado.execute("DROP TABLE IF EXISTS deliverybot_cerebro_snapshot")
+                        banco_restaurado.commit()
+                    cofre_anterior = cerebro.snapshot() if snapshot is not None else None
+                    if snapshot is not None:
+                        cerebro.restaurar_snapshot(snapshot)
+                    try:
+                        # SQLite backup também funciona se o arquivo escolhido estiver em WAL.
+                        os.replace(temporario, pasta / "restaurar.db")
+                    except Exception:
+                        if cofre_anterior is not None:
+                            cerebro.restaurar_snapshot(cofre_anterior)
+                        raise
                     bandeja.sair()
                     return {"ok": True}
                 except Exception as exc:
