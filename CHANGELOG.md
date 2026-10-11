@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.26.0 — 2026-10-11
+
+Adiciona guias locais de configuração com tutorial por etapas, exemplos por tipo de comércio, atalhos para as telas e verificações atuais sem iniciar serviços; inclui testes unitários de orientação, disponibilidade e acesso.
+
 ## 2.25.0 — 2026-10-11
 
 Personaliza o comércio na instalação e no painel com descrição, segmento e operação de revenda, produção, serviços ou mista; estoque opcional por item, preservação de dados existentes e novos testes unitários e do instalador.

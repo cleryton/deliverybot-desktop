@@ -2,8 +2,8 @@
 async function preparacao(){
   const s=await api('preparacao');
   const op=s.operacao;
-  const etapas=[['Personalize a loja',s.loja,'configuracoes'],['Cadastre seus produtos',s.produtos,'produtos'],['Defina responsável e contato',s.privacidade,'privacidade'],['Conecte o WhatsApp · '+s.whatsapp,op.whatsapp_ok,'conexoes'],['Prepare a IA (opcional) · '+s.ia,true,'conexoes'],['Inicie a página pública',s.endereco_publico,'publicacao'],['Abra uma compra de teste',s.abertura_recebida,'publicacao']];
-  $('#preparation-steps').innerHTML=etapas.map(([titulo,ok,pagina],i)=>`<p><button data-page="${pagina}">${i+1}. ${escapeHTML(titulo)}</button> <span class="badge ${ok?'':'warning'}">${ok?'Configurado':'Confira esta etapa'}</span></p>`).join('');
+  const etapas=s.tutorial;
+  $('#preparation-steps').innerHTML=etapas.map((s,i)=>`<p><button data-page="${s.pagina}">${i+1}. ${escapeHTML(s.titulo)}</button> <span class="badge ${s.concluida||s.opcional?'':'warning'}">${s.opcional?'Opcional':s.concluida?'Verificação atendida':'Confira esta etapa'}</span></p>`).join('');
   const servicos=[
     ['WhatsApp',op.whatsapp_estado,op.whatsapp_ok,'conexoes'],
     ['HTTPS da página de pedidos',op.https_estado,op.https_ok,'publicacao'],

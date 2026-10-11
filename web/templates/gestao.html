@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='tema.css') }}">
   <script defer src="{{ url_for('static', filename='gestao.js') }}"></script>
   <script defer src="{{ url_for('static', filename='primeiros_passos.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='tutorial.js') }}"></script>
   <script defer src="{{ url_for('static', filename='humano.js') }}"></script>
   <script defer src="{{ url_for('static', filename='catalogo_avancado.js') }}"></script>
   <script defer src="{{ url_for('static', filename='documentos_estoque.js') }}"></script>
@@ -22,6 +23,7 @@
     <nav aria-label="Navegação principal">
       <button data-admin-only data-page="publicacao"><span>↗</span> Página de pedidos</button>
       <button data-page="inicio" class="selected"><span>◈</span> Visão geral</button>
+      <button data-admin-only data-page="tutorial"><span>?</span> Guia de configuração</button>
       <button data-admin-only data-page="comercio"><span>◇</span> Meu comércio</button>
       <button data-page="produtos"><span>▦</span> <b id="catalog-nav-label" style="font-weight:inherit">Produtos e estoque</b></button>
       <button data-page="pedidos"><span>▤</span> Pedidos</button>
@@ -33,11 +35,17 @@
       <button data-page="humano"><span>☏</span> Atendimento humano</button>
       <button data-admin-only data-page="configuracoes"><span>⚙</span> Configurações</button>
     <button data-admin-only data-page="operadores">♙ Funcionários e auditoria</button><button data-admin-only data-page="atualizacoes">↻ Atualizações</button></nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.25.0</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.26.0</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
   </aside>
   <main>
     <header class="topbar"><span id="breadcrumb">Sua operação, em um só lugar</span><div><label class="theme-picker">Tema<select data-theme-picker aria-label="Tema do aplicativo"><option value="sistema">Seguir o Windows</option><option value="claro">Claro</option><option value="escuro">Escuro</option></select></label><span id="connection" class="badge">Modo de teste</span><button id="refresh" class="icon-button" title="Atualizar dados" aria-label="Atualizar dados">↻</button></div><span id="theme-status" class="theme-feedback" role="status" hidden></span></header>
     <div class="content">
+      <section id="page-tutorial" class="page" hidden data-admin-only>
+        <div class="page-heading"><div><p class="eyebrow">COM VOCÊ, PASSO A PASSO</p><h1>Vamos preparar seu aplicativo</h1><p>Escolha uma etapa. Cada guia explica o que fazer e leva você à tela certa.</p></div><button id="tutorial-refresh" type="button">Verificar configuração</button></div>
+        <p class="notice">Os guias funcionam no próprio aplicativo, sem precisar do Ollama. Eles orientam; você decide quando salvar, conectar ou iniciar um serviço.</p>
+        <p id="tutorial-progress" role="status">Carregando suas etapas…</p>
+        <div class="tutorial-layout"><nav id="tutorial-steps" class="card tutorial-steps" aria-label="Etapas de configuração"></nav><article class="card tutorial-guide"><span id="tutorial-agent" class="pill"></span><h2 id="tutorial-title"></h2><p id="tutorial-state"></p><ol id="tutorial-instructions"></ol><div class="button-row"><button id="tutorial-open" class="primary" type="button">Abrir esta configuração</button><button id="tutorial-back" type="button">Anterior</button><button id="tutorial-next" type="button">Próxima etapa</button></div><p class="muted">Depois de salvar, volte a este guia e clique em Verificar configuração. O estado acompanha os dados atuais; navegar por uma etapa não a marca como concluída.</p></article></div>
+      </section>
       <section id="page-comercio" class="page" hidden>
         <div class="page-heading"><div><p class="eyebrow">SEU JEITO DE TRABALHAR</p><h1>Vamos organizar seu comércio</h1><p>Descreva o que você oferece e escolha como seu atendimento deve funcionar.</p></div></div>
         <form id="commerce-form" class="card"><div class="form-grid">
@@ -51,6 +59,7 @@
       <section id="page-inicio" class="page">
         <div class="page-heading"><div><p class="eyebrow">PAINEL DA LOJA</p><h1>Seu dia começa aqui.</h1><p>Acompanhe seus produtos, vendas e atendimento.</p></div><button data-admin-only class="primary" data-action="novo">+ Cadastrar produto</button></div>
         <div id="metrics" class="metrics"></div>
+        <article data-admin-only class="card"><div class="card-heading"><div><h2>Precisa de ajuda para começar?</h2><p>Seus guias explicam o cadastro, a conexão e o teste do endereço de pedidos.</p></div><button class="primary" data-page="tutorial">Começar tutorial</button></div></article>
         <div id="backup-warning" class="notice" role="status" hidden></div>
         <article data-admin-only class="card"><h2>Prepare sua loja, passo a passo</h2><div id="preparation-steps"></div><h3>Estado dos serviços</h3><div id="preparation-live" aria-live="polite"></div><p id="preparation-status"></p><div class="button-row"><button id="preparation-test">Gerar teste para abrir no celular</button><button id="preparation-check">Atualizar status</button></div><input id="preparation-link" readonly hidden aria-label="Endereço de teste para copiar no celular"></article>
         <div class="home-grid">

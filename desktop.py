@@ -83,6 +83,8 @@ def smoke_test(destino, janela=False):
         client = app.test_client()
         assert client.get("/gestao/api/produtos").status_code == 401
         assert client.get("/gestao?acesso=" + token, follow_redirects=True).status_code == 200
+        assert client.get('/static/tutorial.js').status_code == 200
+        assert len(client.get('/gestao/api/preparacao').json['tutorial']) == 8
         produto = estoque.salvar_produto({"nome": "Camiseta teste", "categoria": "Vestuário", "preco": "49.90", "estoque": 5})
         from io import BytesIO
         from PIL import Image
@@ -104,6 +106,7 @@ def smoke_test(destino, janela=False):
         assert publico.get('/static/pedido.css').status_code == 200
         assert publico.get('/static/pedido.js').status_code == 200
         assert publico.get('/static/gestao.js').status_code == 404
+        assert publico.get('/static/tutorial.js').status_code == 404
         assert publico.get(produto['foto_url']).mimetype == 'image/jpeg'
         assert produto['foto_url'].encode() in publico.get(caminho_pedido).data
         pdf_cliente = publico.get(caminho_pedido + '/catalogo.pdf')
