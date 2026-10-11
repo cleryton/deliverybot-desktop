@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.24.3 — 2026-10-11
+
+Adiciona GitHub Actions com testes Python e WhatsApp, conferência de versões, compilação Windows e teste do executável; documenta a validação obrigatória da main e atualizações dos componentes do Actions.
+
 ## 2.24.2 — 2026-10-11
 
 Melhora o guia do Obsidian com exemplos de tom de atendimento, aprovação de conhecimento e fluxo de importação de estoque e catálogo PDF.
