@@ -46,7 +46,7 @@ def _linhas(tabela, tipo):
     campos = []
     for cab in tabela[0]:
         chave = _normal(cab)
-        if chave in {'valor unitario', 'preco unitario'}:
+        if chave in {'valor unitario', 'preco unitario'} or (tipo == 'compra' and chave == 'preco'):
             campo = 'custo' if tipo == 'compra' else 'preco'
         else:
             campo = _ALIASES.get(chave)

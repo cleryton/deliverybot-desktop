@@ -276,3 +276,14 @@ def test_quantidade_inteira_decimal_e_entrada_fracionada(loja):
     r=docs.ler(arquivo('nome;sku;unidade;estoque;fracionado\nCafé;CAFE;kg;0,250;sim'),'dono',tipo='compra')
     lancar(r)
     assert next(p for p in estoque.listar_produtos() if p['sku']=='CAFE')['estoque']==1.75
+
+
+def test_preco_generico_em_compra_exige_revisar_venda(loja):
+    r=docs.ler(arquivo(),'dono',tipo='compra')
+    assert r['produtos'][0]['preco']=='' and r['produtos'][0]['custo']=='15,90'
+    with pytest.raises(ValueError,match='Preço'):
+        lancar(r)
+    assert estoque.listar_produtos()==[]
+    r['produtos'][0]['preco']='25'
+    lancar(r)
+    assert estoque.listar_produtos()[0]['preco']==25

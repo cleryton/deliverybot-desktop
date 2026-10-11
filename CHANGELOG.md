@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.24.1 — 2026-10-11
+
+Evita tratar a coluna genérica de preço em notas de compra como preço de venda; mantém a revisão obrigatória do valor de venda antes de cadastrar produtos.
+
 ## 2.24.0 — 2026-10-11
 
 Leitura local de PDF, XLSX, CSV e notas Obsidian com Ollama, revisão editável, entrada e contagem transacionais; registro no cofre e catálogo PDF com fotos para clientes pelo HTTPS.
