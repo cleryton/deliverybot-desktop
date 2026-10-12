@@ -3,6 +3,11 @@ async function preparacao(){
   const s=await api('preparacao');
   const op=s.operacao;
   const etapas=s.tutorial;
+  const proximo=DeliveryUX.proximoPasso(s),conexao=DeliveryUX.conexao(s);
+  $('#next-step-title').textContent=proximo.titulo;$('#next-step-label').textContent=proximo.pronto?'VERIFICAÇÕES ATENDIDAS':'PRÓXIMO PASSO';
+  $('#next-step-help').textContent=proximo.pronto?'As verificações atuais estão atendidas. Mantenha o computador ligado e acompanhe o atendimento.':'Continue pela etapa abaixo. Seus cadastros e configurações anteriores são preservados.';
+  $('#next-step-action').dataset.page=proximo.pagina;$('#next-step-action').textContent=proximo.pronto?'Ver pedidos':'Continuar configuração';
+  $('#connection').textContent=conexao.texto;$('#connection').classList.toggle('warning',!conexao.ok);
   $('#preparation-steps').innerHTML=etapas.map((s,i)=>`<p><button data-page="${s.pagina}">${i+1}. ${escapeHTML(s.titulo)}</button> <span class="badge ${s.concluida||s.opcional?'':'warning'}">${s.opcional?'Opcional':s.concluida?'Verificação atendida':'Confira esta etapa'}</span></p>`).join('');
   const servicos=[
     ['WhatsApp',op.whatsapp_estado,op.whatsapp_ok,'conexoes'],
@@ -15,7 +20,7 @@ async function preparacao(){
 $('#preparation-check').addEventListener('click',e=>run(e.target,preparacao));
 $('#preparation-test').addEventListener('click',e=>run(e.target,async()=>{const r=await api('preparacao/testar','POST',{});$('#preparation-link').value=r.url;$('#preparation-link').hidden=false;}));
 $('#preparation-link').addEventListener('click',e=>e.target.select());
-if(isAdmin)preparacao().catch(e=>toast(e.message,true));
+// A visão geral atualiza a preparação no próprio carregamento, sem consultas duplicadas.
 $('#app-exit').addEventListener('click',e=>run(e.target,async()=>{if(!window.pywebview?.api?.sair_aplicativo)throw new Error('Use o aplicativo Desktop para encerrar.');if(confirm('Encerrar o aplicativo e interromper o atendimento?'))await window.pywebview.api.sair_aplicativo();}));
 async function rotinasStatus(){const r=await api('rotinas'),f=$('#routines-form');for(const k of ['horas','quantidade','pasta'])f.elements[k].value=r[k];for(const k of ['backup_ativo','limpar'])f.elements[k].checked=!!r[k];const aviso=$('#backup-warning');$('#routines-status').textContent=r.erro||(r.executando?'Rotinas em execução.':r.backup_ativo?(r.atrasado?'Atenção: backup automático ainda ausente ou atrasado. ':'')+'Último backup verificado: '+date(r.ultima_copia?.split('.')[0]):'Backup automático desativado. Configure uma cópia fora deste computador.');if(r.erro||r.atrasado||!r.backup_ativo){aviso.hidden=false;aviso.classList.add('warning');aviso.innerHTML=`${r.erro?'O último backup automático falhou. Confira as configurações e tente novamente.':r.atrasado?'O backup automático está atrasado. Confira se o disco de destino está disponível.':'Os backups automáticos estão desativados.'} <button type="button" id="backup-warning-action">Revisar proteção</button>`;}else aviso.hidden=true;}
 $('#backup-warning').addEventListener('click',e=>{if(e.target.id==='backup-warning-action')$('#routines-form').scrollIntoView({behavior:'smooth',block:'center'});});
