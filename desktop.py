@@ -135,6 +135,7 @@ def smoke_test(destino, janela=False):
             assert conn.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0] == 1
         notas = client.get('/gestao/api/cerebro/visualizar').json['notas']
         assert any(n['nome']=='Pedidos pelo WhatsApp.md' for n in notas)
+        assert any(n['nome']=='Segurança dos funcionários.md' for n in notas)
         mapa = next(n['conteudo'] for n in notas if n['nome'] == 'Mapa do atendimento.md')
         assert '[[Pedidos pelo WhatsApp]]' in mapa and '[[Conexão e página de pedidos]]' in mapa
         assert any(n['nome']=='Atendimentos/Produtos e serviços/Perfil.md' for n in notas)
@@ -327,6 +328,21 @@ def smoke_test(destino, janela=False):
                     esperar("document.querySelector('#operator-list').textContent.includes('Administrador UI')")
                     window.evaluate_js("const f=document.querySelector('#operator-form');f.elements.nome.value='Atendente UI';f.elements.login.value='vendas.ui';f.elements.senha.value='senha-ficticia-ui-123';f.elements.perfil.value='ATENDENTE';f.querySelector('button').click();")
                     esperar("document.querySelector('#operator-list').textContent.includes('Atendente UI')")
+                    esperar("document.querySelector('#operator-form button').getAttribute('aria-busy')!=='true'")
+                    window.evaluate_js("const f=document.querySelector('#operator-form');f.elements.nome.value='Caixa UI';f.elements.login.value='caixa.ui';f.elements.senha.value='senha-ficticia-ui-123';f.elements.perfil.value='CAIXA';f.querySelector('button').click();")
+                    esperar("document.querySelector('#operator-list').textContent.includes('Caixa UI')")
+                    with get_conn() as conn:
+                        uid_caixa=conn.execute("SELECT id FROM operadores WHERE login='caixa.ui'").fetchone()[0]
+                        did=conn.execute("INSERT INTO terminal_dispositivos(nome,hash) VALUES('Computador fictício UI','credencial-ficticia-ui')").lastrowid
+                    window.evaluate_js("document.querySelector('[data-page=caixas]').click()")
+                    esperar("document.querySelector('#convite-operador option[value=\""+str(uid_caixa)+"\"]')!==null && document.querySelector('[data-autorizacao-terminal]')!==null")
+                    assert window.evaluate_js("document.querySelector('#convite-operador').options.length===2 && !document.querySelector('#convite-movimentar').checked")
+                    window.evaluate_js("const f=document.querySelector('[data-autorizacao-terminal]');f.elements.operador_id.value='"+str(uid_caixa)+"';f.elements.movimentar.checked=true;f.querySelector('button').click()")
+                    esperar("document.querySelector('#toast').textContent.includes('Autorização salva')")
+                    with get_conn() as conn:
+                        a=conn.execute('SELECT * FROM terminal_autorizacoes WHERE dispositivo_id=?',(did,)).fetchone()
+                        assert a['operador_id']==uid_caixa and a['movimentar']==1
+                    resultado['seguranca_funcionarios_janela']=['vinculo_individual','somente_contas_caixa','movimentacao_explicita','guia_obsidian']
                     window.evaluate_js("document.querySelector('#operator-logout').click()")
                     esperar("document.querySelector('form[action=\"/gestao/login\"]') !== null")
                     esperar("document.documentElement.dataset.theme === 'dark' && getComputedStyle(document.querySelector('.login-card')).backgroundColor === 'rgb(27, 42, 35)'")
@@ -438,13 +454,13 @@ def main():
         if config.IA_PROVIDER == "OLLAMA" and conexoes.url_local(config.OLLAMA_URL):
             conexoes.iniciar_tarefa("ollama", conexoes.iniciar_ollama)
         class API:
-            def salvar_acesso_funcionario(self):
+            def salvar_acesso_funcionario(self, autorizacao):
                 self._verificar()
                 from src import terminal
                 arquivos=window.create_file_dialog(webview.FileDialog.SAVE,save_filename='acesso-funcionario.dbterminal',file_types=('Acesso DeliveryBot (*.dbterminal)',))
                 if not arquivos:
                     return {'cancelado':True}
-                dados=terminal.convite()
+                dados=terminal.convite(autorizacao)
                 Path(arquivos[0]).write_text(json.dumps(dados,ensure_ascii=False,indent=2),encoding='utf-8')
                 return {'ok':True}
             def instalar_atualizacao(self):

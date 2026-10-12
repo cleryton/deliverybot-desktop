@@ -10,8 +10,9 @@ from urllib.parse import unquote,urlsplit
 class ClienteSmoke:
     """Dados em memória, exclusivos do teste visual; nenhum serviço ou conta real."""
     def __init__(self):
-        self.caixas=[];self.vendas=[]
+        self.caixas=[];self.vendas=[];self.usuario=None
     def entrar(self,*args):
+        self.usuario={'id':1}
         return {'usuario':{'id':1,'nome':'Funcionário fictício'},'loja':'Loja de teste'}
     def consultar(self,acao):
         if acao=='catalogo':
@@ -33,6 +34,7 @@ class ClienteSmoke:
     def conferir(self,*args):
         return {'pendente':False}
     def sair(self):
+        self.usuario=None
         return {'ok':True}
 
 
@@ -95,6 +97,9 @@ def main():
         def sair(self):
             self._verificar()
             return cliente.sair()
+        def sessao(self):
+            self._verificar()
+            return {'autenticado':cliente.usuario is not None}
     janela=webview.create_window('DeliveryBot Funcionário — Pedidos e caixa',pagina.as_uri(),js_api=API(),width=1200,height=820,min_size=(850,600))
     resultado={'ok':True,'janela':True,'backend_simulado':True}
     def verificar():
@@ -111,6 +116,7 @@ def main():
             esperar("!document.querySelector('#painel').hidden && document.querySelector('#catalogo button')")
             janela.evaluate_js("document.querySelector('#abertura').abertura.value='100';document.querySelector('#abertura button').click()")
             esperar("!document.querySelector('#operacao').hidden && document.querySelector('#esperado').textContent.includes('100')")
+            assert janela.evaluate_js("document.querySelector('#movimento').hidden")
             janela.evaluate_js("document.querySelector('#catalogo button').click();document.querySelector('#pedido-form').recebido.value='20';document.querySelector('#revisar').click()")
             esperar("!document.querySelector('#registrar').disabled && document.querySelector('#cotacao').textContent.includes('12,30')")
             janela.evaluate_js("window.confirm=()=>true;document.querySelector('#registrar').click()")
@@ -118,7 +124,11 @@ def main():
             assert janela.evaluate_js("document.querySelector('#aviso').textContent.includes('7,70')")
             janela.evaluate_js("document.querySelector('#fechamento').contado.value='112';document.querySelector('#fechamento button').click()")
             esperar("document.querySelector('#historico').textContent.includes('0,30') && document.querySelector('#operacao').hidden")
-            resultado['fluxos']=['login_nativo','abertura','catalogo','cotacao','venda','troco','fechamento','historico']
+            cliente.usuario=None
+            janela.evaluate_js('tratarSessao().then(()=>window.qaSessao=true)')
+            esperar("window.qaSessao===true && document.querySelector('#painel').hidden && !document.querySelector('#login').hidden")
+            assert janela.evaluate_js("document.querySelector('#pedidos').children.length===0 && document.querySelector('#historico').children.length===0")
+            resultado['fluxos']=['login_nativo','abertura','catalogo','cotacao','venda','troco','fechamento','historico','movimentacao_restrita','sessao_expirada']
         except Exception as e:
             resultado.update(ok=False,erro=str(e))
             try:resultado['diagnostico']=janela.evaluate_js("({url:location.href,aviso:document.querySelector('#aviso')?.textContent,cotacao:document.querySelector('#cotacao')?.textContent})")

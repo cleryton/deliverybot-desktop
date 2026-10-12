@@ -26,6 +26,7 @@ def test_caixa_nao_acessa_painel_api_ou_ponte_administrativa(cliente):
     for rota in ('produtos','pedidos','resumo','caixas','terminal','operadores','configuracoes','humano'):
         assert c.get('/gestao/api/'+rota).status_code==403
     assert c.post('/gestao/api/caixas/1/fechar',json={},headers=h).status_code==403
+    assert c.put('/gestao/api/terminal/dispositivos/1/autorizacao',json={'operador_id':uid,'movimentar':True},headers=h).status_code==403
     janela=Mock()
     janela.get_cookies.return_value=[SimpleCookie('session='+c.get_cookie('session').value)]
     for admin_only in (True,False):
@@ -42,6 +43,8 @@ def test_backup_preserva_livro_e_remove_pareamentos(cliente):
         conn.execute("UPDATE terminal_config SET ativo=1,host='192.168.1.10'")
         conn.execute("INSERT INTO terminal_dispositivos(nome,hash) VALUES('Fictício','hash-ficticio')")
         conn.execute("INSERT INTO terminal_convites(hash,expira_em) VALUES('convite-ficticio',9999999999)")
+        conn.execute('INSERT INTO terminal_autorizacoes VALUES(1,?,1,\'versao-ficticia\')',(uid,))
+        conn.execute('INSERT INTO terminal_convites_autorizacoes VALUES(\'convite-ficticio\',?,1)',(uid,))
     arquivo=backups.criar('senha-backup-ficticia-123')
     raw=backups.abrir_arquivo(arquivo,'senha-backup-ficticia-123')
     with sqlite3.connect(':memory:') as restaurado:
@@ -50,6 +53,24 @@ def test_backup_preserva_livro_e_remove_pareamentos(cliente):
         assert restaurado.execute('SELECT ativo,host FROM terminal_config').fetchone()==(0,'')
         assert restaurado.execute('SELECT COUNT(*) FROM terminal_dispositivos').fetchone()[0]==0
         assert restaurado.execute('SELECT COUNT(*) FROM terminal_convites').fetchone()[0]==0
+        assert restaurado.execute('SELECT COUNT(*) FROM terminal_autorizacoes').fetchone()[0]==0
+        assert restaurado.execute('SELECT COUNT(*) FROM terminal_convites_autorizacoes').fetchone()[0]==0
+
+
+def test_vinculo_somente_admin_csrf_e_auditoria(cliente):
+    c,h=cliente
+    admin,uid,d=contas(c,h)
+    with get_conn() as conn:
+        conn.execute("INSERT INTO terminal_dispositivos(nome,hash) VALUES('Fictício','hash-ficticio')")
+    rota='/gestao/api/terminal/dispositivos/1/autorizacao'
+    dados={'operador_id':uid,'movimentar':True}
+    assert c.put(rota,json=dados).status_code==403
+    assert c.put(rota,json={**dados,'operador_id':admin},headers=h).status_code==400
+    assert c.put(rota,json=dados,headers=h).status_code==200
+    with get_conn() as conn:
+        r=conn.execute('SELECT * FROM terminal_autorizacoes').fetchone()
+        assert r['operador_id']==uid and r['movimentar']==1
+        assert conn.execute("SELECT operador_id FROM auditoria_operadores WHERE acao='gestao.terminal_autorizar'").fetchone()[0]==admin
 
 
 def test_caixas_exigem_csrf_e_fechamento_admin_nao_usa_conta_alvo(cliente):

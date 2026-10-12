@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.35.0 — 2026-10-12
+
+Restringe o terminal por vínculo individual de conta Caixa e computador, impede login administrativo e exige autorização explícita para sangria e suprimento. Revalida acesso dentro da transação, limita requisições e pareamento, expira sessões no servidor sem renovação por consultas automáticas e preserva pendências incertas. Inclui auditoria de recusas, revisão segura de acessos anteriores, recuperação restrita de conta bloqueada, guia no visual e Graph Obsidian sem poder de autorização e testes de abuso e da interface.
+
 ## 2.34.1 — 2026-10-12
 
 Corrige o encerramento TLS do gateway de funcionários para concluir respostas curtas antes de fechar o socket e limita a espera pelo cliente. O terminal lê respostas por iter_content, traduz falhas de protocolo para orientação de reconexão e preserva operações pendentes sem repetir gravações; acrescenta regressões de resposta truncada, saída local e conexões HTTPS repetidas no Windows.

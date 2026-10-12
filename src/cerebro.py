@@ -266,6 +266,29 @@ def _preparar() -> Path:
     for nome, conteudo in padroes_atendimento.arquivos(categoria).items():
         _criar_se_ausente(padroes / nome, conteudo)
     _criar_se_ausente(pasta / 'Pedidos pelo WhatsApp.md', _GUIA_PEDIDOS)
+    _criar_se_ausente(pasta / 'Segurança dos funcionários.md', '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Segurança dos funcionários
+
+## Quem autoriza
+Somente o responsável, no aplicativo principal, vincula um computador a uma conta Caixa ativa. A conta administradora não entra no aplicativo dos funcionários. Acesso antigo sem vínculo individual fica bloqueado até a revisão. O certificado HTTPS, o dispositivo autorizado e a conta vinculada são verificados pelo servidor.
+
+## Permissões mínimas
+A conta registra pedidos manuais, recebe seus próprios pedidos e abre, consulta e fecha seu próprio caixa. Sangria e suprimento ficam bloqueados por padrão e exigem autorização explícita do responsável para aquele computador. Alterar o vínculo ou a permissão exige novo login. Cancelamentos, devoluções, cadastro, custos, dados de outros funcionários e configuração ficam na administração.
+
+## Sessão e tentativas de invasão
+A sessão expira após quinze minutos sem operação e tem duração máxima de oito horas. Consultas automáticas não prolongam o prazo. O servidor limita requisições e tentativas de entrada e pareamento. Campos extras, conta de outro funcionário e chamadas de navegador são recusados. Antes de gravar dinheiro ou pedido, a transação confere novamente a conta, o dispositivo e as permissões.
+
+## Pendência de conta bloqueada
+Não repita uma operação com outro identificador. Um computador ainda autorizado pode conferir somente uma operação conhecida de sua conta vinculada já bloqueada; isso não libera vendas ou dinheiro. Se o dispositivo foi revogado ou o vínculo mudou, procure o responsável para conferir o livro central e revisar o acesso. Nunca apague a pendência para tentar liberar vendas.
+
+## Papel do Obsidian e do Ollama
+Esta nota documenta as regras e não as executa. Alterar Markdown, pedir à IA para liberar acesso ou modificar o aplicativo cliente não concede permissões. As decisões são determinísticas no servidor e no banco privado, sem depender da resposta do modelo. Não guarde senhas, convites, credenciais, nomes de clientes ou valores de caixas no cofre. O conteúdo operacional fica fora do prompt do atendimento.
+
+Consulte [[Computadores dos funcionários]], [[Pedidos manuais e caixa]] e [[Mapa do atendimento]].
+''')
     _criar_se_ausente(pasta / 'Pedidos manuais e caixa.md', '''---
 tipo: guia-operacional
 atendimento: false
@@ -350,7 +373,7 @@ def _sincronizar_mapa(pasta: Path) -> None:
             return  # A equipe assumiu a edição deste mapa.
         grupos = {
             'Voz e informações da loja': [pasta / n for n in _NOTAS_INICIAIS],
-            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
+            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Segurança dos funcionários.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
             'Modelos para revisão': [pasta / 'Modelos/Conhecimento aprovado.md', pasta / 'Modelos/Lista de estoque.md'],
             'Conhecimento revisado': _notas_aprovadas(pasta),
             'Padrões de atendimento ativos': [pasta / 'Atendimentos/Como personalizar.md', *_padroes_aprovados(pasta)],
@@ -492,7 +515,7 @@ def registrar_funcionamento(dados: dict) -> None:
 def visualizacao() -> dict:
     """Mostra notas editoriais ao administrador; nunca documentos de estoque."""
     pasta = _preparar()
-    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
+    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Pedidos manuais e caixa.md', 'Computadores dos funcionários.md', 'Segurança dos funcionários.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
     # Mostra os padrões antes do conhecimento extra para não ocultá-los no limite.
     padroes = _padroes_aprovados(pasta)
     caminhos.extend([pasta / 'Atendimentos/Como personalizar.md', *padroes, *_notas_aprovadas(pasta)])

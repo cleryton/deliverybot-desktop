@@ -22,6 +22,7 @@ def api(loja,monkeypatch):
     with get_conn() as c:
         c.execute("UPDATE terminal_config SET ativo=1,host='192.168.1.10' WHERE id=1")
         c.execute('INSERT INTO terminal_dispositivos(nome,hash) VALUES(?,?)',('Fictício',hashlib.sha256(TOKEN.encode()).hexdigest()))
+        c.execute("INSERT INTO terminal_autorizacoes VALUES(1,2,0,'versao-terminal')")
     app=terminal.criar_api()
     app.config.update(SERVER_NAME='127.0.0.1:5443',PREFERRED_URL_SCHEME='https')
     client=app.test_client()
@@ -55,7 +56,8 @@ def test_funcionario_so_ve_seu_caixa_e_nao_acessa_administracao(api,loja):
     assert api('GET','/terminal/estado').json['caixas']==[]
     for caminho in ('/gestao','/gestao/api/configuracoes','/gestao/api/caixas','/terminal/configuracoes','/terminal/estornar'):
         assert api('GET',caminho).status_code==404
-    assert api('POST','/terminal/abrir',json={'chave':chave(),'abertura':100,'operador_id':3}).status_code==200
+    assert api('POST','/terminal/abrir',json={'chave':chave(),'abertura':100,'operador_id':3}).status_code==400
+    assert api('POST','/terminal/abrir',json={'chave':chave(),'abertura':100}).status_code==200
     assert api('GET','/terminal/estado').json['caixas'][0]['operador_id']==2
 
 
@@ -91,6 +93,7 @@ def test_convite_tem_expiracao_e_uso_unico(api):
     codigo='c'*40
     with get_conn() as c:
         c.execute('INSERT INTO terminal_convites(hash,expira_em) VALUES(?,?)',(hashlib.sha256(codigo.encode()).hexdigest(),time.time()+60))
+        c.execute('INSERT INTO terminal_convites_autorizacoes VALUES(?,2,0)',(hashlib.sha256(codigo.encode()).hexdigest(),))
     r=api('POST','/terminal/parear',json={'convite':codigo})
     assert r.status_code==200
     assert api('POST','/terminal/parear',json={'convite':codigo}).status_code==400
@@ -128,7 +131,7 @@ def test_servidor_tls_e_cliente_pareado_usam_certificado_sem_desabilitar_validac
     monkeypatch.setattr(terminal,'_servidor',servidor)
     monkeypatch.setattr('src.cliente_terminal.dpapi',lambda d,abrir=False:d)
     try:
-        convite=terminal.convite()
+        convite=terminal.convite({'operador_id':2})
         cliente=Cliente(tmp_path/'cliente',permitir_loopback=True)
         cliente.parear(convite)
         assert cliente.http.verify is not False and cliente.http.trust_env is False
@@ -183,15 +186,12 @@ def test_pendencia_nao_pode_ser_repetida_por_outro_funcionario(tmp_path,monkeypa
         c.conferir(True)
 
 
-def test_somente_admin_confere_pendencia_de_conta_desativada(api):
+def test_conta_administradora_nao_entra_no_terminal(api):
     entrar(api)
     dados={'operador_id':3,'chave':chave()}
-    assert api('POST','/terminal/conferir-admin',json=dados).status_code==403
-    entrar(api,'conta1')
-    assert api('POST','/terminal/conferir-admin',json=dados).json['cancelada'] is False
-    with get_conn() as c:
-        c.execute('UPDATE operadores SET ativo=0 WHERE id=3')
-    assert api('POST','/terminal/conferir-admin',json=dados).json=={'resultado':None,'cancelada':True}
+    assert api('POST','/terminal/conferir-admin',json=dados).status_code==404
+    assert api('POST','/terminal/entrar',json={'login':'conta1','senha':'senha-ficticia-123'}).status_code==401
+    assert api('GET','/terminal/estado').status_code==401
 
 
 def test_resposta_truncada_preserva_pendencia_e_logout_local(tmp_path,monkeypatch):

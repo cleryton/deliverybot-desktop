@@ -100,6 +100,10 @@ class Cliente:
                 if not r.ok:
                     erro=FalhaTerminal(d.get('erro','Operação não disponível.') if isinstance(d,dict) else 'Operação não disponível.')
                     erro.status=r.status_code
+                    erro.nao_executada=d.get('nao_executada') is True if isinstance(d,dict) else False
+                    if r.status_code==401:
+                        self.usuario=None
+                        self.http.cookies.clear()
                     raise erro
                 return d
         except requests.exceptions.SSLError:
@@ -160,12 +164,14 @@ class Cliente:
             d={**dados,'chave':secrets.token_hex(24)}
             self.pendente={'usuario_id':self.usuario['id'],'acao':acao,'dados':d}
             self._salvar('pendencia.bin',self.pendente)
-            return self._enviar_pendente()
-    def _enviar_pendente(self):
+            return self._enviar_pendente(nova=True)
+    def _enviar_pendente(self,nova=False):
         try:
             r=self._request(self.pendente['acao'],self.pendente['dados'])
         except FalhaTerminal as e:
-            if getattr(e,'status',None)==400:
+            # Uma retentativa pode ter sido gravada antes de a permissão mudar.
+            # Só descarta recusa conhecida da primeira tentativa, nunca uma pendência incerta.
+            if nova and (getattr(e,'status',None)==400 or (getattr(e,'status',None) in {403,429} and getattr(e,'nao_executada',False))):
                 self._salvar('pendencia.bin',None)
                 self.pendente=None
             raise
@@ -176,13 +182,13 @@ class Cliente:
         with self.trava:
             if not self.pendente:
                 return {'pendente':False}
+            if not self.usuario:
+                r=self._request('pendencia-bloqueada',{'operador_id':self.pendente['usuario_id'],'chave':self.pendente['dados']['chave']})
+                if r['resultado'] is not None or r['cancelada']:
+                    self._salvar('pendencia.bin',None)
+                    self.pendente=None
+                    return {'pendente':False,**r}
             if not self.usuario or self.usuario['id']!=self.pendente['usuario_id']:
-                if self.usuario and self.usuario.get('perfil')=='ADMIN':
-                    r=self._request('conferir-admin',{'operador_id':self.pendente['usuario_id'],'chave':self.pendente['dados']['chave']})
-                    if r['resultado'] is not None or r['cancelada']:
-                        self._salvar('pendencia.bin',None)
-                        self.pendente=None
-                        return {'pendente':False,**r}
                 if not repetir:
                     return {'pendente':True,'outro_funcionario':True}
                 raise FalhaTerminal('Entre com a conta que iniciou a operação pendente.')

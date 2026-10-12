@@ -55,6 +55,8 @@ def criar(senha):
         copia.execute("UPDATE configuracoes SET valor='NAO' WHERE chave='TUNEL_AUTOMATICO'")
         # Dispositivos remotos precisam de novo pareamento após restaurar a cópia portátil.
         copia.execute('UPDATE terminal_config SET ativo=0,host=\'\' WHERE id=1')
+        copia.execute('DELETE FROM terminal_convites_autorizacoes')
+        copia.execute('DELETE FROM terminal_autorizacoes')
         copia.execute('DELETE FROM terminal_convites')
         copia.execute('DELETE FROM terminal_dispositivos')
         if copia.execute("SELECT 1 FROM sqlite_master WHERE name='rotinas'").fetchone():
