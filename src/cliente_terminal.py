@@ -84,9 +84,16 @@ class Cliente:
         try:
             with self.http.request('GET' if dados is None else 'POST',self.url+'/terminal/'+caminho,
                                    json=dados,timeout=(5,20),allow_redirects=False,stream=True) as r:
-                corpo=r.raw.read(2*1024*1024+1,decode_content=True)
-                if len(corpo)>2*1024*1024:
-                    raise FalhaTerminal('Resposta inesperada. Confira a operação antes de continuar.')
+                partes=[]
+                tamanho=0
+                # iter_content converte erros de protocolo do urllib3 para Requests,
+                # permitindo conservar a pendência sem expor detalhes de transporte.
+                for parte in r.iter_content(chunk_size=65536):
+                    tamanho+=len(parte)
+                    if tamanho>2*1024*1024:
+                        raise FalhaTerminal('Resposta inesperada. Confira a operação antes de continuar.')
+                    partes.append(parte)
+                corpo=b''.join(partes)
                 d=json.loads(corpo)
                 if not isinstance(d,(dict,list)):
                     raise ValueError

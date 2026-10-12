@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.34.1 — 2026-10-12
+
+Corrige o encerramento TLS do gateway de funcionários para concluir respostas curtas antes de fechar o socket e limita a espera pelo cliente. O terminal lê respostas por iter_content, traduz falhas de protocolo para orientação de reconexão e preserva operações pendentes sem repetir gravações; acrescenta regressões de resposta truncada, saída local e conexões HTTPS repetidas no Windows.
+
 ## 2.34.0 — 2026-10-12
 
 Adiciona aplicativo Windows separado para funcionários da rede da loja, com pedidos manuais no banco central, perfil Caixa, pareamento de dispositivo e HTTPS com certificado específico. Implementa caixa individual em centavos com abertura, recebimentos separados, troco, sangria, suprimento, conferência, fechamento e estorno administrativo; preserva operações pendentes e retentativas idempotentes. Inclui gestão pelo responsável, guias operacionais no Obsidian, segundo instalador, testes financeiros e de acesso e validação dos dois executáveis no Actions.

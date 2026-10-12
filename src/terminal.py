@@ -225,6 +225,14 @@ class _Servidor(ThreadingMixIn,WSGIServer):
             req.settimeout(10)
             with self.tls.wrap_socket(req,server_side=True) as seguro:
                 self.finish_request(seguro,addr)
+                # close_notify entrega os registros TLS pendentes antes do FIN.
+                # Um cliente que encerra sem responder não prende o servidor.
+                seguro.settimeout(2)
+                try:
+                    cru=seguro.unwrap()
+                    cru.close()
+                except OSError:
+                    pass
         except (OSError,ValueError):
             pass
         finally:

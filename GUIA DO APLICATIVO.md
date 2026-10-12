@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.34.0
+# DeliveryBot Desktop 2.34.1
 
 O segundo aplicativo **DeliveryBot Funcionário** permite registrar pedidos manuais e conferir o caixa em outros computadores da rede da loja. O responsável configura **Caixas dos funcionários**, cria contas com perfil **Caixa** e autoriza os dispositivos. Consulte [o guia do funcionário](GUIA%20DO%20FUNCIONARIO.md) para instalação, pareamento e conferência dos valores.
 

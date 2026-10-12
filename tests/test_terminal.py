@@ -192,3 +192,41 @@ def test_somente_admin_confere_pendencia_de_conta_desativada(api):
     with get_conn() as c:
         c.execute('UPDATE operadores SET ativo=0 WHERE id=3')
     assert api('POST','/terminal/conferir-admin',json=dados).json=={'resultado':None,'cancelada':True}
+
+
+def test_resposta_truncada_preserva_pendencia_e_logout_local(tmp_path,monkeypatch):
+    from unittest.mock import Mock
+    import src.cliente_terminal as m
+    monkeypatch.setattr(m,'dpapi',lambda d,abrir=False:d)
+    c=Cliente(tmp_path)
+    c.usuario={'id':2}
+    c.url='https://192.168.1.10:5443'
+    resposta=Mock()
+    resposta.__enter__=Mock(return_value=resposta)
+    resposta.__exit__=Mock(return_value=False)
+    resposta.iter_content.side_effect=requests.exceptions.ChunkedEncodingError('Detalhes privados do transporte')
+    chamada=Mock(return_value=resposta)
+    monkeypatch.setattr(c.http,'request',chamada)
+    with pytest.raises(FalhaTerminal,match='Sem resposta da loja'):
+        c.executar('abrir',{'abertura':100})
+    assert chamada.call_count==1 and (tmp_path/'pendencia.bin').exists()
+    assert c.sair()=={'ok':True} and c.usuario is None
+    assert (tmp_path/'pendencia.bin').exists()
+
+
+def test_tls_entrega_corpos_curtos_e_encerra_repetidas_conexoes(api,tmp_path):
+    s=terminal.ServidorTerminal('127.0.0.1',0,tmp_path/'tls',permitir_loopback=True)
+    sessao=requests.Session()
+    sessao.trust_env=False
+    sessao.verify=str(s.cert)
+    sessao.headers['Authorization']='Bearer '+TOKEN
+    try:
+        url=f'https://127.0.0.1:{s.porta}'
+        for _ in range(12):
+            r=sessao.post(url+'/terminal/entrar',json={'login':'conta2','senha':'senha-ficticia-123'},timeout=10)
+            assert r.status_code==200
+            r=sessao.post(url+'/terminal/sair',json={},timeout=10)
+            assert r.status_code==200 and r.json()=={'ok':True}
+    finally:
+        sessao.close()
+        s.close()
