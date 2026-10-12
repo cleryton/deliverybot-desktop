@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.31.0
+# DeliveryBot Desktop 2.32.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -286,3 +286,13 @@ A recuperação inicia somente o Ollama local instalado e prepara o modelo confi
 No Obsidian, **Estado do funcionamento.md** mostra um resumo técnico sem caminhos, segredos, mensagens ou dados de clientes, e **Verificação e recuperação do atendimento.md** explica as ações e limitações. O mapa liga essas notas. Elas não são enviadas como conhecimento editorial ao modelo; o Ollama recebe um sinal oficial de estado e não pode executar comandos de notas. Para preservar uma edição manual da nota de estado, remova seu marcador automático.
 
 A estrutura do cofre pode ser preparada com arquivos padrão ausentes; conteúdos existentes, notas revogadas, vazias ou inválidas são preservados para revisão. Se o cofre não puder ser lido, o atendimento usa as regras e o catálogo do aplicativo, sem presumir o conteúdo das notas. A recuperação não instala programas, baixa modelos, reinicia o computador, conecta contas WhatsApp ou reenvia mensagens. O túnel HTTPS mantém sua própria rotina de reconexão.
+
+## Configuração e uso diário
+
+A Visão geral indica a primeira etapa obrigatória ainda pendente e oferece um botão para continuar na tela correspondente. O estado do WhatsApp depende da verificação atual; credenciais Meta exigem também conferir o webhook.
+
+No catálogo, a lista de produtos aparece primeiro; expanda Importar produtos ou gerar catálogo PDF quando precisar destas ferramentas. Em Pedidos, busque por nome, número, telefone ou produto. A busca de pedidos e catálogo aceita palavras sem acentos. Quando os filtros não encontrarem itens, use Limpar busca e filtros. O horário da última consulta aparece nos pedidos; a atualização automática aguarda quando você está interagindo com os botões ou com um diálogo aberto.
+
+Durante uma operação, o botão mostra Aguarde. Se a conexão falhar enquanto você salva, confira os dados antes de repetir: o servidor pode ter concluído a operação. Produtos com alterações não salvas pedem confirmação antes de fechar ou usar Escape; o rascunho fica somente na tela e não é gravado automaticamente.
+
+Em telas menores, abra Menu para acessar todas as páginas. Use Escape ou a área externa para fechá-lo. O menu também permite rolagem em janelas de pouca altura.

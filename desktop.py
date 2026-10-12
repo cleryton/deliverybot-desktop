@@ -85,6 +85,7 @@ def smoke_test(destino, janela=False):
         assert client.get("/gestao/api/produtos").status_code == 401
         assert client.get("/gestao?acesso=" + token, follow_redirects=True).status_code == 200
         assert client.get('/static/tutorial.js').status_code == 200
+        assert client.get('/static/experiencia.js').status_code == 200
         assert len(client.get('/gestao/api/preparacao').json['tutorial']) == 8
         produto = estoque.salvar_produto({"nome": "Camiseta teste", "categoria": "Vestuário", "preco": "49.90", "estoque": 5})
         from io import BytesIO
@@ -108,6 +109,7 @@ def smoke_test(destino, janela=False):
         assert publico.get('/static/pedido.js').status_code == 200
         assert publico.get('/static/gestao.js').status_code == 404
         assert publico.get('/static/tutorial.js').status_code == 404
+        assert publico.get('/static/experiencia.js').status_code == 404
         assert publico.get('/jogar').status_code == 200
         assert b'data-pong' in publico.get('/jogar').data
         for recurso_jogo in ('pong.css', 'pong-core.js', 'pong.js'):
@@ -158,7 +160,7 @@ def smoke_test(destino, janela=False):
         assert (cerebro.diretorio()/'Verificação e recuperação do atendimento.md').is_file()
         assert (cerebro.diretorio()/'Estado do funcionamento.md').is_file()
         assert publico.get('/gestao/api/cerebro/visualizar').status_code == 404
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True, "minijogo":True, "recuperacao_cerebro":True}
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True, "minijogo":True, "recuperacao_cerebro":True, "experiencia_usuario":True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local
@@ -221,6 +223,33 @@ def smoke_test(destino, janela=False):
                     esperar("document.querySelectorAll('#product-list tr').length === 2")
                     window.evaluate_js("document.querySelector('[data-action=novo]').click(); const f=document.querySelector('#product-form'); f.elements.nome.value='Caderno UI'; f.elements.categoria.value='Papelaria'; f.elements.preco.value='12.50'; f.elements.estoque.value='4'; f.querySelector('button[type=submit]').click();")
                     esperar("!document.querySelector('#product-dialog').open && document.querySelectorAll('#product-list tr').length === 3")
+                    window.evaluate_js("document.querySelector('[data-action=novo]').click(); const f=document.querySelector('#product-form'); f.elements.nome.value='Rascunho fictício'; f.elements.nome.dispatchEvent(new Event('input',{bubbles:true})); window.confirmAnterior=window.confirm; window.confirm=()=>false; document.querySelector('[data-close=product-dialog]').click();")
+                    esperar("document.querySelector('#product-dialog').open && document.querySelector('#product-save-status').textContent.includes('não salvas') && !document.querySelector('[data-close=product-dialog]').disabled")
+                    window.evaluate_js("document.querySelector('#product-dialog').dispatchEvent(new Event('cancel',{cancelable:true}));")
+                    assert window.evaluate_js("document.querySelector('#product-dialog').open"), 'Escape deve preservar o rascunho quando o descarte é recusado.'
+                    window.evaluate_js("window.confirm=()=>true;document.querySelector('[data-close=product-dialog]').click();")
+                    esperar("!document.querySelector('#product-dialog').open")
+                    window.evaluate_js("window.confirm=window.confirmAnterior;delete window.confirmAnterior;document.querySelector('[data-page=produtos]').click();")
+                    esperar("!document.querySelector('#page-produtos').hidden && !document.querySelector('[data-page=produtos]').disabled")
+                    window.evaluate_js("const s=document.querySelector('#search');s.value='produto inexistente';s.dispatchEvent(new Event('input'));")
+                    esperar("document.querySelector('#product-list').children.length===0 && !document.querySelector('#products-clear').hidden && document.querySelector('#products-empty-title').textContent.includes('busca')")
+                    window.evaluate_js("document.querySelector('#products-clear').click();")
+                    esperar("document.querySelectorAll('#product-list tr').length===3")
+                    assert window.evaluate_js("!document.querySelector('#toast').classList.contains('error')"), 'Navegar e filtrar não devem produzir erros de interface.'
+                    window.evaluate_js("document.querySelector('#catalog-tools summary').click();")
+                    assert window.evaluate_js("document.querySelector('#catalog-tools').open && document.querySelector('#document-file').offsetParent!==null"), 'Ferramentas avançadas devem continuar acessíveis.'
+                    window.evaluate_js("document.querySelector('#catalog-tools summary').click();")
+                    window.evaluate_js("document.querySelector('[data-page=pedidos]').click();")
+                    esperar("!document.querySelector('#page-pedidos').hidden && document.querySelector('#order-sync').textContent.includes('Atualizado')")
+                    window.evaluate_js("const s=document.querySelector('#order-search');s.value='cliente que nao existe';s.dispatchEvent(new Event('input'));")
+                    esperar("document.querySelector('#order-count').textContent==='0 pedidos' && document.querySelector('[data-action=limpar-pedidos]')!==null")
+                    window.evaluate_js("document.querySelector('[data-action=limpar-pedidos]').click();")
+                    esperar("document.querySelector('#order-search').value==='' && document.querySelector('#order-list .order')!==null")
+                    window.evaluate_js("document.querySelector('#menu-toggle').click();")
+                    assert window.evaluate_js("document.querySelector('#menu-toggle').getAttribute('aria-expanded')==='true'")
+                    window.evaluate_js("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));")
+                    assert window.evaluate_js("document.querySelector('#menu-toggle').getAttribute('aria-expanded')==='false'")
+                    resultado['experiencia_janela']=['rascunho_preservado','escape_com_confirmacao','busca_catalogo','ferramentas_catalogo','busca_pedidos','atualizacao_visivel','menu_acessivel']
                     window.evaluate_js("document.querySelector('[data-page=produtos]').click()")
                     esperar("!document.querySelector('#page-produtos').hidden")
                     window.evaluate_js("document.querySelector('[data-stock=\"3\"]').click(); const f=document.querySelector('#stock-form'); f.elements.quantidade.value='3'; f.elements.motivo.value='Teste de reposição'; f.querySelector('.primary').click();")
