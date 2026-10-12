@@ -356,6 +356,32 @@ def smoke_test(destino, janela=False):
                     esperar("document.querySelector('#toast').textContent.includes('Atendimento atualizado')")
                     assert not humano.pausado(t_protecao)
                     resultado['protecao_ia_janela']=['pausa_por_conversa','motivo_visivel','revisao_admin','retomada_separada']
+                    t_humano='5511999990997'
+                    pendencia=processamento.enfileirar({'telefone':t_humano,'texto':'Consulta fictícia anterior'},'qa-pendencia-humana')['id']
+                    with get_conn() as conn:
+                        conn.execute("UPDATE tarefas_bot SET estado='VERIFICAR',resposta='Conferir envio fictício' WHERE id=?",(pendencia,))
+                    humano.controlar(t_humano,'assumir')
+                    window.evaluate_js("document.querySelector('#human-refresh').click()")
+                    esperar("document.querySelector('#human-list').textContent.includes('1 envio(s) automático(s) para conferir')")
+                    window.evaluate_js("document.querySelector('[data-human=\""+t_humano+"\"]').click()")
+                    esperar("document.querySelector('#human-form').elements.telefone.value==='"+t_humano+"' && document.querySelector('[data-human=\""+t_humano+"\"]').getAttribute('aria-busy')!=='true'")
+                    processamento.enfileirar({'telefone':t_humano,'texto':'Mensagem nova para a equipe fictícia'},'qa-historico-humano')
+                    window.evaluate_js("document.querySelector('#human-refresh').click()")
+                    esperar("document.querySelector('#human-chat').textContent.includes('Mensagem nova para a equipe fictícia')")
+                    window.evaluate_js("const f=document.querySelector('#human-form');f.elements.mensagem.value='Resposta manual fictícia';f.querySelector('[value=responder]').click()")
+                    esperar("document.querySelector('#toast').textContent.includes('Resposta registrada para envio')")
+                    with get_conn() as conn:
+                        assert conn.execute("SELECT estado FROM tarefas_bot WHERE id=?",(pendencia,)).fetchone()[0]=='VERIFICAR'
+                        assert conn.execute("SELECT COUNT(*) FROM tarefas_bot WHERE telefone=? AND origem='HUMANO' AND estado='PENDENTE'",(t_humano,)).fetchone()[0]==1
+                    window.evaluate_js("document.querySelector('#human-form [value=retomar]').click()")
+                    esperar("document.querySelector('#toast').textContent.includes('Conclua ou resolva os envios manuais')")
+                    assert humano.pausado(t_humano)
+                    # Conferência fictícia: este teste de interface não faz transporte.
+                    with get_conn() as conn:
+                        conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA' WHERE telefone=? AND origem='HUMANO'",(t_humano,))
+                    processamento.ignorar(pendencia)
+                    humano.controlar(t_humano,'retomar')
+                    resultado['continuidade_humana_janela']=['pendencia_visivel','conversa_atualizada','registro_manual_sem_envio','retomada_exige_conferencia']
                     window.evaluate_js("document.querySelector('#operator-logout').click()")
                     esperar("document.querySelector('form[action=\"/gestao/login\"]') !== null")
                     esperar("document.documentElement.dataset.theme === 'dark' && getComputedStyle(document.querySelector('.login-card')).backgroundColor === 'rgb(27, 42, 35)'")

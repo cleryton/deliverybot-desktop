@@ -235,7 +235,11 @@ def test_resposta_antiga_nao_atravessa_pausa_humana(cliente,monkeypatch):
         c.execute("INSERT INTO tarefas_bot(chave,telefone,texto,origem,resposta,estado) VALUES(?,?,?,?,?,'PENDENTE')",('ficticia',telefone,'4','WAHA','Catálogo antigo'))
     humano.controlar(telefone,'assumir')
     processamento._parar.clear()
-    assert processamento.processar_proxima()
+    # A transferência já conclui a tarefa e preserva a entrada para a equipe.
+    assert not processamento.processar_proxima()
+    assert humano.conversa(telefone)[0]['conteudo']=='4'
+    with get_conn() as c:
+        assert c.execute("SELECT estado,resposta FROM tarefas_bot WHERE chave='ficticia'").fetchone()[:]==('CONCLUIDA',None)
     enviar.assert_not_called()
 
 

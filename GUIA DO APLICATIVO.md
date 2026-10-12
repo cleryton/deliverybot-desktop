@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.36.0
+# DeliveryBot Desktop 2.36.1
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -199,6 +199,10 @@ Arquivos principais: `desktop.py`, `src/estoque.py`, `src/gestao.py`, `src/prefe
 ## Funcionários e permissões
 
 Em **Funcionários e auditoria**, crie primeiro sua conta administradora com senha de pelo menos 12 caracteres. Crie contas individuais para os atendentes. Eles podem consultar produtos, avançar pedidos e responder no atendimento humano. Preços, custos, relatórios, conexões, exportações, backups e configurações ficam restritos ao administrador, inclusive pelas APIs. Use **Trocar funcionário** ao encerrar seu turno.
+
+Durante uma pausa para atendimento humano, mensagens novas aparecem no histórico da equipe assim que recebidas pelo aplicativo, mesmo que o envio esteja desconectado. **Atualizar** também atualiza a conversa aberta. Ao assumir, entradas automáticas ainda pendentes são transferidas ao histórico; elas não serão respondidas nem usadas como contexto da IA depois da retomada. O aviso local de privacidade continua disponível.
+
+Uma falha automática anterior não impede a resposta manual explicitamente confirmada. O painel informa quantos envios precisam de conferência; o histórico dessas falhas é preservado. Confira em **WhatsApp e IA** se o cliente já recebeu a mensagem e resolva a pendência antes de **Retomar bot**. Envios manuais mantêm sua ordem e envios em andamento continuam impedindo a troca de atendimento.
 
 Ao desativar uma conta, trocar sua senha ou mudar seu perfil, todas as suas sessões são revogadas. O último administrador ativo não pode ser desativado ou rebaixado. Outro administrador pode redefinir senhas; mantenha acesso seguro a pelo menos uma conta administradora. A auditoria registra até 100 ações na tela, com conta, ação, identificador e horário, sem copiar mensagens ou senhas. Os registros anteriores permanecem no banco.
 
