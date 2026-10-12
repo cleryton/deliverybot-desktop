@@ -59,6 +59,12 @@ def limite_upload_produto():
         request.max_content_length = 11 * 1024 * 1024
 
 
+@app.errorhandler(400)
+@app.errorhandler(415)
+def entrada_invalida(exc):
+    return jsonify(erro='Envie dados válidos, sem campos repetidos, em JSON UTF-8 quando solicitado.'), exc.code
+
+
 @app.errorhandler(413)
 def arquivo_grande(exc):
     if request.path.startswith('/gestao/api/'):
@@ -195,7 +201,7 @@ def receber_webhook():
     assinatura = "sha256=" + hmac.new(config.WHATSAPP_APP_SECRET.encode(), request.get_data(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(request.headers.get("X-Hub-Signature-256", ""), assinatura):
         return jsonify(status="não autorizado"), 403
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json() or {}
     if not isinstance(payload, dict):
         return jsonify(status="dados inválidos"), 400
     dados = whatsapp.extrair_mensagem_recebida(payload)
@@ -238,7 +244,7 @@ def receber_webhook_waha(segredo):
         logger.warning("Tentativa de acesso ao webhook do WAHA com segredo inválido")
         return jsonify({"status": "não autorizado"}), 404  # 404 em vez de 401: não revela que a rota existe
 
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json() or {}
     if not isinstance(payload, dict):
         return jsonify(status="dados inválidos"), 400
     dados = whatsapp.extrair_mensagem_recebida_waha(payload)
@@ -263,7 +269,7 @@ def api_processar_mensagem(segredo):
     if not _segredo_valido(segredo):
         return jsonify({"erro": "não autorizado"}), 404
 
-    dados = request.get_json(silent=True) or {}
+    dados = request.get_json() or {}
     if not isinstance(dados, dict) or not isinstance(dados.get("telefone", ""), str) or not isinstance(dados.get("texto", ""), str):
         return jsonify(erro="Dados inválidos."), 400
     telefone = whatsapp._numero_limpo(dados.get("telefone", ""))

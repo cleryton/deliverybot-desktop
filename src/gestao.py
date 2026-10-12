@@ -1,6 +1,5 @@
 """Painel administrativo compartilhado pelo aplicativo e pelo servidor."""
 import hmac
-import json
 from concurrent.futures import ThreadPoolExecutor
 import secrets
 from functools import wraps
@@ -54,7 +53,7 @@ def protegido(view):
 
 
 def dados_json():
-    dados = request.get_json(silent=True)
+    dados = request.get_json()
     if not isinstance(dados, dict):
         raise ValueError("Envie os dados em formato válido.")
     return dados
@@ -64,7 +63,8 @@ def dados_produto():
     if request.mimetype != 'multipart/form-data':
         return dados_json(), None
     try:
-        dados = json.loads(request.form.get('dados', ''))
+        from .validacao_http import ler_json
+        dados = ler_json(request.form.get('dados', ''))
     except (ValueError, TypeError):
         raise ValueError('Envie os dados do produto em formato válido.') from None
     if not isinstance(dados, dict):

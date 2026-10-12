@@ -118,7 +118,7 @@ jobs:
           }
           if ($taskProcess.ExitCode -ne 0) { throw 'O teste do executavel falhou.' }
           $taskResult = Get-Content -LiteralPath $taskReport -Raw | ConvertFrom-Json
-          if ($taskResult.ok -ne $true -or $taskResult.documentos_pdf -ne $true -or $taskResult.perfil_comercio -ne $true -or $taskResult.pedido_conversa -ne $true -or $taskResult.obsidian_visual -ne $true -or $taskResult.obsidian_graph -ne $true -or $taskResult.padroes_atendimento -ne $true -or $taskResult.minijogo -ne $true -or $taskResult.recuperacao_cerebro -ne $true -or $taskResult.experiencia_usuario -ne $true) { throw 'Relatorio do executavel incompleto.' }
+          if ($taskResult.ok -ne $true -or $taskResult.documentos_pdf -ne $true -or $taskResult.perfil_comercio -ne $true -or $taskResult.pedido_conversa -ne $true -or $taskResult.obsidian_visual -ne $true -or $taskResult.obsidian_graph -ne $true -or $taskResult.padroes_atendimento -ne $true -or $taskResult.minijogo -ne $true -or $taskResult.recuperacao_cerebro -ne $true -or $taskResult.experiencia_usuario -ne $true -or $taskResult.validadores_owasp -ne $true) { throw 'Relatorio do executavel incompleto.' }
           Get-Content -LiteralPath $taskReport
       - name: Guardar relatorios de validacao
         if: always()
@@ -132,10 +132,72 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+  seguranca:
+    name: DeliveryBot / OWASP e ZAP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.14.0'
+      - name: Instalar dependencias de teste
+        run: python -m pip install -r requirements.txt
+      - name: Testar controles OWASP com dados ficticios
+        run: python -m pytest -q tests/test_owasp.py tests/test_zap.py tests/test_seguranca_privacidade.py --junitxml=artifacts/owasp.xml
+      - name: Auditar dependencias Python
+        run: python packaging/auditar_dependencias.py
+      - name: Auditar dependencias WhatsApp de producao
+        run: npm audit --prefix whatsapp-native --omit=dev --audit-level=high
+      - name: Iniciar alvo isolado de seguranca
+        run: |
+          python packaging/servidor_seguranca.py > artifacts/servidor-seguranca.log 2>&1 &
+          for tentativa in $(seq 1 30); do
+            if test -f artifacts/zap-target.txt && curl --fail --silent "$(cat artifacts/zap-target.txt)" > /dev/null; then
+              echo "ZAP_TARGET=$(cat artifacts/zap-target.txt)" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'O alvo ficticio de seguranca nao iniciou.'
+          exit 1
+      - name: Analisar respostas com ZAP Baseline
+        uses: zaproxy/action-baseline@6c5a007541891231cd9e0ddec25d4f25c59c9874 # v0.15.0
+        with:
+          target: ${{ env.ZAP_TARGET }}
+          docker_name: 'ghcr.io/zaproxy/zaproxy@sha256:7aaa659b0d43078febd82e29bad112285c370727e86ab8340444220e17d9f0d2'
+          allow_issue_writing: false
+          fail_action: false
+          cmd_options: '-m 1 -T 5 -I'
+          artifact_name: zap-passivo
+      - name: Exigir controles essenciais do relatorio ZAP
+        run: python packaging/validar_zap.py report_json.json
+      - name: Guardar evidencias OWASP
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: relatorios-owasp
+          path: |
+            artifacts/owasp.xml
+            artifacts/auditoria-python.json
+            report_json.json
+            report_html.html
+          retention-days: 7
+          if-no-files-found: warn
+
   validacao:
     name: DeliveryBot / validacao obrigatoria
     if: always()
-    needs: [codigo, windows]
+    needs: [codigo, windows, seguranca]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -143,6 +205,8 @@ jobs:
         env:
           RESULTADO_CODIGO: ${{ needs.codigo.result }}
           RESULTADO_WINDOWS: ${{ needs.windows.result }}
+          RESULTADO_SEGURANCA: ${{ needs.seguranca.result }}
         run: |
           test "$RESULTADO_CODIGO" = success
           test "$RESULTADO_WINDOWS" = success
+          test "$RESULTADO_SEGURANCA" = success
