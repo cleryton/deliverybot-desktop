@@ -98,6 +98,8 @@ jobs:
         run: |
           python -m PyInstaller --noconfirm --distpath dist/ci DeliveryBot.spec
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar aplicativo.' }
+          python -m PyInstaller --noconfirm --distpath dist/ci Funcionario.spec
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar aplicativo do funcionario.' }
           python packaging/criar_instalador.py --distpath dist/ci
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar instalador.' }
           python packaging/distribuicao.py --distpath dist/ci
@@ -123,6 +125,12 @@ jobs:
           $taskResult = Get-Content -LiteralPath $taskReport -Raw | ConvertFrom-Json
           if ($taskResult.ok -ne $true -or $taskResult.documentos_pdf -ne $true -or $taskResult.perfil_comercio -ne $true -or $taskResult.pedido_conversa -ne $true -or $taskResult.obsidian_visual -ne $true -or $taskResult.obsidian_graph -ne $true -or $taskResult.padroes_atendimento -ne $true -or $taskResult.minijogo -ne $true -or $taskResult.recuperacao_cerebro -ne $true -or $taskResult.experiencia_usuario -ne $true -or $taskResult.validadores_owasp -ne $true) { throw 'Relatorio do executavel incompleto.' }
           Get-Content -LiteralPath $taskReport
+          if ($taskResult.caixa_funcionario -ne $true) { throw 'O teste de caixa do aplicativo principal falhou.' }
+          $taskEmployee = Start-Process -FilePath (Join-Path $PWD 'dist/ci/DeliveryBot-Funcionario.exe') -ArgumentList @('--smoke-test', ('"' + (Join-Path $PWD 'artifacts/funcionario.json') + '"')) -WindowStyle Hidden -PassThru
+          if (-not $taskEmployee.WaitForExit(60000)) { Stop-Process -Id $taskEmployee.Id -Force; throw 'Teste do funcionario excedeu o prazo.' }
+          if ($taskEmployee.ExitCode -ne 0) { throw 'Teste do aplicativo do funcionario falhou.' }
+          $taskEmployeeResult = Get-Content -LiteralPath 'artifacts/funcionario.json' -Raw | ConvertFrom-Json
+          if ($taskEmployeeResult.ok -ne $true -or $taskEmployeeResult.conexao_https -ne $true -or $taskEmployeeResult.recursos -ne $true) { throw 'Relatorio do funcionario incompleto.' }
       - name: Guardar relatorios de validacao
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -132,6 +140,7 @@ jobs:
             artifacts/testes.xml
             artifacts/tcc/evidencias.json
             artifacts/executavel.json
+            artifacts/funcionario.json
             build/DeliveryBot/warn-DeliveryBot.txt
           retention-days: 7
           if-no-files-found: warn

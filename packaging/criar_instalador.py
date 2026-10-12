@@ -16,15 +16,21 @@ if not compiler.exists():
     raise SystemExit("Compilador .NET Framework não encontrado. O executável portátil continua disponível.")
 (root / "build").mkdir(exist_ok=True)
 uninstaller = root / "build/Desinstalar.exe"
-def compilar(source, output, resources=()):
+def compilar(source, output, resources=(), defines=()):
     args = [str(compiler), "/nologo", "/target:winexe", "/platform:anycpu", "/optimize+",
             "/reference:System.Windows.Forms.dll", "/reference:System.Drawing.dll",
             "/reference:System.Web.Extensions.dll",
             "/win32icon:" + str(packaging / "DeliveryBot.ico"),
             "/win32manifest:" + str(packaging / "app.manifest"), "/out:" + str(output)]
     args.extend("/resource:"+str(path)+","+name for path,name in resources)
+    args.extend('/define:'+d for d in defines)
     subprocess.run(args+[str(source)],check=True,cwd=root)
 compilar(packaging / "Desinstalador.cs", uninstaller)
 compilar(packaging / "Instalador.cs",distribuicao / "Instalar-DeliveryBot.exe",
          [(distribuicao / "DeliveryBot.exe","aplicativo"),(uninstaller,"desinstalador"),(packaging/"DeliveryBot.ico","icone")])
 print("Instalador criado: " + str(distribuicao / "Instalar-DeliveryBot.exe"))
+funcionario_uninstaller=root/'build/Desinstalar-Funcionario.exe'
+compilar(packaging/'Desinstalador.cs',funcionario_uninstaller,defines=('FUNCIONARIO',))
+compilar(packaging/'InstaladorFuncionario.cs',distribuicao/'Instalar-DeliveryBot-Funcionario.exe',
+         [(distribuicao/'DeliveryBot-Funcionario.exe','aplicativo'),(funcionario_uninstaller,'desinstalador'),(packaging/'DeliveryBot.ico','icone')])
+print('Instalador do funcionário criado.')

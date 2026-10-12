@@ -51,6 +51,10 @@ Repositório: [cleryton/deliverybot-desktop](https://github.com/cleryton/deliver
 
 A [base para o TCC](docs/tcc/README.md) reúne texto acadêmico editável, arquitetura, requisitos ligados aos testes, protocolo de avaliação, referências e roteiro para a banca. O recorte diferencia validação comercial e geração de respostas com conhecimento editorial; identifica resultados técnicos existentes e as avaliações de IA e usabilidade ainda pendentes. `packaging/evidencias_tcc.py` resume relatórios JUnit em `artifacts/tcc/`, com hashes e contagens sem copiar nomes, mensagens ou saídas dos testes. Consulte as condições de reprodução e os limites do relatório antes de usar os números no trabalho.
 
+## Aplicativo dos funcionários e caixa individual
+
+O [DeliveryBot Funcionário](GUIA%20DO%20FUNCIONARIO.md) é um segundo aplicativo Windows para computadores da rede da loja. Registra pedidos manuais de balcão no mesmo banco e fila, com permissões de Caixa, pareamento de dispositivo, HTTPS e autenticação individual. Abertura, recebimentos, troco, sangria, suprimento e fechamento permitem conferir o dinheiro esperado, separando Pix e cartão. O responsável configura e acompanha em **Caixas dos funcionários**; o terminal acessa somente seus próprios pedidos e caixas. O Obsidian contém guias operacionais, sem armazenar valores financeiros ou executar operações.
+
 ### Pedidos pela conversa e memória editorial
 
 O cliente pode escolher **PEDIDO PELO WHATSAPP** para comprar sem abrir o link. O rascunho é privado no SQLite, com validade de 30 minutos, resumo calculado pelo cadastro e confirmação explícita. A transação confere preço e saldo, registra pedido e fila, baixa somente estoque controlado e impede duplicação por repetição ou retentativa. Seleções ambíguas pedem a variação completa; alterações especiais devem ser encaminhadas a um atendente.

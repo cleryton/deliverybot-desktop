@@ -53,6 +53,10 @@ def criar(senha):
         copia.executemany("DELETE FROM configuracoes WHERE chave=?", [(k,) for k in SEGREDOS])
         # O token do túnel não acompanha a cópia portátil: reativar só após configurar.
         copia.execute("UPDATE configuracoes SET valor='NAO' WHERE chave='TUNEL_AUTOMATICO'")
+        # Dispositivos remotos precisam de novo pareamento após restaurar a cópia portátil.
+        copia.execute('UPDATE terminal_config SET ativo=0,host=\'\' WHERE id=1')
+        copia.execute('DELETE FROM terminal_convites')
+        copia.execute('DELETE FROM terminal_dispositivos')
         if copia.execute("SELECT 1 FROM sqlite_master WHERE name='rotinas'").fetchone():
             copia.execute("UPDATE rotinas SET senha='',backup_ativo=0,pasta=''")
         from . import cerebro

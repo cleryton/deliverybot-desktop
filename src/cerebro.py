@@ -266,6 +266,34 @@ def _preparar() -> Path:
     for nome, conteudo in padroes_atendimento.arquivos(categoria).items():
         _criar_se_ausente(padroes / nome, conteudo)
     _criar_se_ausente(pasta / 'Pedidos pelo WhatsApp.md', _GUIA_PEDIDOS)
+    _criar_se_ausente(pasta / 'Pedidos manuais e caixa.md', '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Pedidos manuais e caixa
+
+O DeliveryBot Funcionário registra pedidos na mesma loja pela rede privada. O responsável cria contas com perfil Caixa e autoriza cada computador em Caixas dos funcionários. O terminal não recebe as permissões administrativas.
+
+Cada funcionário abre seu caixa com o dinheiro inicial. Valores de dinheiro, Pix e cartão ficam separados. Dinheiro esperado é abertura mais vendas em dinheiro e suprimentos, menos sangrias e devoluções registradas. O troco é calculado e somente o líquido da venda aumenta o saldo. Conte a gaveta antes de fechar; o responsável acompanha a diferença e o histórico.
+
+Pedidos pendentes de pagamento não aumentam o dinheiro. Pagamento registrado não é comprovação bancária nem documento fiscal. Em falha de conexão, confira a operação pendente e repita somente a mesma operação. Pedidos já recebidos exigem devolução confirmada pelo responsável no caixa original aberto para estornar e cancelar.
+
+O cofre contém guias, não dados financeiros, senhas ou registros de clientes. Operações, preços e saldos são controlados pelo aplicativo e pelo banco. Consulte [[Computadores dos funcionários]], [[Mapa do atendimento]] e [[Verificação e recuperação do atendimento]].
+''')
+    _criar_se_ausente(pasta / 'Computadores dos funcionários.md', '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Computadores dos funcionários
+
+No aplicativo do responsável, configure Caixas dos funcionários com o IP privado deste computador. A conexão HTTPS começa desativada. Mantenha o aplicativo aberto e permita somente a rede privada no Firewall. Não publique a porta dos funcionários no túnel ou roteador.
+
+Crie contas individuais de Caixa. Salve um arquivo de acesso .dbterminal por computador e importe no DeliveryBot Funcionário em até dez minutos. O convite é de uso único; o certificado autentica a conexão somente neste aplicativo. O funcionário entra com sua própria conta e consulta seus pedidos e caixas.
+
+O responsável pode revogar computadores e contas. Após mudança de IP, porta ou certificado, autorize a conexão novamente. Backups portáteis preservam os livros de caixa, mas removem pareamentos e desativam a rede remota. Não coloque arquivos de acesso, credenciais ou valores dos caixas no cofre.
+
+Veja [[Pedidos manuais e caixa]] e [[Mapa do atendimento]]. Estas notas não executam comandos nem autorizam acesso.
+''')
     _criar_se_ausente(pasta / 'Conexão e página de pedidos.md', '''---
 tipo: guia-operacional
 atendimento: false
@@ -322,7 +350,7 @@ def _sincronizar_mapa(pasta: Path) -> None:
             return  # A equipe assumiu a edição deste mapa.
         grupos = {
             'Voz e informações da loja': [pasta / n for n in _NOTAS_INICIAIS],
-            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
+            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
             'Modelos para revisão': [pasta / 'Modelos/Conhecimento aprovado.md', pasta / 'Modelos/Lista de estoque.md'],
             'Conhecimento revisado': _notas_aprovadas(pasta),
             'Padrões de atendimento ativos': [pasta / 'Atendimentos/Como personalizar.md', *_padroes_aprovados(pasta)],

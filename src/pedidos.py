@@ -2,6 +2,7 @@ import random
 import json
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timezone
+from contextlib import nullcontext
 
 from . import config
 from .db import get_conn
@@ -101,13 +102,15 @@ def criar_pedido(
     endereco: str = "",
     token: str | None = None,
     conversa: str | None = None,
+    _conn=None,
 ) -> dict:
     """itens: lista de {'produto_id': int, 'quantidade': int}. Retorna o pedido criado com os itens."""
     if not itens:
         raise ValueError("O pedido precisa ter pelo menos um item.")
 
-    with get_conn() as conn:
-        conn.execute("BEGIN IMMEDIATE")
+    with (get_conn() if _conn is None else nullcontext(_conn)) as conn:
+        if _conn is None:
+            conn.execute("BEGIN IMMEDIATE")
         carrinho = None
         if conversa is not None:
             carrinho = conn.execute("SELECT *, atualizado_em > datetime('now','-30 minutes') AS valido FROM carrinhos_conversa WHERE telefone=? AND token=?", (telefone, conversa)).fetchone()
@@ -197,11 +200,11 @@ def criar_pedido(
             conn.execute("UPDATE links_pedido SET usado=1, pedido_id=? WHERE telefone=? AND usado=0", (pedido_id, telefone))
 
     invalidar_catalogo()
-    return obter_pedido(pedido_id)
+    return obter_pedido(pedido_id, _conn=_conn)
 
 
-def obter_pedido(pedido_id: int) -> dict | None:
-    with get_conn() as conn:
+def obter_pedido(pedido_id: int, _conn=None) -> dict | None:
+    with (get_conn() if _conn is None else nullcontext(_conn)) as conn:
         pedido = conn.execute(
             "SELECT p.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone, "
             "c.cep AS cliente_cep, c.endereco AS cliente_endereco "
@@ -237,9 +240,12 @@ def registrar_mensagem(telefone: str, direcao: str, conteudo: str):
         )
 
 
-def cancelar_pedido(pedido_id):
-    with get_conn() as conn:
-        conn.execute("BEGIN IMMEDIATE")
+def cancelar_pedido(pedido_id, _conn=None, _estorno_caixa=False):
+    with (get_conn() if _conn is None else nullcontext(_conn)) as conn:
+        if _conn is None:
+            conn.execute("BEGIN IMMEDIATE")
+        if not _estorno_caixa and conn.execute("SELECT 1 FROM movimentos_caixa WHERE pedido_id=? AND tipo='VENDA'", (pedido_id,)).fetchone():
+            raise ValueError('Pedido recebido no caixa. Confirme a devolução em Caixas dos funcionários para estornar e cancelar.')
         pedido = conn.execute("SELECT status FROM pedidos WHERE id=?", (pedido_id,)).fetchone()
         if pedido is None or pedido["status"] in {"CANCELADO", "ENTREGUE", "RETIRADO"}:
             raise ValueError("Este pedido não pode ser cancelado.")
@@ -253,4 +259,4 @@ def cancelar_pedido(pedido_id):
         conn.execute("UPDATE pedidos SET status='CANCELADO', atualizado_em=datetime('now') WHERE id=?", (pedido_id,))
         conn.execute("UPDATE fila_preparo SET status='CANCELADO', atualizado_em=datetime('now') WHERE pedido_id=?", (pedido_id,))
     invalidar_catalogo()
-    return obter_pedido(pedido_id)
+    return obter_pedido(pedido_id, _conn=_conn)

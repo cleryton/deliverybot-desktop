@@ -27,6 +27,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Falha ao incluir o componente WhatsApp.' }
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao incluir o túnel da página de pedidos.' }
 & $taskPython -m PyInstaller --clean --noconfirm --distpath $taskDist DeliveryBot.spec
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar o aplicativo.' }
+& $taskPython -m PyInstaller --clean --noconfirm --distpath $taskDist Funcionario.spec
+if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar o aplicativo do funcionário.' }
 & $taskPython packaging\criar_instalador.py --distpath $taskDist
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar o instalador.' }
 & $taskPython packaging\distribuicao.py --distpath $taskDist

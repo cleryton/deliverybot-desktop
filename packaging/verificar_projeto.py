@@ -16,6 +16,7 @@ def verificar():
         'GUIA DO APLICATIVO.md': f'# DeliveryBot Desktop {versao}',
         'CHANGELOG.md': f'## {versao} — ',
         'packaging/Instalador.cs': f'key.SetValue("DisplayVersion","{versao}")',
+        'packaging/InstaladorFuncionario.cs': f'key.SetValue("DisplayVersion","{versao}")',
         'packaging/preparar_whatsapp.py': f'DeliveryBot {versao} — componentes',
         'web/templates/gestao.html': f'DeliveryBot Desktop · {versao}</small>',
         'whatsapp-native/LICENCAS.txt': f'DeliveryBot {versao} — componentes',

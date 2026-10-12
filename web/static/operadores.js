@@ -1,7 +1,7 @@
 'use strict';
 async function operadoresStatus(){
   const [contas,acoes]=await Promise.all([api('operadores'),api('operadores/auditoria')]);
-  $('#operator-list').innerHTML=contas.map(c=>`<p><b>${escapeHTML(c.nome)}</b> · ${escapeHTML(c.login)} · ${c.perfil==='ADMIN'?'Administrador':'Atendente'} · ${c.ativo?'Ativo':'Desativado'} <button data-operador="${c.id}" data-perfil="${c.perfil}" data-ativo="${c.ativo}">Alterar conta</button></p>`).join('')||'Nenhuma conta criada. O responsável local tem acesso administrativo.';
+  $('#operator-list').innerHTML=contas.map(c=>`<p><b>${escapeHTML(c.nome)}</b> · ${escapeHTML(c.login)} · ${c.perfil==='ADMIN'?'Administrador':c.perfil==='CAIXA'?'Caixa':'Atendente'} · ${c.ativo?'Ativo':'Desativado'} <button data-operador="${c.id}" data-perfil="${c.perfil}" data-ativo="${c.ativo}">Alterar conta</button></p>`).join('')||'Nenhuma conta criada. O responsável local tem acesso administrativo.';
   $('#operator-audit').innerHTML=acoes.map(a=>`<p>${date(a.criado_em)} · ${escapeHTML(a.operador)} · ${escapeHTML(a.acao)} ${escapeHTML(a.objeto||'')}</p>`).join('')||'Sem registros.';
 }
 $('#operator-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{await api('operadores','POST',Object.fromEntries(new FormData(e.target)));e.target.reset();await operadoresStatus();toast('Conta criada. Guarde a senha em local seguro.');});});

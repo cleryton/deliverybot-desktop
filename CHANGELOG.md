@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.34.0 — 2026-10-12
+
+Adiciona aplicativo Windows separado para funcionários da rede da loja, com pedidos manuais no banco central, perfil Caixa, pareamento de dispositivo e HTTPS com certificado específico. Implementa caixa individual em centavos com abertura, recebimentos separados, troco, sangria, suprimento, conferência, fechamento e estorno administrativo; preserva operações pendentes e retentativas idempotentes. Inclui gestão pelo responsável, guias operacionais no Obsidian, segundo instalador, testes financeiros e de acesso e validação dos dois executáveis no Actions.
+
 ## 2.33.1 — 2026-10-12
 
 Organiza o DeliveryBot como artefato de TCC com base de monografia, arquitetura, requisitos rastreáveis, protocolo de avaliação, referências verificadas e roteiro de banca. Adiciona consolidação de evidências JUnit com hashes, contagens e metadados do checkout, sem copiar dados dos casos e distinguindo resultados existentes de avaliações ainda pendentes; inclui testes de segurança e integridade dos relatórios.

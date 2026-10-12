@@ -197,3 +197,43 @@ CREATE TABLE IF NOT EXISTS atualizacoes (
     ultima_consulta REAL NOT NULL DEFAULT 0
 );
 INSERT OR IGNORE INTO atualizacoes(id) VALUES(1);
+
+-- Caixa manual: valores financeiros do livro em centavos inteiros.
+CREATE TABLE IF NOT EXISTS caixas (
+    id INTEGER PRIMARY KEY, operador_id INTEGER NOT NULL REFERENCES operadores(id),
+    abertura_centavos INTEGER NOT NULL, aberto_em TEXT NOT NULL DEFAULT (datetime('now')),
+    fechado_em TEXT, contado_centavos INTEGER, esperado_centavos INTEGER, diferenca_centavos INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS caixa_aberto_operador ON caixas(operador_id) WHERE fechado_em IS NULL;
+CREATE TABLE IF NOT EXISTS vendas_balcao (
+    pedido_id INTEGER PRIMARY KEY REFERENCES pedidos(id), operador_id INTEGER NOT NULL REFERENCES operadores(id),
+    caixa_id INTEGER NOT NULL REFERENCES caixas(id)
+);
+CREATE TABLE IF NOT EXISTS movimentos_caixa (
+    id INTEGER PRIMARY KEY, caixa_id INTEGER NOT NULL REFERENCES caixas(id),
+    pedido_id INTEGER REFERENCES pedidos(id), tipo TEXT NOT NULL,
+    forma TEXT NOT NULL, valor_centavos INTEGER NOT NULL, recebido_centavos INTEGER,
+    troco_centavos INTEGER NOT NULL DEFAULT 0, motivo TEXT NOT NULL DEFAULT '',
+    criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS recebimento_unico_caixa ON movimentos_caixa(pedido_id) WHERE tipo='VENDA';
+CREATE UNIQUE INDEX IF NOT EXISTS estorno_unico_caixa ON movimentos_caixa(pedido_id) WHERE tipo='ESTORNO';
+CREATE INDEX IF NOT EXISTS idx_movimentos_caixa_turno ON movimentos_caixa(caixa_id,id);
+CREATE INDEX IF NOT EXISTS idx_vendas_balcao_turno ON vendas_balcao(caixa_id,pedido_id);
+CREATE INDEX IF NOT EXISTS idx_vendas_balcao_operador ON vendas_balcao(operador_id,pedido_id);
+CREATE TABLE IF NOT EXISTS operacoes_caixa (
+    operador_id INTEGER NOT NULL REFERENCES operadores(id), chave TEXT NOT NULL, assinatura TEXT NOT NULL,
+    resultado TEXT NOT NULL, criado_em TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY(operador_id,chave)
+);
+CREATE TABLE IF NOT EXISTS terminal_config (
+    id INTEGER PRIMARY KEY CHECK(id=1), ativo INTEGER NOT NULL DEFAULT 0,
+    host TEXT NOT NULL DEFAULT '', porta INTEGER NOT NULL DEFAULT 5443
+);
+INSERT OR IGNORE INTO terminal_config(id) VALUES(1);
+CREATE TABLE IF NOT EXISTS terminal_convites (
+    hash TEXT PRIMARY KEY, expira_em REAL NOT NULL, usado INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS terminal_dispositivos (
+    id INTEGER PRIMARY KEY, nome TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,
+    ativo INTEGER NOT NULL DEFAULT 1, criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
