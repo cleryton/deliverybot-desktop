@@ -247,3 +247,14 @@ CREATE TABLE IF NOT EXISTS terminal_convites_autorizacoes (
     operador_id INTEGER NOT NULL REFERENCES operadores(id),
     movimentar INTEGER NOT NULL DEFAULT 0 CHECK(movimentar IN (0,1))
 );
+CREATE TABLE IF NOT EXISTS bloqueios_ia (
+    telefone TEXT PRIMARY KEY, motivo TEXT NOT NULL,
+    criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS frequencia_ia (
+    telefone TEXT PRIMARY KEY, inicio REAL NOT NULL, quantidade INTEGER NOT NULL,
+    ultimo_hash TEXT NOT NULL, repetidas INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS versoes_protecao_ia (
+    telefone TEXT PRIMARY KEY, versao TEXT NOT NULL
+);

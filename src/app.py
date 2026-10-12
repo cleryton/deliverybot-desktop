@@ -210,23 +210,13 @@ def receber_webhook():
         # Pode ser um evento de status (entregue/lido) ou payload vazio; apenas confirma o recebimento.
         return jsonify({"status": "ignorado"}), 200
 
-    telefone, texto = dados["telefone"], dados["texto"]
-    pedidos.registrar_mensagem(telefone, "ENTRADA", texto)
-
+    if not dados['texto']:
+        return jsonify(status='ignorado'),200
     try:
-        resposta = bot.processar_mensagem(telefone, texto)
-        if resposta is None:
-            return jsonify(status='atendimento_humano'),200
-        whatsapp.enviar_mensagem(telefone, resposta)
-        pedidos.registrar_mensagem(telefone, "SAIDA", resposta)
-    except Exception:
-        # Nunca deixa uma exceção virar uma página de erro 500 pública --
-        # loga internamente e confirma o recebimento mesmo assim (evita que
-        # o provedor fique retransmitindo o mesmo webhook em loop).
-        logger.error("Falha ao processar mensagem recebida da Meta")
-        return jsonify({"status": "erro_interno"}), 200
-
-    return jsonify({"status": "ok"}), 200
+        tarefa=processamento.enfileirar(dados,dados.get('id'))
+    except ValueError:
+        return jsonify(status='ignorado'),200
+    return jsonify(status='recebido',**tarefa),200
 
 
 # ---------------------------------------------------------------------------
@@ -278,14 +268,27 @@ def api_processar_mensagem(segredo):
     if not 10 <= len(telefone) <= 15 or not texto or len(texto) > 8000:
         return jsonify({"erro": "telefone é obrigatório"}), 400
 
-    pedidos.registrar_mensagem(telefone, "ENTRADA", texto)
+    from . import protecao_ia
+    with protecao_ia.trava(telefone),get_conn() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        bloqueada=protecao_ia.avaliar(conn,telefone,texto,contar=True)
+        geracao=protecao_ia.versao(telefone,conn)
+        conn.execute("INSERT INTO mensagens(telefone,direcao,conteudo,ia_permitida) VALUES(?,'ENTRADA',?,?)",(telefone,texto,int(not bloqueada)))
+    if bloqueada:
+        return jsonify(telefone=telefone,resposta=None),200
     try:
         resposta = bot.processar_mensagem(telefone, texto)
     except Exception:
         logger.error("Falha ao processar mensagem via API interna")
         return jsonify({"erro": "falha ao processar mensagem"}), 500
     if resposta is not None:
-        pedidos.registrar_mensagem(telefone, "SAIDA", resposta)
+        with protecao_ia.trava(telefone):
+            try:
+                if not protecao_ia.privacidade(texto):
+                    protecao_ia.validar_saida(telefone,resposta,geracao)
+            except protecao_ia.ConversaBloqueada:
+                return jsonify(telefone=telefone,resposta=None),200
+            pedidos.registrar_mensagem(telefone, "SAIDA", resposta)
 
     return jsonify({"telefone": telefone, "resposta": resposta})
 

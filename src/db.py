@@ -16,6 +16,7 @@ _DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 # anterior do projeto. init_db() adiciona qualquer uma que estiver faltando,
 # então atualizar o código nunca exige apagar o banco manualmente.
 _MIGRACOES_COLUNAS = {
+    "mensagens": [("ia_permitida", "INTEGER NOT NULL DEFAULT 1")],
     "clientes": [
         ("chat_id", "TEXT"),
         ("waha_session", "TEXT"),

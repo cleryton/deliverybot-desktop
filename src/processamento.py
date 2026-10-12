@@ -68,9 +68,10 @@ def enfileirar(dados, chave=None):
         raise ValueError("Telefone de atendimento inválido.")
     if not isinstance(dados.get("texto"), str) or not 1 <= len(dados["texto"]) <= 8000:
         raise ValueError("Mensagem de atendimento inválida.")
-    origem = ("LOCAL:" if config.WHATSAPP_PROVIDER == "LOCAL" else "WAHA:") + (dados.get("session") or "default")
+    origem = ({'LOCAL':'LOCAL:','META':'META:'}.get(config.WHATSAPP_PROVIDER,'WAHA:')) + (dados.get("session") or "default")
     chave = "sha256:" + hashlib.sha256(str(chave or uuid.uuid4()).encode()).hexdigest()
-    with get_conn() as conn:
+    from . import protecao_ia
+    with protecao_ia.trava(dados['telefone']),get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
         cur = conn.execute(
             "INSERT OR IGNORE INTO tarefas_bot (origem, chave, telefone, texto, chat_id, sessao) VALUES (?, ?, ?, ?, ?, ?)",
@@ -78,6 +79,10 @@ def enfileirar(dados, chave=None):
         )
         tarefa = dict(conn.execute("SELECT id, estado FROM tarefas_bot WHERE origem=? AND chave=?", (origem, chave)).fetchone())
         tarefa["duplicada"] = cur.rowcount == 0
+        if not tarefa['duplicada'] and protecao_ia.avaliar(conn,dados['telefone'],dados['texto'],contar=True):
+            conn.execute("INSERT INTO mensagens(telefone,direcao,conteudo,ia_permitida) VALUES(?,'ENTRADA',?,0)",(dados['telefone'],dados['texto']))
+            _concluir_sem_resposta(conn,tarefa['id'],'proteção ou limite de atendimento')
+            tarefa['estado']='CONCLUIDA'
     _acordar.set()
     return tarefa
 
@@ -113,6 +118,8 @@ def processar_proxima():
         if row is None:
             return False
         tarefa = dict(row)
+        from . import protecao_ia
+        geracao=protecao_ia.versao(tarefa['telefone'],conn)
         if tarefa["origem"] != "HUMANO" and _mensagem_ruido(tarefa["texto"]):
             _concluir_sem_resposta(conn, tarefa["id"], "sem conteúdo textual útil")
             return True
@@ -126,6 +133,12 @@ def processar_proxima():
         # Uma resposta automática preparada antes da pausa não pode atravessar
         # um atendimento humano ao ser reenviada após uma falha.
         from . import humano
+        from . import protecao_ia
+        if tarefa['origem']!='HUMANO' and protecao_ia.verificar(tarefa['telefone'],tarefa['texto']):
+            with get_conn() as conn:
+                conn.execute("UPDATE mensagens SET ia_permitida=0 WHERE telefone=? AND direcao='ENTRADA' AND conteudo=?",(tarefa['telefone'],tarefa['texto']))
+                _concluir_sem_resposta(conn,tarefa['id'],'proteção do atendimento')
+            return True
         if tarefa['origem']!='HUMANO' and tarefa['resposta'] is not None and humano.pausado(tarefa['telefone']):
             with get_conn() as conn:
                 conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', atualizado_em=datetime('now') WHERE id=?",(tarefa['id'],))
@@ -160,12 +173,22 @@ def processar_proxima():
             resposta = (ia.resposta_link(gerar_link_pedido(tarefa['telefone']), historico)
                         if ia.intencao_pedido(tarefa['texto'], historico) else ia.PEDIDO_INDISPONIVEL)
             resposta = atualizar_resposta(resposta, tarefa['telefone'])
-        with get_conn() as conn:
-            conn.execute("UPDATE tarefas_bot SET resposta=?, estado='ENVIANDO', atualizado_em=datetime('now') WHERE id=?", (resposta, tarefa['id']))
-        whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"], permitir_externos=humano_externo)
+        with protecao_ia.trava(tarefa['telefone']):
+            if not humano_externo and not protecao_ia.privacidade(tarefa['texto']):
+                protecao_ia.validar_saida(tarefa['telefone'],resposta,geracao)
+            with get_conn() as conn:
+                conn.execute('BEGIN IMMEDIATE')
+                atual=conn.execute('SELECT estado FROM tarefas_bot WHERE id=?',(tarefa['id'],)).fetchone()
+                if not atual or atual['estado']!='PROCESSANDO':
+                    raise protecao_ia.ConversaBloqueada()
+                conn.execute("UPDATE tarefas_bot SET resposta=?, estado='ENVIANDO', atualizado_em=datetime('now') WHERE id=?", (resposta, tarefa['id']))
+            whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"], permitir_externos=humano_externo)
         with get_conn() as conn:
             conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', erro=NULL, atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))
             conn.execute("INSERT INTO mensagens (telefone, direcao, conteudo) VALUES (?, 'SAIDA', ?)", (tarefa["telefone"], resposta))
+    except protecao_ia.ConversaBloqueada:
+        with get_conn() as conn:
+            _concluir_sem_resposta(conn,tarefa['id'],'proteção antes do envio')
     except PaginaIndisponivel:
         # Falha na validação anterior ao transporte: nenhum envio foi iniciado.
         # Mantém a resposta pronta e o token para retomar sem chamar a IA outra vez.

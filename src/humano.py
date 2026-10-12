@@ -24,7 +24,11 @@ def solicitar(t):
 
 def listar():
     with get_conn() as c:
-        return [dict(r) for r in c.execute("SELECT a.*,COALESCE(c.nome,'Cliente') AS nome FROM atendimentos_humanos a LEFT JOIN clientes c ON c.telefone=a.telefone ORDER BY a.solicitado_em")]
+        from .protecao_ia import MOTIVOS
+        registros=[dict(r) for r in c.execute("SELECT a.*,COALESCE(c.nome,'Cliente') AS nome,b.motivo AS bloqueio_ia FROM atendimentos_humanos a LEFT JOIN clientes c ON c.telefone=a.telefone LEFT JOIN bloqueios_ia b ON b.telefone=a.telefone ORDER BY a.solicitado_em")]
+        for r in registros:
+            r['motivo_bloqueio']=MOTIVOS.get(r['bloqueio_ia'],'')
+        return registros
 
 
 def conversa(t):
@@ -42,6 +46,8 @@ def controlar(t,acao):
         if acao=='assumir':
             c.execute("INSERT INTO atendimentos_humanos(telefone,estado) VALUES(?,'ASSUMIDO') ON CONFLICT(telefone) DO UPDATE SET estado='ASSUMIDO'",(t,))
         elif acao=='retomar':
+            if c.execute('SELECT 1 FROM bloqueios_ia WHERE telefone=?',(t,)).fetchone():
+                raise ValueError('O responsável precisa revisar e liberar a proteção da IA antes de retomar o bot.')
             if c.execute("SELECT 1 FROM tarefas_bot WHERE telefone=? AND origem='HUMANO' AND estado!='CONCLUIDA'",(t,)).fetchone():
                 raise ValueError('Conclua ou resolva os envios manuais antes de retomar o bot.')
             c.execute('DELETE FROM atendimentos_humanos WHERE telefone=?',(t,))

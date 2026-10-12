@@ -189,7 +189,7 @@ def extrair_mensagem_recebida_meta(payload: dict) -> dict | None:
         else:
             texto = ""
 
-        return {"telefone": telefone, "texto": texto.strip(), "nome": nome}
+        return {"telefone": telefone, "texto": texto.strip(), "nome": nome, "id":msg.get('id')}
     except (KeyError, IndexError, TypeError):
         return None
 
