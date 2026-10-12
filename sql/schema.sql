@@ -237,3 +237,13 @@ CREATE TABLE IF NOT EXISTS terminal_dispositivos (
     id INTEGER PRIMARY KEY, nome TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,
     ativo INTEGER NOT NULL DEFAULT 1, criado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS terminal_autorizacoes (
+    dispositivo_id INTEGER PRIMARY KEY REFERENCES terminal_dispositivos(id) ON DELETE CASCADE,
+    operador_id INTEGER NOT NULL REFERENCES operadores(id),
+    movimentar INTEGER NOT NULL DEFAULT 0 CHECK(movimentar IN (0,1)), versao TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS terminal_convites_autorizacoes (
+    hash TEXT PRIMARY KEY REFERENCES terminal_convites(hash) ON DELETE CASCADE,
+    operador_id INTEGER NOT NULL REFERENCES operadores(id),
+    movimentar INTEGER NOT NULL DEFAULT 0 CHECK(movimentar IN (0,1))
+);

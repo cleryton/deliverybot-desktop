@@ -39,6 +39,8 @@ def _operacao(uid, chave, dados, funcao):
         ator = c.execute('SELECT perfil,ativo FROM operadores WHERE id=?', (uid,)).fetchone()
         if not ator or not ator['ativo'] or ator['perfil'] not in {'ADMIN', 'CAIXA'}:
             raise ValueError('Conta não autorizada para o caixa.')
+        from .politica_terminal import exigir_gravacao
+        exigir_gravacao(c, uid, dados['acao'])
         anterior = c.execute('SELECT * FROM operacoes_caixa WHERE operador_id=? AND chave=?', (uid, chave)).fetchone()
         if anterior:
             if anterior['assinatura'] != assinatura:

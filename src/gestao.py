@@ -195,6 +195,14 @@ def terminal_revogar(did):
     return jsonify(ok=True)
 
 
+@bp.put('/gestao/api/terminal/dispositivos/<int:did>/autorizacao')
+@protegido
+def terminal_autorizar(did):
+    from .politica_terminal import autorizar
+    autorizar(did,dados_json())
+    return jsonify(ok=True)
+
+
 @bp.get('/gestao/api/caixas')
 @protegido
 def caixas_api():

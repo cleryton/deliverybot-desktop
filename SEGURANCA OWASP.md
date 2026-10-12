@@ -21,9 +21,15 @@ O workflow bloqueia falhas nos testes, avisos Python publicados no PyPI, vulnera
 
 Docker é utilizado somente pelo runner Linux do Actions para o ZAP. O aplicativo continua sem exigir Docker, Python ou Node.js do cliente. Relatórios ficam nos artifacts por sete dias. A ação não abre issues ou publica comentários automaticamente.
 
+## Acesso dos funcionários
+
+O gateway dos funcionários também aplica vínculo dispositivo–conta Caixa, recusa contas administrativas, limita requisições e pareamento, mantém prazos de sessão no servidor e não os renova por consultas automáticas. Sangria e suprimento exigem autorização explícita. As permissões são verificadas novamente dentro da transação financeira, evitando gravação após revogação já confirmada. Campos inesperados são recusados e as notas do Obsidian não participam da autorização. Os testes em `tests/test_politica_terminal.py` cobrem cliente adulterado, outra conta, cookie reutilizado, inatividade, revogação concorrente e nota hostil. São controles e regressões específicas, sem declaração de certificação ou garantia de ausência de vulnerabilidades.
+
 ## Referências oficiais
 
 - [OWASP ASVS](https://owasp.org/projects/asvs)
+- [Authorization: menor privilégio e verificação no servidor](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
+- [Session Management: expiração e invalidação](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
 - [Input Validation](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
 - [REST Security](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html)
 - [SSRF Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)
