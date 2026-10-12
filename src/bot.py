@@ -4,7 +4,7 @@ import re
 import threading
 import time
 
-from . import cardapio, config, ia
+from . import cardapio, config, ia, protecao_ia
 from .links import gerar_link_pedido
 
 logger = logging.getLogger(__name__)
@@ -165,7 +165,14 @@ def processar_mensagem(telefone: str, texto: str) -> str | None:
     if not (texto or '').strip():
         return None
     comando=(texto or '').strip().casefold()
-    privacidade=comando in {'9','privacidade','lgpd','meus dados'}
+    privacidade=protecao_ia.privacidade(texto)
+    if privacidade:
+        texto='PRIVACIDADE'
+        comando='privacidade'
+    with protecao_ia.trava(telefone):
+        if not privacidade and protecao_ia.verificar(telefone,texto):
+            return None
+        geracao=protecao_ia.versao(telefone)
     if humano.pausado(telefone) and not privacidade:
         return None
     pedido_humano = comando in {'atendente','humano','falar com atendente','10'} or bool(re.search(r"\b(?:quero |preciso |posso )?falar com (?:um |uma |o |a )?(?:atendente|humano|humana|pessoa|alguem)\b", ia.normalizar_texto(texto)))
@@ -174,6 +181,13 @@ def processar_mensagem(telefone: str, texto: str) -> str | None:
         resposta='Recebemos seu pedido de atendimento humano. Aguarde a equipe; o bot ficará pausado nesta conversa.'
     else:
         resposta = _processar(telefone, texto)
+    if resposta is None:
+        return None
+    if not privacidade:
+        try:
+            protecao_ia.validar_saida(telefone,resposta,geracao)
+        except protecao_ia.ConversaBloqueada:
+            return None
     from .links import atualizar_resposta
     try:
         resposta = atualizar_resposta(resposta, telefone)
@@ -190,7 +204,7 @@ def processar_mensagem(telefone: str, texto: str) -> str | None:
     return resposta
 
 
-def _processar(telefone: str, texto: str) -> str:
+def _processar(telefone: str, texto: str) -> str | None:
     texto_limpo = (texto or "").strip()
     if texto_limpo == "9" or texto_limpo.casefold() in {"privacidade", "lgpd", "meus dados"}:
         return _resposta_opcao(texto_limpo, telefone)
@@ -210,6 +224,8 @@ def _processar(telefone: str, texto: str) -> str:
 
     try:
         return ia.responder(telefone, texto_limpo)
+    except protecao_ia.ConversaBloqueada:
+        return None
     except ia.IAIndisponivel:
         logger.warning("IA indisponível; atendimento continuará com resposta local")
 

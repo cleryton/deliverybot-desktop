@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.36.0 — 2026-10-12
+
+Adiciona proteção por conversa antes da IA e do envio, com detecção de sinais conhecidos de manipulação e extração de dados, limites de mensagens e repetição, verificação de credenciais e estrutura interna na saída e invalidação de respostas em andamento após pausa ou liberação. Mantém mensagens pausadas no histórico privado fora do contexto da IA, exige revisão administrativa com retomada separada, preserva aviso local de privacidade e integra os dados de proteção às operações do titular. Inclui guia no visual e Graph Obsidian e testes de abuso, falsos positivos, fila, concorrência, permissões e interface.
+
 ## 2.35.0 — 2026-10-12
 
 Restringe o terminal por vínculo individual de conta Caixa e computador, impede login administrativo e exige autorização explícita para sangria e suprimento. Revalida acesso dentro da transação, limita requisições e pareamento, expira sessões no servidor sem renovação por consultas automáticas e preserva pendências incertas. Inclui auditoria de recusas, revisão segura de acessos anteriores, recuperação restrita de conta bloqueada, guia no visual e Graph Obsidian sem poder de autorização e testes de abuso e da interface.

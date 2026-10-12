@@ -25,7 +25,17 @@ Docker é utilizado somente pelo runner Linux do Actions para o ZAP. O aplicativ
 
 O gateway dos funcionários também aplica vínculo dispositivo–conta Caixa, recusa contas administrativas, limita requisições e pareamento, mantém prazos de sessão no servidor e não os renova por consultas automáticas. Sangria e suprimento exigem autorização explícita. As permissões são verificadas novamente dentro da transação financeira, evitando gravação após revogação já confirmada. Campos inesperados são recusados e as notas do Obsidian não participam da autorização. Os testes em `tests/test_politica_terminal.py` cobrem cliente adulterado, outra conta, cookie reutilizado, inatividade, revogação concorrente e nota hostil. São controles e regressões específicas, sem declaração de certificação ou garantia de ausência de vulnerabilidades.
 
+## Proteção do atendimento com IA
+
+O aplicativo verifica sinais explícitos de alteração de regras, extração de informações internas e comandos privilegiados antes de chamar a IA. A proteção pausa apenas a conversa e requer revisão; frequência acima de 30 eventos/minuto e seis repetições consecutivas de texto com pelo menos 12 caracteres também pausam. Eventos duplicados não contam. Respostas com credenciais configuradas ou estrutura de prompt interno são descartadas, e mudanças na geração da conversa invalidam respostas em andamento mesmo após liberação. O controle também existe antes do transporte WhatsApp e preserva envios incertos.
+
+Mensagens em quarentena ficam no histórico privado para a equipe, marcadas fora do contexto da IA; os registros de bloqueio guardam apenas motivo, contato e data. Somente o administrador libera a proteção, com CSRF e confirmação, e a retomada manual permanece separada. O aviso local de privacidade continua disponível. Exportação e remoção verificadas incluem os dados de proteção. O Obsidian recebe um guia operacional sem mensagens, contatos ou credenciais e não controla permissões.
+
+Os testes em `tests/test_protecao_ia.py` usam IA e WhatsApp simulados para cobrir abusos, casos comerciais permitidos, duplicação, corrida entre pausa/liberação/inferência, fila, revisão e privacidade. As heurísticas não cobrem todos os idiomas, codificações ou ataques indiretos e podem gerar falsos positivos; não são garantia de ausência de prompt injection. As ferramentas comerciais e permissões continuam com suas próprias validações.
+
 ## Referências oficiais
+
+- [OWASP LLM Prompt Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)
 
 - [OWASP ASVS](https://owasp.org/projects/asvs)
 - [Authorization: menor privilégio e verificação no servidor](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)

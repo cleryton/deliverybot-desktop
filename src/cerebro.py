@@ -266,6 +266,25 @@ def _preparar() -> Path:
     for nome, conteudo in padroes_atendimento.arquivos(categoria).items():
         _criar_se_ausente(padroes / nome, conteudo)
     _criar_se_ausente(pasta / 'Pedidos pelo WhatsApp.md', _GUIA_PEDIDOS)
+    _criar_se_ausente(pasta / 'Proteção das conversas com IA.md', '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Proteção das conversas com IA
+
+O aplicativo pausa somente a conversa com sinais explícitos de alteração das regras, extração de credenciais ou dados internos, comandos privilegiados, mais de trinta mensagens por minuto ou seis repetições consecutivas de texto com pelo menos doze caracteres. Reentrega do mesmo evento não soma tentativas. Perguntas normais sobre produtos, pagamento, suporte e senha do Wi-Fi não são bloqueadas por palavras isoladas.
+
+As regras são verificadas antes da IA, das respostas rápidas e dos pedidos pela conversa. A saída também é verificada antes do envio: credenciais configuradas, estrutura do prompt interno e resposta anterior a uma pausa são descartadas. Uma inferência já iniciada pode terminar, mas sua resposta fica impedida de sair mesmo se a equipe já tiver liberado a conversa. O serviço Ollama continua disponível para outros contatos.
+
+## Revisar com uma pessoa
+Em Atendimento humano, veja o motivo da pausa e abra a conversa. Mensagens recebidas durante a proteção ficam no histórico privado para a equipe, mas não são usadas como contexto do modelo. O funcionário pode assumir e responder manualmente pelos controles existentes. Somente o administrador pode confirmar Revisar e liberar IA. Depois, a equipe decide quando Retomar bot. Liberar não reenvia respostas canceladas nem aprova instruções suspeitas.
+
+PRIVACIDADE e LGPD continuam com resposta local durante o bloqueio. As informações de proteção entram na exportação verificada do titular e na remoção da identificação. Não copie contatos, mensagens suspeitas ou credenciais para o cofre. Esta nota explica os controles; editá-la não desbloqueia conversas.
+
+As regras detectam sinais conhecidos e podem exigir revisão de um caso legítimo. Não cobrem todas as variações, idiomas, conteúdos codificados ou ataques indiretos; não substituem a validação das ferramentas e permissões. Envios já iniciados não podem ser desfeitos e permanecem disponíveis para conferência na fila.
+
+Consulte [[Segurança dos funcionários]], [[Pedidos pelo WhatsApp]] e [[Mapa do atendimento]].
+''')
     _criar_se_ausente(pasta / 'Segurança dos funcionários.md', '''---
 tipo: guia-operacional
 atendimento: false
@@ -373,7 +392,7 @@ def _sincronizar_mapa(pasta: Path) -> None:
             return  # A equipe assumiu a edição deste mapa.
         grupos = {
             'Voz e informações da loja': [pasta / n for n in _NOTAS_INICIAIS],
-            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Segurança dos funcionários.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
+            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Segurança dos funcionários.md', pasta / 'Proteção das conversas com IA.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
             'Modelos para revisão': [pasta / 'Modelos/Conhecimento aprovado.md', pasta / 'Modelos/Lista de estoque.md'],
             'Conhecimento revisado': _notas_aprovadas(pasta),
             'Padrões de atendimento ativos': [pasta / 'Atendimentos/Como personalizar.md', *_padroes_aprovados(pasta)],
@@ -515,7 +534,7 @@ def registrar_funcionamento(dados: dict) -> None:
 def visualizacao() -> dict:
     """Mostra notas editoriais ao administrador; nunca documentos de estoque."""
     pasta = _preparar()
-    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Pedidos manuais e caixa.md', 'Computadores dos funcionários.md', 'Segurança dos funcionários.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
+    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Pedidos manuais e caixa.md', 'Computadores dos funcionários.md', 'Segurança dos funcionários.md', 'Proteção das conversas com IA.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
     # Mostra os padrões antes do conhecimento extra para não ocultá-los no limite.
     padroes = _padroes_aprovados(pasta)
     caminhos.extend([pasta / 'Atendimentos/Como personalizar.md', *padroes, *_notas_aprovadas(pasta)])

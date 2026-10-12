@@ -285,7 +285,7 @@ def _historico_mensagens(telefone: str) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT direcao, conteudo FROM mensagens WHERE telefone = ? "
-            "AND criado_em >= datetime('now', ?) "
+            "AND ia_permitida=1 AND criado_em >= datetime('now', ?) "
             "ORDER BY id DESC LIMIT ?",
             (telefone, f"-{_IDADE_CONTEXTO_HORAS} hours", _MAX_HISTORICO),
         ).fetchall()
@@ -294,6 +294,9 @@ def _historico_mensagens(telefone: str) -> list[dict]:
     historico: list[dict] = []
     for row in rows:
         conteudo = str(row["conteudo"] or "").strip()
+        from .protecao_ia import classificar
+        if classificar(conteudo):
+            continue
         if not conteudo:
             continue
         papel = "user" if row["direcao"] == "ENTRADA" else "assistant"
@@ -570,6 +573,11 @@ def responder(telefone: str, texto: str) -> str:
     Levanta IAIndisponivel se não for possível usar a IA por qualquer
     motivo -- o chamador deve tratar isso caindo de volta no menu fixo.
     """
+    from . import protecao_ia
+    with protecao_ia.trava(telefone):
+        if protecao_ia.bloqueado(telefone) or protecao_ia.verificar(telefone,texto):
+            raise protecao_ia.ConversaBloqueada()
+        geracao=protecao_ia.versao(telefone)
     provedor = config.IA_PROVIDER
     from .conexoes import url_local
     externo = provedor == "ANTHROPIC" or (provedor == "OLLAMA" and not url_local(config.OLLAMA_URL))
@@ -579,9 +587,9 @@ def responder(telefone: str, texto: str) -> str:
         raise IAIndisponivel("O servidor externo de IA precisa usar HTTPS.")
 
     if provedor == "ANTHROPIC":
-        return _responder_anthropic(telefone, texto)
+        return protecao_ia.validar_saida(telefone,_responder_anthropic(telefone, texto),geracao)
     if provedor == "OLLAMA":
-        return _responder_ollama(telefone, texto)
+        return protecao_ia.validar_saida(telefone,_responder_ollama(telefone, texto),geracao)
 
     raise IAIndisponivel(
         "IA desativada (defina IA_PROVIDER=ANTHROPIC ou IA_PROVIDER=OLLAMA no .env para ativar)."

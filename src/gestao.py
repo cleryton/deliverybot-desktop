@@ -494,6 +494,20 @@ def humano_api():
     return jsonify(ok=True)
 
 
+@bp.post('/gestao/api/protecao-ia/liberar')
+@protegido
+def liberar_protecao_ia():
+    from . import protecao_ia
+    u=operadores.usuario()
+    if not u or u['perfil']!='ADMIN':
+        return jsonify(erro='Entre com a conta administradora para revisar o bloqueio.'),403
+    d=dados_json()
+    if d.get('confirmar_revisao') is not True:
+        raise ValueError('Confirme a revisão da conversa antes de liberar.')
+    protecao_ia.liberar(d.get('telefone',''))
+    return jsonify(ok=True)
+
+
 @bp.route('/gestao/api/rotinas', methods=['GET','PUT','POST'])
 @protegido
 def rotinas_api():

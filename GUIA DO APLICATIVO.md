@@ -1,4 +1,8 @@
-# DeliveryBot Desktop 2.35.0
+# DeliveryBot Desktop 2.36.0
+
+O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
+
+São heurísticas para sinais conhecidos, com possibilidade de revisão de casos legítimos. Perguntas comuns sobre produtos, Pix, cartão, senha do Wi-Fi e suporte não são bloqueadas por palavras isoladas. Uma inferência já em andamento pode terminar, mas sua resposta é descartada quando a proteção mudou. Envios já iniciados não podem ser desfeitos; confira os casos incertos na fila. **PRIVACIDADE** e **LGPD** continuam com respostas locais, e as mensagens pausadas ficam no histórico privado da equipe, fora do contexto do modelo.
 
 O segundo aplicativo **DeliveryBot Funcionário** permite registrar pedidos manuais e conferir o caixa em outros computadores da rede da loja. O responsável configura **Caixas dos funcionários**, cria contas com perfil **Caixa** e autoriza os dispositivos. Consulte [o guia do funcionário](GUIA%20DO%20FUNCIONARIO.md) para instalação, pareamento e conferência dos valores.
 
