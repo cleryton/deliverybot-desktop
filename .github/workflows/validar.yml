@@ -85,6 +85,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao instalar dependencias WhatsApp.' }
       - name: Testar estoque, pedidos, seguranca e documentos
         run: python -m pytest -q --junitxml=artifacts/testes.xml
+      - name: Consolidar evidencias academicas da execucao
+        if: ${{ !cancelled() && hashFiles('artifacts/testes.xml') != '' }}
+        run: python packaging/evidencias_tcc.py artifacts/testes.xml --saida artifacts/tcc/evidencias.json
       - name: Preparar componentes do aplicativo
         run: |
           python packaging/preparar_whatsapp.py
@@ -127,6 +130,7 @@ jobs:
           name: relatorios-windows
           path: |
             artifacts/testes.xml
+            artifacts/tcc/evidencias.json
             artifacts/executavel.json
             build/DeliveryBot/warn-DeliveryBot.txt
           retention-days: 7

@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.33.1 — 2026-10-12
+
+Organiza o DeliveryBot como artefato de TCC com base de monografia, arquitetura, requisitos rastreáveis, protocolo de avaliação, referências verificadas e roteiro de banca. Adiciona consolidação de evidências JUnit com hashes, contagens e metadados do checkout, sem copiar dados dos casos e distinguindo resultados existentes de avaliações ainda pendentes; inclui testes de segurança e integridade dos relatórios.
+
 ## 2.33.0 — 2026-10-11
 
 Adiciona validadores HTTP e testes adversariais orientados pelo OWASP: JSON UTF-8 com limites, campos duplicados e números não finitos recusados, parâmetros de formulário inequívocos, URLs de serviços validadas e cabeçalhos defensivos inclusive nas respostas do gateway público. Inclui política documentada, auditorias de dependências e ZAP Baseline passivo em dados fictícios como parte da validação obrigatória do Actions.
