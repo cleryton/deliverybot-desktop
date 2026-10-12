@@ -141,8 +141,24 @@ def smoke_test(destino, janela=False):
         assert '### Atendimentos/Produtos e serviços/03 Escolha.md' in contexto
         assert '### Atendimentos/Produtos e serviços/04 Fechamento.md' not in contexto
         assert '[[Atendimentos/Produtos e serviços/Perfil]]' in mapa
+        from src import recuperacao
+        recuperacao._gerente = recuperacao.Recuperacao()
+        assert recuperacao._gerente.verificar()['cofre']['estado'] == 'PRONTO'
+        from src import conexoes
+        status_wa_teste, status_ol_teste = conexoes.status_whatsapp, conexoes.status_ollama
+        try:
+            conexoes.status_whatsapp = lambda: {'servico':False}
+            conexoes.status_ollama = lambda: {'online':False}
+            assert client.get('/gestao/api/conexoes').json['recuperacao']['disponivel']
+        finally:
+            conexoes.status_whatsapp, conexoes.status_ollama = status_wa_teste, status_ol_teste
+        with client.session_transaction() as sessao_teste:
+            csrf_recuperacao = sessao_teste['csrf']
+        assert client.put('/gestao/api/cerebro/recuperacao',json={'automatico':False},headers={'X-CSRF-Token':csrf_recuperacao}).status_code == 200
+        assert (cerebro.diretorio()/'Verificação e recuperação do atendimento.md').is_file()
+        assert (cerebro.diretorio()/'Estado do funcionamento.md').is_file()
         assert publico.get('/gestao/api/cerebro/visualizar').status_code == 404
-        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True, "minijogo":True}
+        resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True, "minijogo":True, "recuperacao_cerebro":True}
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local
@@ -235,6 +251,16 @@ def smoke_test(destino, janela=False):
                     window.evaluate_js("document.querySelector('#ol-start').click()")
                     esperar("document.querySelector('#ol-badge').textContent === 'Ativo no bot'")
                     assert config.IA_PROVIDER == "OLLAMA"
+                    window.evaluate_js("const r=document.querySelector('#brain-auto-recover');r.checked=true;r.dispatchEvent(new Event('change'))")
+                    esperar("document.querySelector('#brain-auto-recover').checked && !document.querySelector('#brain-auto-recover').disabled")
+                    assert config.CEREBRO_RECUPERACAO_AUTOMATICA == 'SIM'
+                    window.evaluate_js("document.querySelector('#brain-recover').click()")
+                    esperar("document.querySelector('#brain-health').textContent.includes('Ollama respondeu') && !document.querySelector('#brain-recover').disabled")
+                    assert recuperacao.situacao()['estado'] == 'PRONTO'
+                    window.evaluate_js("const r=document.querySelector('#brain-auto-recover');r.checked=false;r.dispatchEvent(new Event('change'))")
+                    esperar("!document.querySelector('#brain-auto-recover').checked && !document.querySelector('#brain-auto-recover').disabled")
+                    assert config.CEREBRO_RECUPERACAO_AUTOMATICA == 'NAO'
+                    resultado['recuperacao'] = ['ativar_opcao', 'verificar_no_painel', 'estado_no_cofre', 'desativar_opcao']
                     assert config.WHATSAPP_PROVIDER == "LOCAL"
                     assert pagina_teste.situacao()['estado'] == 'ONLINE', 'O WhatsApp deve preparar o HTTPS antes do QR.'
                     resultado["conexoes_simuladas"] = ["componente_integrado_sem_docker", "configurar_webhook", "exibir_qr", "iniciar_e_ativar_ollama"]
@@ -352,6 +378,8 @@ def main():
         processamento.iniciar()
         from src import rotinas
         rotinas.iniciar()
+        from src import recuperacao
+        recuperacao.iniciar()
         if config.WHATSAPP_PROVIDER in {"LOCAL", "WAHA"}:
             preparar_whatsapp = (conexoes.iniciar_whatsapp_local
                                  if config.WHATSAPP_PROVIDER == "LOCAL"
@@ -378,11 +406,13 @@ def main():
             def abrir_pasta(self):
                 self._verificar()
                 os.startfile(str(pasta))
-            def abrir_cerebro(self):
+            def abrir_cerebro(self, documento='inicio'):
                 self._verificar()
+                if documento not in {'inicio', 'estado'}:
+                    raise ValueError('Nota do cofre inválida.')
                 from src import cerebro
                 from urllib.parse import quote
-                nota = cerebro.arquivo_inicio()
+                nota = cerebro.arquivo_funcionamento() if documento == 'estado' else cerebro.arquivo_inicio()
                 uri = "obsidian://open?path=" + quote(str(nota), safe="")
                 try:
                     os.startfile(uri)
@@ -477,6 +507,8 @@ def main():
                 publicacao._gerente.encerrar()
             from src import rotinas
             rotinas.encerrar()
+            from src import recuperacao
+            recuperacao.encerrar()
             servidor.close()
             from src import processamento
             processamento.encerrar()

@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.30.0
+# DeliveryBot Desktop 2.31.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -276,3 +276,13 @@ Ao mudar o perfil, as edições antigas ficam preservadas na pasta anterior e sa
 Após confirmar pelo site, abra **Jogar pingue-pongue** e toque em **Jogar**. No celular, arraste o dedo na mesa ou segure os botões de seta; no computador, use mouse, ↑/↓ ou W/S. A raquete verde é sua. A partida termina em cinco pontos e oferece dificuldade Leve ou Normal, pausa e reinício. Trocar de aba ou fechar a área do jogo pausa a partida; toque em Continuar para retomar.
 
 **Abrir somente o jogo em outra aba** abre `/jogar` no mesmo endereço HTTPS da loja, sem o link pessoal do pedido. Essa página também pode ser reaberta enquanto o túnel estiver disponível. A partida roda no navegador, sem cadastro, cookies próprios, gravação do placar ou envio de dados a terceiros. O jogo não consulta o preparo: acompanhe as atualizações do pedido pelo WhatsApp. Sem JavaScript, o recibo e a confirmação continuam disponíveis.
+
+### Verificar e recuperar Ollama e Obsidian
+
+Em **WhatsApp e IA → Verificação e recuperação do atendimento**, use **Verificar e recuperar agora**. Para acompanhar quedas enquanto o aplicativo estiver aberto, marque **Recuperar Ollama automaticamente**. A opção começa desativada e é exclusiva do administrador no Desktop. A verificação ocorre a cada 30 segundos e informa se o serviço respondeu, se o modelo está instalado e se o estilo do cofre pode ser lido. Três falhas consecutivas de inferência também sinalizam um problema de preparação. O estado técnico não garante a qualidade de cada resposta.
+
+A recuperação inicia somente o Ollama local instalado e prepara o modelo configurado já baixado, sem mudar o provedor de IA. Faz no máximo três tentativas consecutivas, com espera crescente entre elas. Desativar a opção, trocar o provedor/modelo ou encerrar o aplicativo impede novas ações pendentes. O botão manual permite reavaliar o problema após corrigir a instalação ou a memória disponível. Um modelo ausente precisa ser escolhido ou baixado pelo botão específico; serviço remoto exige intervenção na máquina correspondente.
+
+No Obsidian, **Estado do funcionamento.md** mostra um resumo técnico sem caminhos, segredos, mensagens ou dados de clientes, e **Verificação e recuperação do atendimento.md** explica as ações e limitações. O mapa liga essas notas. Elas não são enviadas como conhecimento editorial ao modelo; o Ollama recebe um sinal oficial de estado e não pode executar comandos de notas. Para preservar uma edição manual da nota de estado, remova seu marcador automático.
+
+A estrutura do cofre pode ser preparada com arquivos padrão ausentes; conteúdos existentes, notas revogadas, vazias ou inválidas são preservados para revisão. Se o cofre não puder ser lido, o atendimento usa as regras e o catálogo do aplicativo, sem presumir o conteúdo das notas. A recuperação não instala programas, baixa modelos, reinicia o computador, conecta contas WhatsApp ou reenvia mensagens. O túnel HTTPS mantém sua própria rotina de reconexão.

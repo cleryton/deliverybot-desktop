@@ -74,7 +74,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
   if(b.dataset.connectionAction)await connectionAction(b.dataset.connectionAction);
   if(b.id==='diagnostic-export')await exportarDiagnostico();
   if(b.dataset.action==='abrir-cerebro'){
-    if(window.pywebview?.api?.abrir_cerebro){const r=await window.pywebview.api.abrir_cerebro();toast(r?.aplicativo==='obsidian'?'Cofre aberto no Obsidian. Consulte Início.md.':'Pasta do cofre aberta. Consulte Início.md.');}
+    const nota=b.dataset.cerebroNota==='estado'?'estado':'inicio',nome=nota==='estado'?'Estado do funcionamento.md':'Início.md';
+    if(window.pywebview?.api?.abrir_cerebro){const r=await window.pywebview.api.abrir_cerebro(nota);toast(r?.aplicativo==='obsidian'?`Cofre aberto no Obsidian. Consulte ${nome}.`:`Pasta do cofre aberta. Consulte ${nome}.`);}
     else {const caminho=state.cerebroPath||'Use a pasta exibida abaixo no computador do servidor.';try{await navigator.clipboard.writeText(caminho);}catch{}toast(`Cofre Markdown local: ${caminho}`);}
   }
   if(b.dataset.action==='conexoes-atualizar')await refreshConnections();
@@ -112,6 +113,11 @@ function connectionJob(selector,job){const el=$(selector);el.hidden=!job;if(job)
 function renderConnections(c){
   const w=c.whatsapp,o=c.ollama,waBusy=c.tarefas.whatsapp?.estado==='EXECUTANDO',olBusy=c.tarefas.ollama?.estado==='EXECUTANDO';
   state.cerebroPath=c.cerebro?.pasta||'';$('#brain-path').textContent=state.cerebroPath;const atendimento=c.cerebro?.atendimento;$('#brain-summary').textContent=` ${c.cerebro?.notas_contexto||0} notas revisadas disponíveis; a consulta seleciona as relacionadas à dúvida.${atendimento?` Perfil ativo: ${atendimento.titulo}. ${atendimento.padroes} padrões por segmento e etapa.`:''}`;
+  const health=c.recuperacao||{},healthBusy=c.tarefas.recuperacao?.estado==='EXECUTANDO';
+  $('#brain-health').textContent=`${health.mensagem||'Abra o aplicativo Desktop para verificar o atendimento.'}${health.cofre?.mensagem?' '+health.cofre.mensagem:''}${health.verificado_em?' Verificado: '+date(health.verificado_em)+'.':''}`;
+  $('#brain-health').classList.toggle('error',health.estado==='ATENCAO');
+  $('#brain-auto-recover').checked=!!health.automatico;$('#brain-auto-recover').disabled=!health.disponivel||healthBusy;
+  $('#brain-recover').disabled=!health.disponivel||healthBusy;connectionJob('#brain-recover-job',c.tarefas.recuperacao);
   $('#wa-status').textContent=w.mensagem+(w.numero?' · '+w.numero:'');
   $('#wa-badge').textContent=w.conectado?'Conectado':w.estado==='SCAN_QR_CODE'?'Aguardando QR':w.servico?'Disponível':'Desligado';
   $('#wa-badge').className='badge '+(w.conectado?'':w.servico?'warning':'gray');
@@ -136,6 +142,8 @@ function renderConnections(c){
   $('#inbox-errors').innerHTML=c.fila.falhas.map(f=>`<div class="inbox-error"><b>${escapeHTML(f.telefone)}</b><p>${escapeHTML(f.erro)}</p><div class="button-row"><button data-message-action="reenviar" data-message-id="${f.id}">Tentar novamente</button><button data-message-action="ignorar" data-message-id="${f.id}">Marcar como resolvida</button></div></div>`).join('');
   $('#connection').textContent=['LOCAL','WAHA'].includes(c.provedor)?(w.conectado?'WhatsApp conectado':'WhatsApp · '+w.mensagem):c.provedor==='TESTE'?'Modo de teste':'WhatsApp · Meta configurada';
 }
+$('#brain-auto-recover').addEventListener('change',e=>run(e.target,async()=>{try{await api('cerebro/recuperacao','PUT',{automatico:e.target.checked});toast(e.target.checked?'Recuperação automática ativada.':'Recuperação automática desativada.');}finally{await refreshConnections();}}));
+$('#brain-recover').addEventListener('click',e=>run(e.target,async()=>{await api('conexoes/cerebro-recuperar','POST',{});toast('Verificação iniciada em segundo plano.');await refreshConnections();}));
 async function refreshQR(){
   if(qrBusy)return;qrBusy=true;lastQR=Date.now();
   try{const q=await api('conexoes/qr');$('#wa-qr').src=q.imagem;$('#qr-status').textContent='QR atualizado às '+new Date().toLocaleTimeString('pt-BR')+'.';}

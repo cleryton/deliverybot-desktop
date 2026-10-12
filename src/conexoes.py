@@ -263,7 +263,7 @@ def _opcoes_processo():
     return {"creationflags": subprocess.CREATE_NO_WINDOW, "startupinfo": startup}
 
 
-def iniciar_ollama(progresso):
+def iniciar_ollama(progresso, *, ativar=True, permitir_inicio=lambda: True):
     url, modelo = config.OLLAMA_URL, config.OLLAMA_MODEL
     try:
         modelos = _tags(url)
@@ -273,6 +273,8 @@ def iniciar_ollama(progresso):
         exe = _executable("ollama")
         if not exe:
             raise ValueError("O Ollama não está instalado. Use Instalar Ollama, conclua a instalação e clique novamente em Iniciar.")
+        if not permitir_inicio():
+            raise ValueError('Preparação cancelada porque a opção ou configuração mudou.')
         progresso("Iniciando Ollama em segundo plano…")
         ambiente = dict(os.environ, OLLAMA_HOST=urlsplit(url).netloc)
         logs = Path(config.DATABASE_PATH).resolve().parent / "ollama.log"
@@ -280,6 +282,8 @@ def iniciar_ollama(progresso):
             subprocess.Popen([exe, "serve"], env=ambiente, stdout=log, stderr=log, **_opcoes_processo())
         limite = time.monotonic() + 60
         while time.monotonic() < limite:
+            if not permitir_inicio():
+                raise ValueError('Preparação cancelada porque a opção ou configuração mudou.')
             try:
                 modelos = _tags(url)
                 break
@@ -290,10 +294,12 @@ def iniciar_ollama(progresso):
     if not _modelo_instalado(modelo, modelos):
         progresso("Ollama iniciado. Clique em Baixar modelo para preparar " + modelo + ", ou escolha um modelo já instalado.")
         return
-    _aquecer_ativar(url, modelo, progresso)
+    if not permitir_inicio():
+        raise ValueError('Preparação cancelada porque a opção ou configuração mudou.')
+    _aquecer_ativar(url, modelo, progresso, ativar=ativar)
 
 
-def _aquecer_ativar(url, modelo, progresso):
+def _aquecer_ativar(url, modelo, progresso, *, ativar=True):
     progresso("Carregando o modelo na memória para atender mais rápido…")
     try:
         resp = http().post(url + "/api/generate", json={"model": modelo, "prompt": "", "stream": False, "keep_alive": config.OLLAMA_KEEP_ALIVE}, timeout=(5, config.OLLAMA_TIMEOUT_SEGUNDOS), allow_redirects=False)
@@ -304,8 +310,9 @@ def _aquecer_ativar(url, modelo, progresso):
         raise ValueError("Não foi possível carregar o modelo. Confira a memória disponível e tente novamente.") from None
     if config.OLLAMA_URL != url or config.OLLAMA_MODEL != modelo:
         raise ValueError("O modelo ou endereço foi alterado durante a preparação. Clique novamente em Iniciar Ollama.")
-    preferencias.salvar({"IA_PROVIDER": "OLLAMA"})
-    progresso("Ollama pronto e ativado no atendimento.")
+    if ativar:
+        preferencias.salvar({"IA_PROVIDER": "OLLAMA"})
+    progresso("Ollama pronto e ativado no atendimento." if ativar else 'Ollama preparado. A seleção de IA foi preservada.')
 
 
 def baixar_modelo(progresso):

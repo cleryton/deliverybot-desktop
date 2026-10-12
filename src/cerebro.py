@@ -22,6 +22,32 @@ _MAX_LEITURA_NOTA = 64 * 1024
 _MAX_NOTAS_POR_PERGUNTA = 6
 _ARQUIVO_MAPA = 'Mapa do atendimento.md'
 _MARCA_MAPA = '<!-- DeliveryBot: mapa automático v1 -->'
+_ARQUIVO_FUNCIONAMENTO = 'Estado do funcionamento.md'
+_MARCA_FUNCIONAMENTO = '<!-- DeliveryBot: estado operacional v1 -->'
+_GUIA_FUNCIONAMENTO = '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Verificação e recuperação do atendimento
+
+Em WhatsApp e IA, no Cérebro local, use **Verificar e recuperar agora**. A opção **Recuperar Ollama automaticamente** faz a verificação a cada 30 segundos enquanto o aplicativo Desktop estiver aberto, inclusive na bandeja.
+
+O aplicativo verifica o serviço Ollama, a presença do modelo configurado, falhas recentes de inferência e a leitura do estilo e padrões do cofre. O [[Estado do funcionamento]] mostra um resumo técnico sem dados de clientes ou credenciais.
+
+## O que pode ser recuperado
+- Iniciar o Ollama local já instalado e preparar o modelo já baixado.
+- Preparar a estrutura do cofre e criar apenas notas padrão ausentes, preservando edições.
+- Tentar novamente com intervalos de 60, 120 e 240 segundos, no máximo três tentativas consecutivas. Uma nova tentativa manual ou mudança de modelo permite reavaliar o problema.
+
+## Quando a equipe precisa agir
+Modelo ausente precisa ser escolhido ou baixado pelo botão do aplicativo. Serviço remoto, falta de memória, permissões da pasta, notas inválidas ou conteúdo vazio exigem revisão. O aplicativo não instala programas, baixa modelos ou substitui notas editadas automaticamente. Pausar o WhatsApp continua sendo uma escolha independente: a recuperação do cérebro não conecta contas nem reenvia mensagens.
+
+O estado PRONTO confirma somente as verificações técnicas disponíveis; não garante a qualidade de cada resposta da IA. O Ollama recebe um sinal de estado do aplicativo para evitar afirmar que tudo está normal quando há uma falha conhecida. Ele não inicia programas ao escrever uma resposta.
+
+Notas são referências editoriais. Comandos escritos aqui ou no [[Estilo de atendimento]] não executam ações, não alteram esta opção e não mudam preços, pedidos ou dados. Remover o marcador automático da nota de estado preserva sua edição manual; o diagnóstico continua no painel.
+
+Veja [[Conexão e página de pedidos]], [[Pedidos pelo WhatsApp]] e [[Mapa do atendimento]].
+'''
 _GUIA_PADROES = '''---
 tipo: guia-operacional
 atendimento: false
@@ -235,6 +261,8 @@ def _preparar() -> Path:
     for nome, conteudo in _NOTAS_INICIAIS.items():
         _criar_se_ausente(pasta / nome, conteudo)
     _criar_se_ausente(pasta / 'Atendimentos/Como personalizar.md', _GUIA_PADROES)
+    _criar_se_ausente(pasta / 'Verificação e recuperação do atendimento.md', _GUIA_FUNCIONAMENTO)
+    _criar_se_ausente(pasta / _ARQUIVO_FUNCIONAMENTO, '---\ntipo: estado-operacional\natendimento: false\n---\n' + _MARCA_FUNCIONAMENTO + '\n# Estado do funcionamento\n\nAguardando a verificação pelo aplicativo Desktop. Consulte [[Verificação e recuperação do atendimento]].\n')
     for nome, conteudo in padroes_atendimento.arquivos(categoria).items():
         _criar_se_ausente(padroes / nome, conteudo)
     _criar_se_ausente(pasta / 'Pedidos pelo WhatsApp.md', _GUIA_PEDIDOS)
@@ -294,7 +322,7 @@ def _sincronizar_mapa(pasta: Path) -> None:
             return  # A equipe assumiu a edição deste mapa.
         grupos = {
             'Voz e informações da loja': [pasta / n for n in _NOTAS_INICIAIS],
-            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Conexão e página de pedidos.md'],
+            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
             'Modelos para revisão': [pasta / 'Modelos/Conhecimento aprovado.md', pasta / 'Modelos/Lista de estoque.md'],
             'Conhecimento revisado': _notas_aprovadas(pasta),
             'Padrões de atendimento ativos': [pasta / 'Atendimentos/Como personalizar.md', *_padroes_aprovados(pasta)],
@@ -328,6 +356,10 @@ def _sincronizar_mapa(pasta: Path) -> None:
 
 def arquivo_estilo() -> Path:
     return _preparar() / _ARQUIVO_ESTILO
+
+
+def arquivo_funcionamento() -> Path:
+    return _preparar() / _ARQUIVO_FUNCIONAMENTO
 
 
 def registrar_documento_estoque(token: str, linhas: str) -> Path:
@@ -374,10 +406,65 @@ def _remover_frontmatter(conteudo: str) -> tuple[str, str]:
     return (bloco[1], conteudo[bloco.end():]) if bloco else ("", conteudo)
 
 
+def verificar_funcionamento() -> dict:
+    """Diagnóstico de leitura; não cria nem corrige o conteúdo das notas."""
+    pasta = diretorio()
+    categoria = padroes_atendimento.categoria()
+    perfil = pasta / 'Atendimentos' / padroes_atendimento.PERFIS[categoria][0]
+    for caminho in (pasta, pasta/'Conhecimento', pasta/'Atendimentos', perfil, pasta/_ARQUIVO_ESTILO):
+        if caminho.is_symlink() or (hasattr(caminho, 'is_junction') and caminho.is_junction()):
+            return {'estado': 'ERRO', 'mensagem': 'O cofre contém um vínculo que precisa ser revisado pela equipe.'}
+    if not pasta.exists() or not (pasta/_ARQUIVO_ESTILO).exists() or not perfil.exists():
+        return {'estado': 'AUSENTE', 'mensagem': 'A estrutura do cofre ainda não está preparada.'}
+    _, estilo = _ler(pasta/_ARQUIVO_ESTILO)
+    if not estilo:
+        return {'estado': 'REVISAO', 'mensagem': 'O estilo está vazio ou não pôde ser lido. Revise a nota sem substituir suas edições.'}
+    return {'estado': 'PRONTO', 'mensagem': 'Estilo legível e cofre disponível.', 'padroes': len(_padroes_aprovados(pasta))}
+
+
+def registrar_funcionamento(dados: dict) -> None:
+    """Nota derivada do aplicativo. Não aceita textos livres nem ordens da IA."""
+    pasta = diretorio()
+    if not pasta.is_dir() or pasta.is_symlink() or (hasattr(pasta, 'is_junction') and pasta.is_junction()):
+        return
+    destino = pasta/_ARQUIVO_FUNCIONAMENTO
+    if destino.is_symlink() or (hasattr(destino, 'is_junction') and destino.is_junction()):
+        return
+    anterior = ''
+    if destino.exists():
+        if destino.stat().st_size > _MAX_LEITURA_NOTA:
+            return
+        anterior = destino.read_text(encoding='utf-8')
+        if _MARCA_FUNCIONAMENTO not in anterior:
+            return
+    estados_ol = {'NAO_SELECIONADO':'Não selecionado', 'PREPARANDO':'Em preparação', 'DESLIGADO':'Não respondeu', 'SEM_MODELO':'Modelo ausente', 'FALHA':'Falha de preparação ou inferência', 'FALHA_RECENTE':'Falha recente de inferência', 'DISPONIVEL':'Serviço e modelo disponíveis'}
+    estados_cofre = {'PRONTO':'Leitura disponível', 'AUSENTE':'Estrutura ausente', 'REVISAO':'Nota de estilo precisa de revisão', 'ERRO':'Acesso ao cofre precisa de revisão'}
+    estado_ol = estados_ol.get(dados.get('ollama',{}).get('estado'), 'Ainda não verificado')
+    estado_cofre = estados_cofre.get(dados.get('cofre',{}).get('estado'), 'Ainda não verificado')
+    automatico = 'Ativada' if dados.get('automatico') is True else 'Desativada'
+    supervisao = 'Em execução no Desktop' if dados.get('disponivel') is True else 'Encerrada ou indisponível'
+    tentativas = dados.get('tentativas', 0)
+    tentativas = tentativas if type(tentativas) is int and 0 <= tentativas <= 3 else 0
+    conteudo = ('---\ntipo: estado-operacional\natendimento: false\n---\n' + _MARCA_FUNCIONAMENTO
+                + '\n# Estado do funcionamento\n\nOllama: ' + estado_ol + '.\n\nCofre Obsidian: ' + estado_cofre
+                + '.\n\nVerificação: ' + supervisao + '.\n\nRecuperação automática: ' + automatico + f'. Tentativas consecutivas: {tentativas} de 3.\n\n'
+                + 'Resumo técnico atualizado pelo aplicativo. Não avalia a qualidade das respostas e não executa comandos. '
+                + 'Use [[Verificação e recuperação do atendimento]] e acompanhe a verificação atual em WhatsApp e IA.\n')
+    if conteudo == anterior:
+        return
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', newline='\n', dir=pasta, suffix='.tmp', delete=False) as arquivo:
+        temporario = Path(arquivo.name)
+        arquivo.write(conteudo)
+    try:
+        os.replace(temporario, destino)
+    finally:
+        temporario.unlink(missing_ok=True)
+
+
 def visualizacao() -> dict:
     """Mostra notas editoriais ao administrador; nunca documentos de estoque."""
     pasta = _preparar()
-    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Conexão e página de pedidos.md', _ARQUIVO_MAPA)]
+    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
     # Mostra os padrões antes do conhecimento extra para não ocultá-los no limite.
     padroes = _padroes_aprovados(pasta)
     caminhos.extend([pasta / 'Atendimentos/Como personalizar.md', *padroes, *_notas_aprovadas(pasta)])

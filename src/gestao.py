@@ -10,7 +10,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 
 from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
-from . import conexoes, processamento, publicacao, aparencia, cerebro, perfil_comercio
+from . import conexoes, processamento, publicacao, aparencia, cerebro, perfil_comercio, recuperacao
 from . import seguranca, privacidade, backups, operadores, fotos
 
 bp = Blueprint("gestao", __name__)
@@ -475,12 +475,16 @@ def privacidade_acao(acao):
 @bp.route("/gestao/api/conexoes")
 @protegido
 def status_conexoes():
+    try:
+        cofre = cerebro.situacao()
+    except (OSError, ValueError):
+        cofre = {'pasta':'', 'notas_contexto':0, 'erro':'O cofre precisa de revisão. Veja a verificação do atendimento.'}
     with ThreadPoolExecutor(max_workers=2) as executor:
         wa = executor.submit(conexoes.status_whatsapp)
         ol = executor.submit(conexoes.status_ollama)
         return jsonify(whatsapp=wa.result(), ollama=ol.result(), tarefas=conexoes.status_jobs(),
                        fila=processamento.situacao(), provedor=config.WHATSAPP_PROVIDER,
-                       cerebro=cerebro.situacao(),
+                       cerebro=cofre, recuperacao=recuperacao.situacao(),
                        pode_iniciar_local=bool(_local() and current_app.config.get("DESKTOP_TOKEN")),
                        whatsapp_local=config.WHATSAPP_PROVIDER in {"TESTE", "LOCAL"},
                        endereco_publico=publicacao.endereco(),
@@ -502,14 +506,27 @@ def visualizar_cerebro():
     return jsonify(cerebro.visualizacao())
 
 
+@bp.route('/gestao/api/cerebro/recuperacao', methods=['PUT'])
+@protegido
+def configurar_recuperacao():
+    if not (_local() and current_app.config.get('DESKTOP_TOKEN') and recuperacao.situacao()['disponivel']):
+        return jsonify(erro='Abra o aplicativo Desktop para configurar a recuperação.'), 403
+    dados = dados_json()
+    if type(dados.get('automatico')) is not bool:
+        raise ValueError('Escolha se a recuperação automática deve ficar ativada.')
+    preferencias.salvar({'CEREBRO_RECUPERACAO_AUTOMATICA':'SIM' if dados['automatico'] else 'NAO'})
+    return jsonify(recuperacao.situacao())
+
+
 @bp.route("/gestao/api/conexoes/<acao>", methods=["POST"])
 @protegido
 def controlar_conexao(acao):
     acoes = {"whatsapp-iniciar": ("whatsapp", conexoes.iniciar_whatsapp_local),
              "whatsapp-conectar": ("whatsapp", conexoes.conectar_whatsapp),
              "ollama-iniciar": ("ollama", conexoes.iniciar_ollama),
+             "cerebro-recuperar": ("recuperacao", recuperacao.verificar_recuperar),
              "ollama-baixar": ("ollama", conexoes.baixar_modelo)}
-    if acao in {"whatsapp-iniciar", "ollama-iniciar"} and not (_local() and current_app.config.get("DESKTOP_TOKEN")):
+    if acao in {"whatsapp-iniciar", "ollama-iniciar", "cerebro-recuperar"} and not (_local() and current_app.config.get("DESKTOP_TOKEN")):
         return jsonify(erro="Abra o aplicativo Desktop neste computador para iniciar um serviço local."), 403
     if acao == "whatsapp-pausar":
         if conexoes.status_jobs().get("whatsapp", {}).get("estado") == "EXECUTANDO":
