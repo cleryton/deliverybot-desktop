@@ -1,0 +1,30 @@
+# Verificações OWASP do DeliveryBot
+
+Esta referência organiza controles aplicáveis ao aplicativo usando o OWASP ASVS e as Cheat Sheets. Não constitui certificação ASVS nem garantia de ausência de vulnerabilidades. As verificações cobrem comportamentos específicos e devem evoluir com o projeto.
+
+| Área | Controle e evidência |
+| --- | --- |
+| Validação de entradas | JSON UTF-8, campos únicos, números finitos, limite de 32 níveis e 25 mil nós; limites de corpo e uploads. Testes de entradas malformadas e excessivas. |
+| Ambiguidade de parâmetros | Parâmetros duplicados de consulta rejeitados; formulários com campos duplicados não passam pelo CSRF. |
+| Autenticação e autorização | Contas e funções verificadas no servidor, proteção contra tentativas de login, CSRF, origem e sessão; testes existentes de permissões e revogação. |
+| XSS e injeção SQL | Escape na apresentação e consultas parametrizadas; os testes preservam nomes com apóstrofos e confirmam que HTML e SQL inseridos como texto não viram código. Não usamos bloqueios genéricos de palavras para nomes, produtos ou notas. |
+| Isolamento público | Gateway permite apenas páginas e recursos públicos conhecidos e remove identidade de proxy; testes negam acesso ao painel com cabeçalhos forjados. |
+| Destinos dos serviços | Protocolos esperados, HTTPS externo, credenciais na URL, espaços, controles e portas inválidas recusados; clientes não seguem redirecionamentos com credenciais. Serviços locais autorizados continuam funcionando. Não é uma implementação completa de proteção contra SSRF e DNS rebinding em destinos definidos pelo administrador. |
+| Navegador e privacidade | CSP, prevenção de enquadramento, nosniff, isolamento de origem, cookies HttpOnly/SameSite/Secure em HTTPS, HSTS; redução de dados em logs e erros genéricos. |
+| Dependências | Auditoria dos pins Python no PyPI e npm das dependências de produção; indisponibilidade da auditoria também bloqueia o check. |
+
+## Varredura ZAP no Actions
+
+O job de segurança cria um banco temporário com um produto e telefone fictícios, sem carregar o `.env` da loja. Publica apenas o gateway de teste em `127.0.0.1:5030`. O ZAP Baseline navega e analisa respostas passivamente; não usa contas reais, túnel externo, ataque ativo, instalação no cliente ou envio WhatsApp.
+
+O workflow bloqueia falhas nos testes, avisos Python publicados no PyPI, vulnerabilidades npm altas/críticas, relatório ausente ou fora do escopo, alertas ZAP de risco alto e falta de controles essenciais de cookies, enquadramento, MIME ou CSP. Os demais alertas permanecem no relatório para revisão. CSP de estilos ainda permite `unsafe-inline` para compatibilidade com a interface atual; isso não autoriza scripts inline sem nonce. O relatório passivo não substitui revisão manual, testes autenticados nem verificação de todas as categorias ASVS. A ação ZAP é fixada por commit e a imagem oficial por digest; atualizações devem ser revisadas.
+
+Docker é utilizado somente pelo runner Linux do Actions para o ZAP. O aplicativo continua sem exigir Docker, Python ou Node.js do cliente. Relatórios ficam nos artifacts por sete dias. A ação não abre issues ou publica comentários automaticamente.
+
+## Referências oficiais
+
+- [OWASP ASVS](https://owasp.org/projects/asvs)
+- [Input Validation](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
+- [REST Security](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html)
+- [SSRF Prevention](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)
+- [ZAP Baseline Scan](https://www.zaproxy.org/docs/docker/baseline-scan/)

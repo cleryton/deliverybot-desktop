@@ -157,10 +157,14 @@ def smoke_test(destino, janela=False):
         with client.session_transaction() as sessao_teste:
             csrf_recuperacao = sessao_teste['csrf']
         assert client.put('/gestao/api/cerebro/recuperacao',json={'automatico':False},headers={'X-CSRF-Token':csrf_recuperacao}).status_code == 200
+        assert client.post('/gestao/api/produtos',data='{"nome":"a","nome":"b"}',content_type='application/json',headers={'X-CSRF-Token':csrf_recuperacao}).status_code == 400
+        assert client.get('/gestao/api/produtos?filtro=a&filtro=b').status_code == 400
+        assert publico.get('/gestao').headers['X-Frame-Options'] == 'DENY'
         assert (cerebro.diretorio()/'Verificação e recuperação do atendimento.md').is_file()
         assert (cerebro.diretorio()/'Estado do funcionamento.md').is_file()
         assert publico.get('/gestao/api/cerebro/visualizar').status_code == 404
         resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True, "minijogo":True, "recuperacao_cerebro":True, "experiencia_usuario":True}
+        resultado['validadores_owasp'] = True
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local

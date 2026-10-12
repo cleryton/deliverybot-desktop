@@ -94,6 +94,16 @@ def preparar_para_whatsapp(progresso, timeout=120):
         time.sleep(1)
 
 
+def _resposta_publica(texto, status=200, headers=None):
+    protecoes = {'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
+                 'X-Frame-Options':'DENY','Referrer-Policy':'no-referrer',
+                 'Content-Security-Policy':"default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+                 'Cross-Origin-Opener-Policy':'same-origin','Cross-Origin-Resource-Policy':'same-origin',
+                 'X-Permitted-Cross-Domain-Policies':'none'}
+    protecoes.update(headers or {})
+    return Response(texto,status=status,headers=protecoes,mimetype='text/plain')
+
+
 class PaginaPublica:
     """Permite somente endpoints públicos conhecidos; ignora identidade de proxy."""
     ENDPOINTS = {'pagina_pedido', 'enviar_pedido', 'pagina_minijogo', 'catalogo_cliente_pdf', 'foto_produto', 'aviso_privacidade', 'primeiros_passos.confirmar', 'verificar_webhook', 'receber_webhook', 'receber_webhook_waha'}
@@ -108,10 +118,10 @@ class PaginaPublica:
 
     def __call__(self, environ, start_response):
         if self.verificacao and environ.get('PATH_INFO') == '/_deliverybot/health/' + self.verificacao and environ.get('REQUEST_METHOD') == 'GET':
-            return Response(self.verificacao, headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}, mimetype='text/plain')(environ, start_response)
+            return _resposta_publica(self.verificacao)(environ, start_response)
         url = self.obter_url()
         if not url or not self.esta_pronto():
-            return Response('Página de pedidos reconectando. Tente novamente em instantes.', status=503, headers={'Retry-After': '10', 'Cache-Control': 'no-store'})(environ, start_response)
+            return _resposta_publica('Página de pedidos reconectando. Tente novamente em instantes.',503,{'Retry-After':'10'})(environ, start_response)
         host = urlsplit(url).netloc
         env = dict(environ)
         # Mesmo com Host/X-Forwarded-For forjados, este servidor nunca é local.
@@ -123,11 +133,11 @@ class PaginaPublica:
         try:
             endpoint, args = self.app.url_map.bind_to_environ(env).match()
         except HTTPException:
-            return Response('Página não encontrada.', status=404)(env, start_response)
+            return _resposta_publica('Página não encontrada.',404)(env, start_response)
         imagem = endpoint == 'static' and re.fullmatch(r'produtos/[a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif)', args.get('filename', ''), re.I)
         asset_publico = endpoint == 'static' and args.get('filename') in self.ASSETS
         if endpoint not in self.ENDPOINTS and not imagem and not asset_publico:
-            return Response('Página não encontrada.', status=404)(env, start_response)
+            return _resposta_publica('Página não encontrada.',404)(env, start_response)
         return self.app(env, start_response)
 
 

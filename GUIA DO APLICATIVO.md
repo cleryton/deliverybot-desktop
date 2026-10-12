@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.32.0
+# DeliveryBot Desktop 2.33.0
 
 Aplicativo para Windows 10/11 de 64 bits, com uma janela própria, catálogo de produtos, controle de estoque e pedidos pelo WhatsApp.
 
@@ -296,3 +296,7 @@ No catálogo, a lista de produtos aparece primeiro; expanda Importar produtos ou
 Durante uma operação, o botão mostra Aguarde. Se a conexão falhar enquanto você salva, confira os dados antes de repetir: o servidor pode ter concluído a operação. Produtos com alterações não salvas pedem confirmação antes de fechar ou usar Escape; o rascunho fica somente na tela e não é gravado automaticamente.
 
 Em telas menores, abra Menu para acessar todas as páginas. Use Escape ou a área externa para fechá-lo. O menu também permite rolagem em janelas de pouca altura.
+
+## Verificações de segurança
+
+Os controles e a cobertura de testes OWASP estão em [SEGURANCA OWASP.md](SEGURANCA%20OWASP.md). O Actions verifica as alterações com dados fictícios e relatórios de segurança antes da integração. A varredura ZAP roda somente no ambiente de validação; o cliente não precisa instalar ferramentas adicionais.

@@ -38,6 +38,9 @@ def csrf():
 
 
 def csrf_valido():
+    from .validacao_http import parametros_unicos
+    if not parametros_unicos(request.args) or not parametros_unicos(request.form):
+        return False
     esperado = session.get("csrf", "")
     recebido = request.headers.get("X-CSRF-Token", "") or request.form.get("csrf_token", "")
     origem = request.headers.get("Origin")
@@ -100,6 +103,8 @@ def configurar_logs():
 
 
 def instalar(app):
+    from .validacao_http import JSONSeguro, parametros_unicos
+    app.json = JSONSeguro(app)
     app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Strict",
                       PERMANENT_SESSION_LIFETIME=timedelta(hours=8))
     configurar_logs()
@@ -111,6 +116,8 @@ def instalar(app):
     @app.before_request
     def preparar():
         g.csp_nonce = secrets.token_urlsafe(24)
+        if not parametros_unicos(request.args):
+            return app.json.response(erro='Parâmetros repetidos não são permitidos.'), 400
 
     @app.context_processor
     def contexto():
@@ -123,6 +130,9 @@ def instalar(app):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+        response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+        response.headers['X-Permitted-Cross-Domain-Policies'] = 'none'
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self' 'nonce-" + g.csp_nonce + "'; "
             "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
@@ -133,8 +143,14 @@ def instalar(app):
 
 
 def transporte_seguro(url):
+    if not isinstance(url, str) or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in url):
+        raise ValueError('Endereço inválido para o serviço.')
     partes = urlsplit(url)
-    if partes.scheme not in {"http", "https"} or not partes.hostname or partes.username or partes.password:
+    try:
+        porta = partes.port
+    except ValueError:
+        raise ValueError('Porta inválida para o serviço.') from None
+    if partes.scheme not in {"http", "https"} or not partes.hostname or partes.username is not None or partes.password is not None or porta == 0:
         raise ValueError("Endereço inválido para o serviço.")
     if partes.scheme != "https" and partes.hostname not in {"localhost", "127.0.0.1", "::1"}:
         raise ValueError("Use HTTPS para serviços externos que recebem dados ou credenciais.")

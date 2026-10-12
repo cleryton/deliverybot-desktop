@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.33.0 — 2026-10-11
+
+Adiciona validadores HTTP e testes adversariais orientados pelo OWASP: JSON UTF-8 com limites, campos duplicados e números não finitos recusados, parâmetros de formulário inequívocos, URLs de serviços validadas e cabeçalhos defensivos inclusive nas respostas do gateway público. Inclui política documentada, auditorias de dependências e ZAP Baseline passivo em dados fictícios como parte da validação obrigatória do Actions.
+
 ## 2.32.0 — 2026-10-11
 
 Melhora a orientação da configuração com próximo passo baseado nas verificações atuais, catálogo com produtos em primeiro plano e ferramentas expansíveis, busca de pedidos e catálogo sem exigir acentos, filtros vazios com recuperação e atualização dos pedidos que preserva o foco. Adiciona retorno de operações em andamento, proteção de rascunhos de produtos, mensagens de sessão e falha de conexão sem repetição automática de gravações e menu acessível em telas menores. Inclui testes JavaScript e verificação da interface e dos recursos na distribuição.
