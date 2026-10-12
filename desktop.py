@@ -165,6 +165,16 @@ def smoke_test(destino, janela=False):
         assert publico.get('/gestao/api/cerebro/visualizar').status_code == 404
         resultado = {"ok": True, "janela": False, "catalogo": True, "recursos": True, "pagina_cliente": True, "fotos": True, "documentos_pdf": True, "perfil_comercio": True, "pedido_conversa":True, "obsidian_visual":True, "obsidian_graph":True, "padroes_atendimento":True, "minijogo":True, "recuperacao_cerebro":True, "experiencia_usuario":True}
         resultado['validadores_owasp'] = True
+        if not janela:
+            from src import operadores,caixa
+            with app.test_request_context():
+                admin_caixa=operadores.criar({'nome':'Administrador fictício','login':'admin.smoke','senha':'senha-ficticia-smoke-123','perfil':'ADMIN'})
+                funcionario_caixa=operadores.criar({'nome':'Caixa fictício','login':'caixa.smoke','senha':'senha-ficticia-smoke-123','perfil':'CAIXA'})
+            tid=caixa.abrir(funcionario_caixa['id'],{'chave':secrets.token_hex(16),'abertura':100})
+            assert caixa.consultar(funcionario_caixa['id'])[0]['esperado_centavos']==10000
+            caixa.fechar(funcionario_caixa['id'],{'chave':secrets.token_hex(16),'contado':99})
+            assert caixa.consultar(funcionario_caixa['id'])[0]['diferenca_centavos']==-100
+            resultado['caixa_funcionario']=True
         if janela:
             # Serviços simulados: o teste da janela não conecta contas nem baixa modelos.
             from src import conexoes, whatsapp_local
@@ -212,7 +222,7 @@ def smoke_test(destino, janela=False):
                         raise RuntimeError("A interface não carregou os produtos.")
                     resultado["titulo"] = window.evaluate_js("document.title")
                     def esperar(expressao):
-                        for _ in range(150):
+                        for _ in range(400):
                             if window.evaluate_js(expressao):
                                 return
                             time.sleep(.1)
@@ -223,10 +233,12 @@ def smoke_test(destino, janela=False):
                     assert cores == {'fundo':'rgb(17, 27, 23)','card':'rgb(27, 42, 35)','tema':'dark'}, f'Cores do tema escuro: {cores}'
                     window.evaluate_js("location.reload()")
                     esperar("document.readyState === 'complete' && document.documentElement.dataset.themeChoice === 'escuro' && document.documentElement.dataset.theme === 'dark' && document.querySelector('#loja-nome')?.textContent === 'Loja teste'")
+                    window.evaluate_js("window.qaRecarga=false;reload().then(()=>window.qaRecarga=true)")
+                    esperar("window.qaRecarga===true")
                     window.evaluate_js("document.querySelector('[data-page=inicio]').click()")
                     esperar("document.querySelectorAll('#product-list tr').length === 2")
                     window.evaluate_js("document.querySelector('[data-action=novo]').click(); const f=document.querySelector('#product-form'); f.elements.nome.value='Caderno UI'; f.elements.categoria.value='Papelaria'; f.elements.preco.value='12.50'; f.elements.estoque.value='4'; f.querySelector('button[type=submit]').click();")
-                    esperar("!document.querySelector('#product-dialog').open && document.querySelectorAll('#product-list tr').length === 3")
+                    esperar("!document.querySelector('#product-dialog').open && document.querySelectorAll('#product-list tr').length === 3 && !document.querySelector('#product-form button[type=submit][aria-busy=true]')")
                     window.evaluate_js("document.querySelector('[data-action=novo]').click(); const f=document.querySelector('#product-form'); f.elements.nome.value='Rascunho fictício'; f.elements.nome.dispatchEvent(new Event('input',{bubbles:true})); window.confirmAnterior=window.confirm; window.confirm=()=>false; document.querySelector('[data-close=product-dialog]').click();")
                     esperar("document.querySelector('#product-dialog').open && document.querySelector('#product-save-status').textContent.includes('não salvas') && !document.querySelector('[data-close=product-dialog]').disabled")
                     window.evaluate_js("document.querySelector('#product-dialog').dispatchEvent(new Event('cancel',{cancelable:true}));")
@@ -413,6 +425,11 @@ def main():
         rotinas.iniciar()
         from src import recuperacao
         recuperacao.iniciar()
+        from src import terminal
+        try:
+            terminal.iniciar()
+        except (OSError,ValueError):
+            logging.warning('Conexão dos funcionários indisponível. Revise o IP e a porta em Caixas dos funcionários.')
         if config.WHATSAPP_PROVIDER in {"LOCAL", "WAHA"}:
             preparar_whatsapp = (conexoes.iniciar_whatsapp_local
                                  if config.WHATSAPP_PROVIDER == "LOCAL"
@@ -421,6 +438,15 @@ def main():
         if config.IA_PROVIDER == "OLLAMA" and conexoes.url_local(config.OLLAMA_URL):
             conexoes.iniciar_tarefa("ollama", conexoes.iniciar_ollama)
         class API:
+            def salvar_acesso_funcionario(self):
+                self._verificar()
+                from src import terminal
+                arquivos=window.create_file_dialog(webview.FileDialog.SAVE,save_filename='acesso-funcionario.dbterminal',file_types=('Acesso DeliveryBot (*.dbterminal)',))
+                if not arquivos:
+                    return {'cancelado':True}
+                dados=terminal.convite()
+                Path(arquivos[0]).write_text(json.dumps(dados,ensure_ascii=False,indent=2),encoding='utf-8')
+                return {'ok':True}
             def instalar_atualizacao(self):
                 self._verificar()
                 from src import atualizacoes
@@ -535,6 +561,8 @@ def main():
         if bandeja:
             bandeja.parar()
         if servidor:
+            from src import terminal
+            terminal.encerrar()
             from src import publicacao
             if publicacao._gerente:
                 publicacao._gerente.encerrar()

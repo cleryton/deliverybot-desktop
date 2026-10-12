@@ -29,6 +29,9 @@ def admin():
 def permitido(caminho,metodo):
     if admin():
         return True
+    u=usuario()
+    if u and u['perfil']=='CAIXA':
+        return caminho=='/gestao/api/operadores/me' and metodo=='GET'
     if caminho.startswith('/gestao/api/humano'):
         return True
     if metodo=='GET' and caminho in {'/gestao/api/resumo','/gestao/api/produtos','/gestao/api/pedidos','/gestao/api/operadores/me'}:
@@ -54,7 +57,7 @@ def criar(d):
         raise ValueError('Login: use de 3 a 80 letras sem acentos, números, ponto, hífen ou sublinhado.')
     nome=texto(d.get('nome',''),'Nome',160,True)
     perfil=d.get('perfil')
-    if perfil not in {'ADMIN','ATENDENTE'}:
+    if perfil not in {'ADMIN','ATENDENTE','CAIXA'}:
         raise ValueError('Perfil inválido.')
     senha=senha_valida(d.get('senha'))
     with get_conn() as c:
@@ -78,7 +81,7 @@ def criar(d):
 def alterar(uid,d):
     ator=usuario()
     senha=senha_valida(d['senha']) if d.get('senha') else None
-    if not isinstance(d.get('ativo'),bool) or d.get('perfil') not in {'ADMIN','ATENDENTE'}:
+    if not isinstance(d.get('ativo'),bool) or d.get('perfil') not in {'ADMIN','ATENDENTE','CAIXA'}:
         raise ValueError('Informe perfil e situação da conta.')
     with get_conn() as c:
         c.execute('BEGIN IMMEDIATE')
@@ -127,6 +130,9 @@ def validar_sessao_nativa(app, janela, administrador=True):
         if administrador and existem():
             u=usuario(dados)
             valido=valido and bool(u and u['perfil']=='ADMIN')
+        elif existem():
+            u=usuario(dados)
+            valido=valido and not bool(u and u['perfil']=='CAIXA')
         if valido:
             return
     except Exception:

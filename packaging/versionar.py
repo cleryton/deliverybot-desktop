@@ -13,7 +13,7 @@ def versionar(versao, descricao):
         raise ValueError('Versão inválida')
     anterior = (ROOT / 'VERSION').read_text().strip()
     (ROOT / 'VERSION').write_text(versao+'\n', encoding='utf-8')
-    for arquivo in ('web/templates/gestao.html', 'packaging/Instalador.cs'):
+    for arquivo in ('web/templates/gestao.html', 'packaging/Instalador.cs', 'packaging/InstaladorFuncionario.cs'):
         p = ROOT / arquivo
         p.write_text(p.read_text(encoding='utf-8').replace(anterior, versao), encoding='utf-8')
     for arquivo in ('GUIA DO APLICATIVO.md', 'whatsapp-native/LICENCAS.txt', 'packaging/preparar_whatsapp.py'):

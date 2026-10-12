@@ -34,6 +34,8 @@ build/
 dist/
 *.spec
 !DeliveryBot.spec
+!Funcionario.spec
+*.dbterminal
 .pytest_cache/
 artifacts/
 whatsapp-native/node_modules/

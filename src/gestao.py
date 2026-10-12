@@ -105,6 +105,9 @@ def painel():
             return pagina_login()
         return "Abra o aplicativo DeliveryBot ou entre com a conta administrativa.", 401, {"WWW-Authenticate": 'Basic realm="DeliveryBot"'}
     session.setdefault("csrf", secrets.token_urlsafe(32))
+    u = operadores.usuario()
+    if u and u['perfil'] == 'CAIXA':
+        return render_template('operadores_caixa.html', csrf=session['csrf'])
     return render_template("gestao.html", csrf=session["csrf"], administrador=operadores.admin(),
                            tema=aparencia.tema(),
                            perfil_pendente=config.COMERCIO_CONFIGURADO != 'SIM',
@@ -171,6 +174,52 @@ def alterar_operador(uid):
 @protegido
 def operador_atual():
     return jsonify(usuario=operadores.usuario(),administrador=operadores.admin(),contas_ativas=operadores.existem())
+
+
+@bp.route('/gestao/api/terminal',methods=['GET','PUT'])
+@protegido
+def terminal_api():
+    from . import terminal
+    if request.method=='PUT':
+        if not current_app.config.get('DESKTOP_TOKEN'):
+            raise ValueError('Configure a rede dos funcionários no aplicativo Windows do responsável.')
+        terminal.configurar(dados_json())
+    return jsonify(terminal.situacao())
+
+
+@bp.post('/gestao/api/terminal/dispositivos/<int:did>/revogar')
+@protegido
+def terminal_revogar(did):
+    from . import terminal
+    terminal.revogar(did)
+    return jsonify(ok=True)
+
+
+@bp.get('/gestao/api/caixas')
+@protegido
+def caixas_api():
+    from . import caixa
+    return jsonify(caixa.consultar())
+
+
+@bp.post('/gestao/api/caixas/pedidos/<int:pid>/estornar')
+@protegido
+def caixa_estornar(pid):
+    from . import caixa
+    u=operadores.usuario()
+    if not u or u['perfil']!='ADMIN':
+        raise ValueError('Entre com uma conta administradora para registrar o estorno.')
+    return jsonify(caixa.estornar(u['id'],pid,dados_json()))
+
+
+@bp.post('/gestao/api/caixas/<int:tid>/fechar')
+@protegido
+def caixa_fechar_admin(tid):
+    from . import caixa
+    u=operadores.usuario()
+    if not u or u['perfil']!='ADMIN':
+        raise ValueError('Entre com sua conta administradora para conferir outro caixa.')
+    return jsonify(caixa.fechar_pelo_admin(u['id'],tid,dados_json()))
 
 
 @bp.route('/gestao/api/atualizacoes',methods=['GET','PUT','POST'])
@@ -289,6 +338,8 @@ def avancar(pedido_id):
 @protegido
 def cancelar(pedido_id):
     pedido = pedidos.cancelar_pedido(pedido_id)
+    if pedido['origem'] == 'Balcão manual':
+        return jsonify(pedido)
     try:
         mensagem = recibo.montar_mensagem_status(pedido, "CANCELADO")
         whatsapp.enviar_mensagem(pedido["cliente_telefone"], mensagem)

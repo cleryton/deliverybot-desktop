@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-BINARIOS = ('Instalar-DeliveryBot.exe', 'DeliveryBot.exe')
+BINARIOS = ('Instalar-DeliveryBot.exe', 'DeliveryBot.exe', 'Instalar-DeliveryBot-Funcionario.exe', 'DeliveryBot-Funcionario.exe')
 DOCUMENTOS = {
     'GUIA DO APLICATIVO.md': 'Como usar o DeliveryBot.txt',
     'PRIVACIDADE E SEGURANÇA.md': 'Privacidade e seguranca.txt',
@@ -15,6 +15,7 @@ DOCUMENTOS = {
     'cloudflare/runtime/LICENSE.txt': 'LICENCA Cloudflare.txt',
     'packaging/LICENCA Pillow.txt': 'LICENCA Pillow.txt',
     'packaging/LICENCAS documentos.txt': 'LICENCAS documentos.txt',
+    'GUIA DO FUNCIONARIO.md': 'Como usar o DeliveryBot Funcionario.txt',
 }
 GERADOS = frozenset((*BINARIOS, *DOCUMENTOS.values(), 'VERSAO.json', 'SHA256SUMS.txt'))
 
@@ -43,7 +44,7 @@ def conferir_arquivo(pasta, nome):
 def gerar_hashes(pasta, nomes=BINARIOS):
     pasta = Path(pasta)
     if not set(BINARIOS).issubset(nomes) or any(nome not in GERADOS - {'SHA256SUMS.txt'} for nome in nomes):
-        raise ValueError('Inclua os dois executáveis e apenas arquivos da distribuição.')
+        raise ValueError('Inclua os quatro executáveis e apenas arquivos da distribuição.')
     if vinculo(pasta/'SHA256SUMS.txt'):
         raise ValueError('O manifesto não pode ser um vínculo.')
     arquivos = [conferir_arquivo(pasta, nome) for nome in nomes]
@@ -65,7 +66,11 @@ def verificar(pasta, completa=False, esperada=None):
         if not m or m[2] not in GERADOS - {'SHA256SUMS.txt'} or m[2] in hashes:
             raise ValueError('Manifesto contém entrada inválida ou repetida.')
         hashes[m[2]] = m[1]
-    exigidos = GERADOS - {'SHA256SUMS.txt'} if completa else set(BINARIOS)
+    legado=False
+    if completa:
+        metadados=conferir_arquivo(pasta,'VERSAO.json')
+        legado=versao(json.loads(metadados.read_text(encoding='utf-8'))['versao']) < (2,34,0)
+    exigidos = (GERADOS - {'SHA256SUMS.txt'} if not legado else (GERADOS-{'SHA256SUMS.txt',BINARIOS[2],BINARIOS[3],'Como usar o DeliveryBot Funcionario.txt'})) if completa else set(BINARIOS[:2])
     if not exigidos.issubset(hashes):
         raise ValueError('Distribuição incompleta.')
     for nome, esperado in hashes.items():
@@ -95,7 +100,7 @@ def finalizar(pasta, raiz=ROOT):
             raise ValueError('Manifesto de saída não pode ser um vínculo.')
     for origem, destino in fontes:
         shutil.copyfile(origem, pasta/destino)
-    (pasta/'VERSAO.json').write_text(json.dumps({'versao':atual, 'instalador':BINARIOS[0], 'aplicativo':BINARIOS[1]}, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+    (pasta/'VERSAO.json').write_text(json.dumps({'versao':atual, 'instalador':BINARIOS[0], 'aplicativo':BINARIOS[1], 'instalador_funcionario':BINARIOS[2], 'aplicativo_funcionario':BINARIOS[3]}, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     gerar_hashes(pasta, sorted(GERADOS - {'SHA256SUMS.txt'}))
     verificar(pasta, completa=True, esperada=atual)
     if pasta.parent == raiz/'dist' and pasta.name == 'v'+atual:

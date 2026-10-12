@@ -85,6 +85,8 @@ def avancar_status(pedido_id: int) -> dict:
         )
 
     pedido = pedidos_repo.obter_pedido(pedido_id)
+    if pedido['origem'] == 'Balcão manual':
+        return pedido
     mensagem = recibo.montar_mensagem_status(pedido, status_pedido)
     try:
         whatsapp.enviar_mensagem(pedido["cliente_telefone"], mensagem)
