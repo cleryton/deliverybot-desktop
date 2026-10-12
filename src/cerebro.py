@@ -266,6 +266,20 @@ def _preparar() -> Path:
     for nome, conteudo in padroes_atendimento.arquivos(categoria).items():
         _criar_se_ausente(padroes / nome, conteudo)
     _criar_se_ausente(pasta / 'Pedidos pelo WhatsApp.md', _GUIA_PEDIDOS)
+    _criar_se_ausente(pasta / 'Continuidade do atendimento humano.md', '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Continuidade do atendimento humano
+
+Em Atendimento humano, abra a conversa e escolha Assumir antes de enviar uma resposta manual. Confirme cada envio ao cliente. Durante a pausa, mensagens novas recebidas pelo aplicativo ficam no histórico privado da equipe sem esperar o bot ou o envio WhatsApp. Atualizar renova também a conversa aberta.
+
+Ao assumir, entradas automáticas pendentes são preservadas para a equipe e retiradas da fila. Mensagens recebidas durante a pausa não são reproduzidas quando o bot retorna nem entram no contexto da IA. PRIVACIDADE continua com resposta local.
+
+Se aparecer um aviso de envios automáticos para conferir, a equipe pode continuar respondendo manualmente. Antes de Retomar bot, confira em WhatsApp e IA se a mensagem já chegou e resolva a pendência. Não reenvie sem essa conferência. Envios incertos são preservados e a ordem dos envios manuais continua sendo respeitada. Um envio em andamento impede a troca de atendimento.
+
+Uma pausa de segurança exige também revisão administrativa. Consulte [[Proteção das conversas com IA]], [[Segurança dos funcionários]] e [[Mapa do atendimento]]. Esta nota é apenas orientação; não autoriza operações. Não copie dados ou mensagens de clientes para o cofre.
+''')
     _criar_se_ausente(pasta / 'Proteção das conversas com IA.md', '''---
 tipo: guia-operacional
 atendimento: false
@@ -392,7 +406,7 @@ def _sincronizar_mapa(pasta: Path) -> None:
             return  # A equipe assumiu a edição deste mapa.
         grupos = {
             'Voz e informações da loja': [pasta / n for n in _NOTAS_INICIAIS],
-            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Segurança dos funcionários.md', pasta / 'Proteção das conversas com IA.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
+            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Segurança dos funcionários.md', pasta / 'Continuidade do atendimento humano.md', pasta / 'Proteção das conversas com IA.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
             'Modelos para revisão': [pasta / 'Modelos/Conhecimento aprovado.md', pasta / 'Modelos/Lista de estoque.md'],
             'Conhecimento revisado': _notas_aprovadas(pasta),
             'Padrões de atendimento ativos': [pasta / 'Atendimentos/Como personalizar.md', *_padroes_aprovados(pasta)],
@@ -534,7 +548,7 @@ def registrar_funcionamento(dados: dict) -> None:
 def visualizacao() -> dict:
     """Mostra notas editoriais ao administrador; nunca documentos de estoque."""
     pasta = _preparar()
-    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Pedidos manuais e caixa.md', 'Computadores dos funcionários.md', 'Segurança dos funcionários.md', 'Proteção das conversas com IA.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
+    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Pedidos manuais e caixa.md', 'Computadores dos funcionários.md', 'Segurança dos funcionários.md', 'Continuidade do atendimento humano.md', 'Proteção das conversas com IA.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
     # Mostra os padrões antes do conhecimento extra para não ocultá-los no limite.
     padroes = _padroes_aprovados(pasta)
     caminhos.extend([pasta / 'Atendimentos/Como personalizar.md', *padroes, *_notas_aprovadas(pasta)])

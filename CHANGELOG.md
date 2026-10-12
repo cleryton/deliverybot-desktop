@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.36.1 — 2026-10-12
+
+Corrige a continuidade do atendimento humano: mensagens durante a pausa ficam imediatamente no histórico privado fora do contexto da IA, entradas automáticas pendentes são transferidas sem repetição na retomada e respostas manuais não ficam bloqueadas por falhas automáticas anteriores. Preserva envios incertos e a ordem dos envios manuais, exige conferência antes de retomar o bot, atualiza a conversa aberta e adiciona guia ao visual e Graph Obsidian. Inclui regressões de fila, privacidade, transferência transacional e interface.
+
 ## 2.36.0 — 2026-10-12
 
 Adiciona proteção por conversa antes da IA e do envio, com detecção de sinais conhecidos de manipulação e extração de dados, limites de mensagens e repetição, verificação de credenciais e estrutura interna na saída e invalidação de respostas em andamento após pausa ou liberação. Mantém mensagens pausadas no histórico privado fora do contexto da IA, exige revisão administrativa com retomada separada, preserva aviso local de privacidade e integra os dados de proteção às operações do titular. Inclui guia no visual e Graph Obsidian e testes de abuso, falsos positivos, fila, concorrência, permissões e interface.

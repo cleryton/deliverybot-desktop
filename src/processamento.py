@@ -79,9 +79,13 @@ def enfileirar(dados, chave=None):
         )
         tarefa = dict(conn.execute("SELECT id, estado FROM tarefas_bot WHERE origem=? AND chave=?", (origem, chave)).fetchone())
         tarefa["duplicada"] = cur.rowcount == 0
-        if not tarefa['duplicada'] and protecao_ia.avaliar(conn,dados['telefone'],dados['texto'],contar=True):
+        protegida = not tarefa['duplicada'] and protecao_ia.avaliar(conn,dados['telefone'],dados['texto'],contar=True)
+        humana = (not protecao_ia.privacidade(dados['texto']) and conn.execute(
+            'SELECT 1 FROM atendimentos_humanos WHERE telefone=?', (dados['telefone'],)
+        ).fetchone())
+        if not tarefa['duplicada'] and (protegida or humana):
             conn.execute("INSERT INTO mensagens(telefone,direcao,conteudo,ia_permitida) VALUES(?,'ENTRADA',?,0)",(dados['telefone'],dados['texto']))
-            _concluir_sem_resposta(conn,tarefa['id'],'proteção ou limite de atendimento')
+            _concluir_sem_resposta(conn,tarefa['id'],'proteção ou atendimento humano')
             tarefa['estado']='CONCLUIDA'
     _acordar.set()
     return tarefa
@@ -113,7 +117,8 @@ def processar_proxima():
             "SELECT * FROM tarefas_bot t WHERE estado='PENDENTE' AND NOT EXISTS "
             "(SELECT 1 FROM tarefas_bot ativas WHERE ativas.telefone=t.telefone AND ativas.estado IN ('PROCESSANDO','ENVIANDO')) "
             "AND NOT EXISTS (SELECT 1 FROM tarefas_bot anteriores WHERE anteriores.telefone=t.telefone "
-            "AND anteriores.id<t.id AND anteriores.estado IN ('PENDENTE','FALHOU','VERIFICAR')) ORDER BY id LIMIT 1"
+            "AND anteriores.id<t.id AND anteriores.estado IN ('PENDENTE','FALHOU','VERIFICAR') "
+            "AND (t.origem!='HUMANO' OR anteriores.origem='HUMANO')) ORDER BY id LIMIT 1"
         ).fetchone()
         if row is None:
             return False
