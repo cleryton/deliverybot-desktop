@@ -2,6 +2,7 @@
 <html lang="pt-BR" data-theme-choice="{{ tema }}">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='marca.svg') }}">
   <meta name="csrf-token" content="{{ csrf }}"><title>DeliveryBot • Gestão da loja</title>
   <script src="{{ url_for('static', filename='tema.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='gestao.css') }}">
@@ -21,7 +22,7 @@
 <body data-admin="{{ 'true' if administrador else 'false' }}" data-whatsapp-provider="{{ provedor_whatsapp }}" data-perfil-pendente="{{ 'true' if perfil_pendente else 'false' }}">
   <a class="skip-link" href="#main-content">Ir para o conteúdo</a>
   <aside class="sidebar" id="app-menu" aria-label="Menu do aplicativo">
-    <div class="brand"><span class="brand-icon">D</span><div>DeliveryBot<small>SEU NEGÓCIO, ORGANIZADO</small></div></div>
+    <div class="brand"><span class="brand-icon"><img src="{{ url_for('static', filename='marca.svg') }}" width="44" height="44" alt=""></span><div>DeliveryBot<small>SEU NEGÓCIO, ORGANIZADO</small></div></div>
     <div class="store-label">ESPAÇO DE TRABALHO</div><div id="loja-nome" class="store-name">Minha loja</div>
     <nav aria-label="Navegação principal">
       <button data-admin-only data-page="publicacao"><span>↗</span> Página de pedidos</button>
@@ -38,7 +39,7 @@
       <button data-page="humano"><span>☏</span> Atendimento humano</button>
       <button data-admin-only data-page="configuracoes"><span>⚙</span> Configurações</button>
     <button data-admin-only data-page="caixas">▣ Caixas dos funcionários</button><button data-admin-only data-page="operadores">♙ Funcionários e auditoria</button><button data-admin-only data-page="atualizacoes">↻ Atualizações</button></nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.36.2</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.36.3</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
   </aside>
   <button id="menu-overlay" class="menu-overlay" type="button" aria-label="Fechar menu" hidden></button>
   <main id="main-content" tabindex="-1">
