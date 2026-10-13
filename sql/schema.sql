@@ -258,3 +258,25 @@ CREATE TABLE IF NOT EXISTS frequencia_ia (
 CREATE TABLE IF NOT EXISTS versoes_protecao_ia (
     telefone TEXT PRIMARY KEY, versao TEXT NOT NULL
 );
+
+-- Meta: contabilidade sem conteúdo, nome ou telefone dos clientes.
+CREATE TABLE IF NOT EXISTS meta_numeros (
+    numero_id TEXT PRIMARY KEY, ambiente TEXT NOT NULL, waba_id TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS meta_mensagens_custo (
+    numero_id TEXT NOT NULL, chave TEXT NOT NULL, ambiente TEXT NOT NULL,
+    enviado_em TEXT NOT NULL, entregue_em TEXT, estado TEXT NOT NULL,
+    categoria TEXT NOT NULL DEFAULT '', mercado TEXT NOT NULL DEFAULT '', modelo TEXT NOT NULL DEFAULT '',
+    cobravel INTEGER CHECK(cobravel IN (0,1)), estimativa_micros INTEGER CHECK(estimativa_micros>=0), precificado_em TEXT,
+    PRIMARY KEY(numero_id,chave)
+);
+CREATE INDEX IF NOT EXISTS idx_meta_custos_periodo ON meta_mensagens_custo(entregue_em,enviado_em);
+CREATE TABLE IF NOT EXISTS meta_tarifas (
+    id INTEGER PRIMARY KEY, categoria TEXT NOT NULL, valor_micros INTEGER NOT NULL CHECK(valor_micros>=0),
+    vigente_em TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS meta_orcamento (
+    id INTEGER PRIMARY KEY CHECK(id=1), limite_micros INTEGER NOT NULL DEFAULT 0,
+    alerta_percentual INTEGER NOT NULL DEFAULT 80 CHECK(alerta_percentual BETWEEN 1 AND 100)
+);
+INSERT OR IGNORE INTO meta_orcamento(id) VALUES(1);

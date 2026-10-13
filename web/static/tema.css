@@ -41,6 +41,10 @@ dialog { background: var(--surface); }
 .brand-icon { width: 44px; height: 44px; flex: 0 0 44px; background: #edf8f2; border-radius: 12px; }
 .brand-icon img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .login-brand { margin-bottom: 24px; }
+.notice[data-level="ATENCAO"] { background: #fff6df; border-color: #e2c88c; color: #795513; }
+.notice[data-level="EXCEDIDO"] { background: #fff0f0; border-color: #e8baba; color: #923535; }
+:root[data-theme="dark"] .notice[data-level="ATENCAO"] { background: #46371a; color: #ffdd96; border-color: #806735; }
+:root[data-theme="dark"] .notice[data-level="EXCEDIDO"] { background: #4a272e; color: #ffbdc4; border-color: #8f555c; }
 :root[data-theme="dark"] .brand-icon { background: #edf8f2; }
 :root[data-theme="dark"] .store-label,
 :root[data-theme="dark"] .sidebar-bottom,

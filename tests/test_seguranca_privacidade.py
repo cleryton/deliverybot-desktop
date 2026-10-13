@@ -121,18 +121,21 @@ def test_credencial_protegida_e_migracao_sem_perda():
 
 def test_backup_portavel_sem_credenciais_e_sem_texto_claro(tmp_path):
     compra()
+    marcador = 'Cliente fictício Ana — identificação privada no backup'
     preferencias.salvar({'ANTHROPIC_API_KEY':'segredo-ficticio','NOME_RESTAURANTE':'Loja de teste'})
     legado = 'credencial-legada-ficticia-' * 250
     with get_conn() as origem:
+        origem.execute('UPDATE clientes SET nome=? WHERE telefone=?', (marcador, TELEFONE))
         origem.execute("INSERT OR REPLACE INTO configuracoes(chave,valor) VALUES('WAHA_API_KEY',?)", (legado,))
     caminho = backups.criar(SENHA)
     bruto = __import__('pathlib').Path(caminho).read_bytes()
-    assert b'Ana' not in bruto and TELEFONE.encode() not in bruto and b'SQLite format' not in bruto
+    # Ciphertext aleatório pode conter três bytes como b'Ana'; verifica o dado completo.
+    assert marcador.encode() not in bruto and TELEFONE.encode() not in bruto and b'SQLite format' not in bruto
     decifrado = backups.abrir_arquivo(caminho, SENHA)
     assert b'credencial-legada-ficticia-' not in decifrado
     with closing(sqlite3.connect(':memory:')) as conn:
         conn.deserialize(decifrado)
-        assert conn.execute('SELECT nome FROM clientes').fetchone()[0] == 'Ana Fictícia'
+        assert conn.execute('SELECT nome FROM clientes').fetchone()[0] == marcador
         assert not conn.execute("SELECT 1 FROM configuracoes WHERE chave='ANTHROPIC_API_KEY'").fetchone()
     with pytest.raises(ValueError, match='Senha incorreta'):
         backups.decifrar(bruto, SENHA+'errada')

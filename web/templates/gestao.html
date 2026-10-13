@@ -18,7 +18,7 @@
   <script defer src="{{ url_for('static', filename='operadores.js') }}"></script>
   <script defer src="{{ url_for('static', filename='caixa_admin.js') }}"></script>
 <script defer src="{{ url_for('static', filename='atualizacoes.js') }}"></script>
-<script defer src="{{ url_for('static', filename='publicacao.js') }}"></script></head>
+<script defer src="{{ url_for('static', filename='publicacao.js') }}"></script><script defer src="{{ url_for('static', filename='meta_oficial.js') }}"></script></head>
 <body data-admin="{{ 'true' if administrador else 'false' }}" data-whatsapp-provider="{{ provedor_whatsapp }}" data-perfil-pendente="{{ 'true' if perfil_pendente else 'false' }}">
   <a class="skip-link" href="#main-content">Ir para o conteúdo</a>
   <aside class="sidebar" id="app-menu" aria-label="Menu do aplicativo">
@@ -34,12 +34,13 @@
       <button data-admin-only data-page="relatorios"><span>▤</span> Relatórios</button>
       <button data-admin-only data-page="movimentos"><span>⇄</span> Movimentações</button>
       <button data-admin-only data-page="conexoes"><span>⌁</span> WhatsApp e IA</button>
+      <button data-admin-only data-page="meta"><span>◎</span> Meta oficial e custos</button>
       <button data-admin-only data-page="privacidade"><span>🔒</span> Privacidade e LGPD</button>
       <button data-admin-only data-page="bot"><span>☏</span> Testar atendimento</button>
       <button data-page="humano"><span>☏</span> Atendimento humano</button>
       <button data-admin-only data-page="configuracoes"><span>⚙</span> Configurações</button>
     <button data-admin-only data-page="caixas">▣ Caixas dos funcionários</button><button data-admin-only data-page="operadores">♙ Funcionários e auditoria</button><button data-admin-only data-page="atualizacoes">↻ Atualizações</button></nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.36.3</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.37.0</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
   </aside>
   <button id="menu-overlay" class="menu-overlay" type="button" aria-label="Fechar menu" hidden></button>
   <main id="main-content" tabindex="-1">
@@ -129,6 +130,7 @@
         <article class="card"><h2>Enviar diagnóstico para suporte</h2><p>O arquivo contém somente a versão e o estado dos serviços. Não inclui dados de clientes, mensagens, pedidos, endereços ou credenciais.</p><button id="diagnostic-export">Salvar diagnóstico</button><span id="diagnostic-status" aria-live="polite"></span></article>
         <article class="card inbox-card"><div class="card-heading"><h2>Recebimento de mensagens</h2><span id="inbox-count" class="badge">0 pendentes</span></div><p id="inbox-last">Nenhuma mensagem recebida ainda.</p><div id="inbox-errors"></div><p class="muted">As mensagens recebidas ficam salvas e são processadas em segundo plano. Repetições do mesmo evento não geram outro atendimento.</p></article>
       </section>
+      {% include 'meta_oficial.html' %}
       <section id="page-privacidade" class="page" hidden>
         <div class="page-heading"><div><p class="eyebrow">PROTEÇÃO DE DADOS</p><h1>Privacidade e LGPD</h1><p>Informe o responsável e atenda às solicitações dos clientes com acesso restrito.</p></div><a class="button-link" href="/privacidade" target="_blank" rel="noopener">Ver aviso aos clientes ↗</a></div>
         <div id="privacy-note" class="notice"></div>

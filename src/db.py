@@ -34,6 +34,7 @@ _MIGRACOES_COLUNAS = {
     ],
     "itens_pedido": [("nome_produto", "TEXT"), ("custo_unitario", "REAL")],
     "tarefas_bot": [("entrada_registrada", "INTEGER NOT NULL DEFAULT 0")],
+    "meta_mensagens_custo": [("precificado_em", "TEXT")],
 }
 
 # Guarda quais bancos (por caminho) já passaram pela inicialização neste

@@ -204,7 +204,23 @@ def receber_webhook():
     payload = request.get_json() or {}
     if not isinstance(payload, dict):
         return jsonify(status="dados inválidos"), 400
+    from .meta_custos import registrar_status
+    registrar_status(payload)
     dados = whatsapp.extrair_mensagem_recebida(payload)
+
+    # Depois da migração, eventos de entrega antigos continuam na contabilidade,
+    # mas mensagens recebidas por outro número não iniciam atendimento na nova conexão.
+    if dados:
+        if config.WHATSAPP_PROVIDER != 'META':
+            return jsonify(status='ignorado'), 200
+        try:
+            entry = payload['entry'][0]
+            numero = entry['changes'][0]['value']['metadata']['phone_number_id']
+            if numero != config.WHATSAPP_PHONE_NUMBER_ID or (
+                config.WHATSAPP_BUSINESS_ACCOUNT_ID and entry.get('id') != config.WHATSAPP_BUSINESS_ACCOUNT_ID):
+                return jsonify(status='ignorado'), 200
+        except (KeyError, IndexError, TypeError):
+            return jsonify(status='ignorado'), 200
 
     if dados is None:
         # Pode ser um evento de status (entregue/lido) ou payload vazio; apenas confirma o recebimento.

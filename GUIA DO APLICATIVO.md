@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.36.3
+# DeliveryBot Desktop 2.37.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -41,6 +41,8 @@ O perfil acompanha os backups. O Ollama recebe a descrição como referência da
 As importações de catálogo seguem o padrão do comércio. No CSV, a coluna opcional `controlar_estoque` aceita `sim` ou `nao`. Na leitura de PDF ou planilha, confira a opção de controle de cada novo item na revisão; entradas e contagens de produtos existentes continuam exigindo SKU e controle de estoque já cadastrado.
 
 ## API oficial da Meta
+
+Abra **Meta oficial e custos** para preparar a futura troca para um número próprio, validar o acesso ao número e à conta Meta e acompanhar mensagens e estimativas de gasto. Cadastre tarifas e orçamento mensal; os preços não são presumidos. O painel distingue testes de produção, evita duplicar cobranças de eventos repetidos e mostra custos desconhecidos como pendentes. Veja o roteiro completo em `docs/META PRODUCAO E CUSTOS.md`. A troca local exige revisão da fila e confirmação e preserva os dados da loja; não publica o aplicativo na Meta nem configura pagamentos automaticamente.
 
 Em **Configurações → WhatsApp**, escolha **META** e preencha o **ID do número** (Phone Number ID, não o telefone), o **Token de acesso**, o **Token de verificação** do webhook e o **Segredo do aplicativo** (App Secret). A integração de envio utiliza Graph API `v25.0`, conforme o exemplo disponibilizado no painel de testes da Meta. Inicie pelo número de teste antes de configurar um número de produção. Credenciais não devem ser copiadas para o Obsidian, Git ou mensagens públicas.
 

@@ -59,6 +59,43 @@ def dados_json():
     return dados
 
 
+@bp.get('/gestao/api/meta/situacao')
+@protegido
+def meta_situacao():
+    from .meta_oficial import situacao
+    return jsonify(situacao())
+
+
+@bp.post('/gestao/api/meta/verificar')
+@protegido
+def meta_verificar():
+    from .meta_oficial import verificar
+    return jsonify(verificar(dados_json()))
+
+
+@bp.post('/gestao/api/meta/migrar')
+@protegido
+def meta_migrar():
+    from .meta_oficial import migrar
+    return jsonify(migrar(dados_json()))
+
+
+@bp.route('/gestao/api/meta/custos', methods=['GET', 'PUT'])
+@protegido
+def meta_custos():
+    from . import meta_custos as custos
+    if request.method == 'PUT':
+        return jsonify(custos.configurar(dados_json()))
+    return jsonify(custos.relatorio(request.args.get('mes'), request.args.get('ambiente', 'TODOS')))
+
+
+@bp.get('/gestao/api/meta/tarifas')
+@protegido
+def meta_tarifas():
+    from .meta_custos import configuracao
+    return jsonify(configuracao())
+
+
 def dados_produto():
     if request.mimetype != 'multipart/form-data':
         return dados_json(), None
