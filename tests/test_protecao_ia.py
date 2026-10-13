@@ -226,9 +226,11 @@ def test_meta_assinada_usa_fila_e_deduplica_antes_de_inferencia(monkeypatch):
     from src.app import app
     monkeypatch.setattr(config,'WHATSAPP_PROVIDER','META')
     monkeypatch.setattr(config,'WHATSAPP_APP_SECRET','assinatura-ficticia')
+    monkeypatch.setattr(config,'WHATSAPP_PHONE_NUMBER_ID','123456789000')
+    monkeypatch.setattr(config,'WHATSAPP_BUSINESS_ACCOUNT_ID','987654321000')
     modelo=Mock(side_effect=AssertionError('Não chamar o modelo no webhook'))
     monkeypatch.setattr(bot,'processar_mensagem',modelo)
-    dados={'entry':[{'changes':[{'value':{'messages':[{'id':'evento-ficticio-meta','from':T,'type':'text','text':{'body':ATAQUE}}]}}]}]}
+    dados={'entry':[{'id':'987654321000','changes':[{'field':'messages','value':{'metadata':{'phone_number_id':'123456789000'},'messages':[{'id':'evento-ficticio-meta','from':T,'type':'text','text':{'body':ATAQUE}}]}}]}]}
     corpo=json.dumps(dados).encode()
     assinatura='sha256='+hmac.new(b'assinatura-ficticia',corpo,hashlib.sha256).hexdigest()
     cli=app.test_client()

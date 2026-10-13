@@ -1,0 +1,29 @@
+<section id="page-meta" class="page" hidden>
+  <div class="page-heading"><div><p class="eyebrow">WHATSAPP OFICIAL</p><h1>Meta e custos de atendimento</h1><p>Prepare seu número próprio e acompanhe as mensagens sem misturar teste e produção.</p></div><button id="meta-refresh" type="button">Atualizar acompanhamento</button></div>
+  <article class="card"><div class="card-heading"><h2>Sua conexão</h2><span id="meta-environment" class="badge">Verificando</span></div><p id="meta-current" aria-live="polite"></p><label>Endereço do webhook<input id="meta-callback" readonly></label><p id="meta-domain-note" class="muted"></p><p id="meta-last-delivery" class="muted"></p></article>
+  <details class="card"><summary><strong>Preparar a troca para o número definitivo</strong></summary>
+    <ol><li>No painel da Meta, adicione e verifique o número próprio do comércio na conta WhatsApp Business. Se já usa WhatsApp Business, confira o fluxo de coexistência ou migração oferecido para sua conta antes de alterar o cadastro.</li><li>Conclua as exigências de produção mostradas pela Meta e prepare um token de usuário do sistema com as permissões necessárias. Nunca coloque credenciais nas notas do Obsidian.</li><li>Configure um endereço HTTPS fixo, o webhook <code>/webhook</code> e a assinatura <code>messages</code>. A consulta abaixo verifica acesso ao número e à conta; não registra o telefone nem configura pagamentos.</li><li>Revise as mensagens pendentes e confirme a troca local. Depois envie uma mensagem do seu próprio WhatsApp para conferir recebimento e resposta antes de atender clientes.</li></ol>
+    <form id="meta-migration-form"><div class="settings-grid">
+      <label>ID do novo número<input name="WHATSAPP_PHONE_NUMBER_ID" inputmode="numeric" maxlength="40" required></label>
+      <label>ID da conta WhatsApp Business<input name="WHATSAPP_BUSINESS_ACCOUNT_ID" inputmode="numeric" maxlength="40" required></label>
+      <label>Token de acesso<input name="WHATSAPP_TOKEN" type="password" autocomplete="new-password" placeholder="Vazio mantém o token atual" maxlength="2000"></label>
+      <label>Segredo do aplicativo (App Secret)<input name="WHATSAPP_APP_SECRET" type="password" autocomplete="new-password" placeholder="Vazio mantém o segredo atual" maxlength="2000"></label>
+      <label>Token de verificação do webhook<input name="WHATSAPP_VERIFY_TOKEN" type="password" autocomplete="new-password" placeholder="Vazio mantém a chave atual" maxlength="2000"></label>
+    </div><p id="meta-migration-result" aria-live="polite"></p><div class="button-row"><button type="submit">Validar acesso ao novo número</button><button id="meta-migrate" type="button" class="primary" disabled>Confirmar troca para produção</button></div></form>
+  </details>
+  <article class="card"><div class="card-heading"><h2>Acompanhamento mensal</h2><span class="badge gray">Estimativa · BRL</span></div><form id="meta-report-form" class="filters"><label>Mês<input id="meta-month" type="month" required></label><label>Ambiente<select id="meta-report-environment"><option value="TODOS">Todos</option><option value="PRODUCAO">Produção</option><option value="TESTE">Teste Meta</option></select></label><button type="submit">Consultar</button></form>
+    <div id="meta-cost-metrics" class="metrics"></div><p id="meta-cost-note" class="notice"></p><p id="meta-budget-note" class="notice" role="status"></p>
+    <div class="table-wrap"><table><thead><tr><th>Referência</th><th>Ambiente</th><th>Entrega</th><th>Categoria</th><th>Cobrança Meta</th><th>Estimativa</th></tr></thead><tbody id="meta-cost-rows"></tbody></table></div><p class="muted">Últimas 50 mensagens do período. Repetições de eventos de envio, entrega e leitura não somam outra cobrança. Não são armazenados nomes, telefones dos clientes nem o conteúdo das mensagens neste acompanhamento.</p>
+  </article>
+  <details class="card"><summary><strong>Tarifas e orçamento mensal</strong></summary><p>Consulte a <a href="https://whatsappbusiness.com/products/platform-pricing/" target="_blank" rel="noopener noreferrer">tabela oficial da Meta</a> e informe as tarifas em reais aplicáveis ao seu contrato e aos destinatários no Brasil. Não há preços pré-preenchidos. A classificação de cobrança vem dos eventos da Meta; uma tarifa desconhecida aparece como pendente, nunca como custo zero.</p>
+    <form id="meta-rates-form"><div class="settings-grid">
+      <label>Marketing · R$ por mensagem<input name="marketing" type="number" min="0" max="1000" step="0.000001" placeholder="Não configurada"></label>
+      <label>Utilidade · R$ por mensagem<input name="utility" type="number" min="0" max="1000" step="0.000001" placeholder="Não configurada"></label>
+      <label>Autenticação · R$ por mensagem<input name="authentication" type="number" min="0" max="1000" step="0.000001" placeholder="Não configurada"></label>
+      <label>Autenticação internacional · R$ por mensagem<input name="authentication_international" type="number" min="0" max="1000" step="0.000001" placeholder="Não configurada"></label>
+      <label>Serviço · R$ por mensagem cobrável<input name="service" type="number" min="0" max="1000" step="0.000001" placeholder="Não configurada"></label>
+      <label>Orçamento mensal de produção (R$)<input name="limite" type="number" min="0" step="0.01" required></label>
+      <label>Avisar ao atingir (%)<input name="alerta_percentual" type="number" min="1" max="100" step="1" required></label>
+    </div><p class="muted">Zero desativa o orçamento. O aviso aparece neste painel e não bloqueia mensagens. Testes ficam fora do orçamento. Alterações de tarifa valem para novas entregas e preservam estimativas já registradas. A estimativa pode estar incompleta e não limita a cobrança real da Meta.</p><button type="submit" class="primary">Salvar tarifas e orçamento</button></form>
+  </details>
+</section>

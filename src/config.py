@@ -61,6 +61,8 @@ WHATSAPP_PROVIDER = os.getenv("WHATSAPP_PROVIDER", "TESTE").strip().upper()
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "").strip()
 WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "").strip()
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
+WHATSAPP_BUSINESS_ACCOUNT_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID", "").strip()
+WHATSAPP_META_AMBIENTE = os.getenv("WHATSAPP_META_AMBIENTE", "TESTE").strip().upper()
 WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "trocar_por_uma_palavra_secreta").strip()
 # Versão do exemplo oficial disponibilizado no painel WhatsApp da Meta.
 WHATSAPP_GRAPH_VERSION = "v25.0"

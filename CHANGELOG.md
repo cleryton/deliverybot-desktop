@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.37.0 — 2026-10-13
+
+Prepara a migração local para um número próprio da Meta com validação de acesso e vínculo à conta, confirmação e bloqueio de troca com fila pendente. Adiciona acompanhamento idempotente por mensagem, tarifas com histórico, custos pendentes explícitos e orçamento mensal separado entre teste e produção, restrito ao administrador e sem conteúdo ou telefones de clientes. Mantém a proteção de credenciais e inclui roteiro, interface e testes simulados.
+
 ## 2.36.3 — 2026-10-13
 
 Aplica a marca escolhida de caixa e balão de conversa no painel, login e terminal do funcionário; mantém contraste nos temas claro e escuro e gera o ícone Windows em sete resoluções a partir da mesma fonte vetorial. Inclui a proposta aprovada, guia da identidade e regressões de transparência, recursos e sincronização do ícone.

@@ -74,6 +74,11 @@ def _sessao_path():
 
 
 def status_whatsapp():
+    if config.WHATSAPP_PROVIDER == 'META':
+        pronto = all((config.WHATSAPP_TOKEN, config.WHATSAPP_PHONE_NUMBER_ID, config.WHATSAPP_APP_SECRET))
+        return {'servico': pronto, 'conectado': False, 'estado': 'META_CONFIGURADA' if pronto else 'META_PENDENTE',
+                'mensagem': 'API oficial configurada. Veja as entregas e valide o número em Meta oficial e custos.' if pronto else 'Configure as credenciais da Meta no painel.',
+                'webhook_configurado': False}
     try:
         info = _waha("GET", _sessao_path(), aceitar_404=True)
         if info is None:

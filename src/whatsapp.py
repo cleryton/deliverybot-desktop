@@ -156,7 +156,14 @@ def _enviar_via_meta(telefone: str, texto: str) -> dict:
     except requests.HTTPError:
         logger.error("Falha no envio Meta, HTTP %s", resp.status_code)
         raise
-    return resp.json()
+    retorno = resp.json()
+    try:
+        from .meta_custos import registrar_envio
+        registrar_envio(retorno)
+    except Exception:
+        # O envio já foi aceito: falha de contabilidade não pode provocar uma duplicação.
+        logger.warning('Envio Meta aceito; registro local de custos indisponível.')
+    return retorno
 
 
 # ---------------------------------------------------------------------------

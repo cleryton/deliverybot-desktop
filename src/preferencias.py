@@ -14,12 +14,12 @@ TEXTOS = {
     "BASE_URL": 500, "WAHA_URL": 500, "WAHA_SESSION": 80,
     "TUNEL_URL": 500,
     "WAHA_WEBHOOK_BASE_URL": 500,
-    "WHATSAPP_PHONE_NUMBER_ID": 80, "OLLAMA_URL": 500, "OLLAMA_MODEL": 100,
+    "WHATSAPP_PHONE_NUMBER_ID": 80, "WHATSAPP_BUSINESS_ACCOUNT_ID": 80, "OLLAMA_URL": 500, "OLLAMA_MODEL": 100,
     "ANTHROPIC_MODEL": 100,
     "LGPD_RESPONSAVEL": 160, "LGPD_CONTATO": 200, "LGPD_RETENCAO_PEDIDOS": 1000,
 }
 SEGREDOS = {"WAHA_API_KEY", "WHATSAPP_TOKEN", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "WEBHOOK_SECRET", "ANTHROPIC_API_KEY", "TUNEL_TOKEN"}
-ENUMS = {"WHATSAPP_PROVIDER": {"TESTE", "LOCAL", "WAHA", "META"}, "IA_PROVIDER": {"", "OLLAMA", "ANTHROPIC"}, "LGPD_IA_EXTERNA": {"NAO", "SIM"}, "TUNEL_MODO": {"RAPIDO", "FIXO"}, "TUNEL_AUTOMATICO": {"NAO", "SIM"},
+ENUMS = {"WHATSAPP_PROVIDER": {"TESTE", "LOCAL", "WAHA", "META"}, "WHATSAPP_META_AMBIENTE": {"TESTE", "PRODUCAO"}, "IA_PROVIDER": {"", "OLLAMA", "ANTHROPIC"}, "LGPD_IA_EXTERNA": {"NAO", "SIM"}, "TUNEL_MODO": {"RAPIDO", "FIXO"}, "TUNEL_AUTOMATICO": {"NAO", "SIM"},
          'COMERCIO_MODELO': {'REVENDA', 'PRODUCAO', 'SERVICOS', 'MISTO'},
          'COMERCIO_ESTOQUE_PADRAO': {'SIM', 'NAO'}, 'COMERCIO_CONFIGURADO': {'SIM', 'NAO'},
          'CEREBRO_RECUPERACAO_AUTOMATICA': {'SIM', 'NAO'}}
@@ -61,7 +61,7 @@ def obter():
             "segredos_configurados": {k: bool(getattr(config, k)) for k in SEGREDOS}}
 
 
-def salvar(dados):
+def salvar(dados, *, numero_meta_esperado=None):
     if any(k.startswith('TUNEL_') for k in dados):
         from .publicacao import situacao
         if situacao()['ativo']:
@@ -105,9 +105,30 @@ def salvar(dados):
         raise ValueError('Informe domínio HTTPS e token do túnel fixo antes de ativar o início automático.')
     if completos["WHATSAPP_PROVIDER"] == "META" and not all(completos[k] for k in ("WHATSAPP_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET")):
         raise ValueError("Preencha token, ID do número, token de verificação e segredo do aplicativo para usar a Meta.")
+    if completos['WHATSAPP_PROVIDER'] == 'META' and completos['WHATSAPP_META_AMBIENTE'] == 'PRODUCAO':
+        for k in ('WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_BUSINESS_ACCOUNT_ID'):
+            if not isinstance(completos[k], str) or not completos[k].isascii() or not completos[k].isdigit() or not 5 <= len(completos[k]) <= 40:
+                raise ValueError('Produção Meta: informe os IDs numéricos do número e da conta WhatsApp Business.')
     if completos["IA_PROVIDER"] == "ANTHROPIC" and not completos["ANTHROPIC_API_KEY"]:
         raise ValueError("Preencha a chave da Anthropic para ativar a IA.")
     with get_conn() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        if numero_meta_esperado is not None:
+            armazenado = conn.execute("SELECT valor FROM configuracoes WHERE chave='WHATSAPP_PHONE_NUMBER_ID'").fetchone()
+            atual = armazenado[0] if armazenado else config.WHATSAPP_PHONE_NUMBER_ID
+            if atual != numero_meta_esperado:
+                raise ValueError('O número foi alterado durante a validação. Atualize a página antes de migrar.')
+        troca_meta = (config.WHATSAPP_PROVIDER == 'META' or completos['WHATSAPP_PROVIDER'] == 'META') and any(
+            chave in valores and valores[chave] != getattr(config, chave)
+            for chave in ('WHATSAPP_PROVIDER', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_BUSINESS_ACCOUNT_ID', 'WHATSAPP_META_AMBIENTE'))
+        if troca_meta:
+            if conn.execute("SELECT 1 FROM tarefas_bot WHERE estado!='CONCLUIDA' LIMIT 1").fetchone():
+                raise ValueError('Conclua ou revise as mensagens pendentes antes de trocar o número da Meta.')
+            from .meta_custos import guardar_numero
+            if config.WHATSAPP_PROVIDER == 'META':
+                guardar_numero(conn, config.WHATSAPP_PHONE_NUMBER_ID, config.WHATSAPP_META_AMBIENTE, config.WHATSAPP_BUSINESS_ACCOUNT_ID)
+            if completos['WHATSAPP_PROVIDER'] == 'META':
+                guardar_numero(conn, completos['WHATSAPP_PHONE_NUMBER_ID'], completos['WHATSAPP_META_AMBIENTE'], completos['WHATSAPP_BUSINESS_ACCOUNT_ID'])
         for chave, valor in valores.items():
             armazenado = proteger_segredo(str(valor)) if chave in SEGREDOS else str(valor)
             conn.execute("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor", (chave, armazenado))
