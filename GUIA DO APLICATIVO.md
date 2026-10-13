@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.36.1
+# DeliveryBot Desktop 2.36.2
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -39,6 +39,14 @@ Em **Meu comércio**, revise o segmento, a descrição e a operação sempre que
 O perfil acompanha os backups. O Ollama recebe a descrição como referência da operação; ela não é publicada na página do cliente. Para serviços, você pode usar unidades **Serviço** ou **Hora**. Cadastre preços definidos; orçamentos que exigem avaliação e horários de atendimento devem ser combinados com a equipe pelo atendimento humano.
 
 As importações de catálogo seguem o padrão do comércio. No CSV, a coluna opcional `controlar_estoque` aceita `sim` ou `nao`. Na leitura de PDF ou planilha, confira a opção de controle de cada novo item na revisão; entradas e contagens de produtos existentes continuam exigindo SKU e controle de estoque já cadastrado.
+
+## API oficial da Meta
+
+Em **Configurações → WhatsApp**, escolha **META** e preencha o **ID do número** (Phone Number ID, não o telefone), o **Token de acesso**, o **Token de verificação** do webhook e o **Segredo do aplicativo** (App Secret). A integração de envio utiliza Graph API `v25.0`, conforme o exemplo disponibilizado no painel de testes da Meta. Inicie pelo número de teste antes de configurar um número de produção. Credenciais não devem ser copiadas para o Obsidian, Git ou mensagens públicas.
+
+No painel Meta, abra o caso de uso WhatsApp e a etapa de teste para obter os dados e emitir o token. Autorize um destinatário de teste no próprio painel antes de enviar uma mensagem. O token de acesso é emitido pela Meta; o token de verificação é um segredo escolhido pela equipe e deve ser igual no aplicativo e na configuração do webhook. Tokens temporários precisam ser renovados conforme a validade mostrada pela Meta.
+
+Para receber eventos, mantenha o DeliveryBot e a página HTTPS ativos. Use como callback o endereço HTTPS atual acrescido de `/webhook`, configure o mesmo token de verificação e assine o campo `messages`. O endereço temporário muda quando o túnel é recriado, exigindo atualização do callback na Meta. Para uso contínuo, configure um domínio e túnel fixos. A seleção do provedor e o preenchimento das credenciais, sozinhos, não comprovam que o recebimento está configurado.
 
 ## Aparência
 

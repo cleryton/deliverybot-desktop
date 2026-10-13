@@ -62,7 +62,9 @@ WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "").strip()
 WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "").strip()
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
 WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "trocar_por_uma_palavra_secreta").strip()
-WHATSAPP_API_URL = f"https://graph.facebook.com/v20.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+# Versão do exemplo oficial disponibilizado no painel WhatsApp da Meta.
+WHATSAPP_GRAPH_VERSION = "v25.0"
+WHATSAPP_API_URL = f"https://graph.facebook.com/{WHATSAPP_GRAPH_VERSION}/{WHATSAPP_PHONE_NUMBER_ID}/messages"
 
 # --- WAHA (WhatsApp HTTP API) ---
 WAHA_URL = os.getenv("WAHA_URL", "http://localhost:3000").rstrip("/")
