@@ -1,27 +1,40 @@
-"""Ícone geométrico do aplicativo, sem dependências de desenho."""
+"""Gera o ícone Windows em várias resoluções a partir da marca vetorial comum."""
 from pathlib import Path
-import struct
-import zlib
+import shutil
+import xml.etree.ElementTree as ET
+
+from PIL import Image, ImageDraw
+
+RAIZ = Path(__file__).resolve().parents[1]
+TAMANHOS = (16, 24, 32, 48, 64, 128, 256)
 
 
-def criar():
-    size = 64
-    rows = bytearray()
-    for y in range(size):
-        rows.append(0)
-        for x in range(size):
-            inside = 3 <= x <= 60 and 3 <= y <= 60
-            letter = (19 <= x <= 25 and 17 <= y <= 46 or
-                      25 <= x <= 38 and (17 <= y <= 23 or 40 <= y <= 46) or
-                      38 <= x <= 44 and 23 <= y <= 40 or
-                      33 <= x <= 40 and (20 <= y <= 25 or 38 <= y <= 43))
-            rows.extend((255,255,255,255) if letter else (24,125,100,255) if inside else (0,0,0,0))
-    def chunk(kind, data):
-        return struct.pack('>I',len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind+data)&0xffffffff)
-    png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR',struct.pack('>IIBBBBB',size,size,8,6,0,0,0)) + chunk(b'IDAT',zlib.compress(rows)) + chunk(b'IEND',b'')
-    ico = struct.pack('<HHH',0,1,1) + struct.pack('<BBBBHHII',size,size,0,0,1,32,len(png),22) + png
-    (Path(__file__).parent / 'DeliveryBot.ico').write_bytes(ico)
+def renderizar(fonte, tamanho=256):
+    """Rasteriza os polígonos da marca local, preservando os espaços transparentes."""
+    svg = ET.parse(fonte).getroot()
+    _, _, largura, altura = map(float, svg.attrib['viewBox'].split())
+    fator = tamanho * 4 / max(largura, altura)
+    imagem = Image.new('RGBA', (tamanho * 4, tamanho * 4))
+    desenho = ImageDraw.Draw(imagem)
+    for poligono in svg.iter('{http://www.w3.org/2000/svg}polygon'):
+        pontos = [tuple(float(n) * fator for n in ponto.split(','))
+                  for ponto in poligono.attrib['points'].split()]
+        desenho.polygon(pontos, fill=poligono.attrib['fill'])
+        desenho.line(pontos + pontos[:1], fill=poligono.attrib['fill'],
+                     width=max(1, round(2 * fator)), joint='curve')
+    return imagem.resize((tamanho, tamanho), Image.Resampling.LANCZOS)
+
+
+def criar(destino=None, fonte=None):
+    fonte = Path(fonte or RAIZ / 'web/static/marca.svg')
+    destino = Path(destino or RAIZ / 'packaging/DeliveryBot.ico')
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    imagem = renderizar(fonte)
+    imagem.save(destino, format='ICO', sizes=[(n, n) for n in TAMANHOS])
+    return destino
 
 
 if __name__ == '__main__':
     criar()
+    # O terminal abre uma página local independente; inclui a mesma marca no seu diretório.
+    shutil.copyfile(RAIZ / 'web/static/marca.svg', RAIZ / 'web/funcionario/marca.svg')

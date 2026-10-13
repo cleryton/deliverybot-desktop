@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.36.3 — 2026-10-13
+
+Aplica a marca escolhida de caixa e balão de conversa no painel, login e terminal do funcionário; mantém contraste nos temas claro e escuro e gera o ícone Windows em sete resoluções a partir da mesma fonte vetorial. Inclui a proposta aprovada, guia da identidade e regressões de transparência, recursos e sincronização do ícone.
+
 ## 2.36.2 — 2026-10-13
 
 Atualiza o envio Meta para Graph API v25.0, conforme o exemplo do painel de testes, e centraliza a versão para manter a inicialização e as preferências consistentes. Documenta credenciais, número de teste e webhook HTTPS; adiciona regressões de inicialização, troca de ID e transporte com autenticação, prazo e redirecionamentos controlados.

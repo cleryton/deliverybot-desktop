@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>DeliveryBot — pedidos e atendimento</title>
+  <g stroke-linejoin="round" stroke-width="2">
+    <polygon fill="#72d5b3" stroke="#72d5b3" points="64,10 116,38 91,52 39,24"/>
+    <polygon fill="#72d5b3" stroke="#72d5b3" points="32,28 84,56 63,68 11,40"/>
+    <polygon fill="#187d64" stroke="#187d64" points="10,48 58,74 58,118 40,108 28,118 31,102 10,90"/>
+    <polygon fill="#4db28e" stroke="#4db28e" points="66,74 83,64 83,83 94,77 94,58 116,46 116,90 66,118"/>
+  </g>
+</svg>
