@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.36.2 — 2026-10-13
+
+Atualiza o envio Meta para Graph API v25.0, conforme o exemplo do painel de testes, e centraliza a versão para manter a inicialização e as preferências consistentes. Documenta credenciais, número de teste e webhook HTTPS; adiciona regressões de inicialização, troca de ID e transporte com autenticação, prazo e redirecionamentos controlados.
+
 ## 2.36.1 — 2026-10-12
 
 Corrige a continuidade do atendimento humano: mensagens durante a pausa ficam imediatamente no histórico privado fora do contexto da IA, entradas automáticas pendentes são transferidas sem repetição na retomada e respostas manuais não ficam bloqueadas por falhas automáticas anteriores. Preserva envios incertos e a ordem dos envios manuais, exige conferência antes de retomar o bot, atualiza a conversa aberta e adiciona guia ao visual e Graph Obsidian. Inclui regressões de fila, privacidade, transferência transacional e interface.

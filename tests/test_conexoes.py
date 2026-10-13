@@ -1,5 +1,7 @@
 """Serviços simulados: nenhuma conta real, envio ao WhatsApp ou download de modelo."""
 import base64
+import runpy
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -31,6 +33,37 @@ def banco(tmp_path, monkeypatch):
 
 def entrada(chave="a", telefone="5547999990000"):
     return processamento.enfileirar({"telefone": telefone, "texto": "oi", "chat_id": telefone+"@lid", "session": "default"}, chave)
+
+
+def test_meta_preferencias_reconstroem_endpoint_oficial_atual_sem_alterar_credenciais():
+    preferencias.aplicar({'WHATSAPP_PROVIDER':'META','WHATSAPP_PHONE_NUMBER_ID':'123456789000', 'WHATSAPP_TOKEN':'token-ficticio'})
+    assert config.WHATSAPP_GRAPH_VERSION == 'v25.0'
+    assert config.WHATSAPP_API_URL == 'https://graph.facebook.com/v25.0/123456789000/messages'
+    preferencias.aplicar({'WHATSAPP_PHONE_NUMBER_ID':'987654321000'})
+    assert config.WHATSAPP_API_URL == 'https://graph.facebook.com/v25.0/987654321000/messages'
+    assert config.WHATSAPP_TOKEN == 'token-ficticio'
+
+
+def test_meta_inicializacao_do_env_e_preferencias_usam_mesma_versao(tmp_path,monkeypatch):
+    monkeypatch.setenv('DELIVERYBOT_ENV_FILE',str(tmp_path/'ficticia.env'))
+    monkeypatch.setenv('WHATSAPP_PHONE_NUMBER_ID','123456789000')
+    inicial=runpy.run_path(str(Path(config.__file__)))
+    preferencias.aplicar({'WHATSAPP_PHONE_NUMBER_ID':'123456789000'})
+    assert inicial['WHATSAPP_GRAPH_VERSION'] == config.WHATSAPP_GRAPH_VERSION == 'v25.0'
+    assert inicial['WHATSAPP_API_URL'] == config.WHATSAPP_API_URL
+
+
+def test_meta_transporte_usa_endpoint_atual_header_privado_sem_redirecionamento(monkeypatch):
+    preferencias.aplicar({'WHATSAPP_PROVIDER':'META','WHATSAPP_PHONE_NUMBER_ID':'123456789000', 'WHATSAPP_TOKEN':'token-ficticio'})
+    resp=Mock()
+    resp.json.return_value={'messages':[{'id':'mensagem-ficticia'}]}
+    post=Mock(return_value=resp)
+    monkeypatch.setattr(whatsapp._http,'post',post)
+    assert whatsapp._enviar_via_meta('+55 11 99999-0000','Teste fictício') == resp.json.return_value
+    post.assert_called_once_with('https://graph.facebook.com/v25.0/123456789000/messages',
+        json={'messaging_product':'whatsapp','to':'5511999990000','type':'text','text':{'body':'Teste fictício','preview_url':True}},
+        headers={'Authorization':'Bearer token-ficticio','Content-Type':'application/json'},timeout=10,allow_redirects=False)
+    resp.raise_for_status.assert_called_once()
 
 
 def test_deduplicacao_persistente_e_mensagens_iguais_distintas():

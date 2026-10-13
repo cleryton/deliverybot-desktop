@@ -36,7 +36,7 @@ def aplicar(valores):
             setattr(config, chave, valor)
     config.MODO_TESTE = config.WHATSAPP_PROVIDER == "TESTE" or (
         config.WHATSAPP_PROVIDER == "META" and not (config.WHATSAPP_TOKEN and config.WHATSAPP_PHONE_NUMBER_ID))
-    config.WHATSAPP_API_URL = f"https://graph.facebook.com/v20.0/{config.WHATSAPP_PHONE_NUMBER_ID}/messages"
+    config.WHATSAPP_API_URL = f"https://graph.facebook.com/{config.WHATSAPP_GRAPH_VERSION}/{config.WHATSAPP_PHONE_NUMBER_ID}/messages"
     invalidar_catalogo()
 
 
