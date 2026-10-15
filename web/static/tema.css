@@ -1,4 +1,16 @@
 :root { color-scheme: light; --surface: #fff; }
+.meta-setup summary { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-block: 4px; cursor: pointer; }
+.meta-setup summary .muted { font-size: 12px; font-weight: 400; }
+.meta-steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; list-style: none; padding: 0; margin: 24px 0; }
+.meta-steps li { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.meta-steps li > span { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 50%; background: var(--light); color: var(--green); font-weight: 700; }
+.meta-steps strong,.meta-steps small { display: block; }
+.meta-steps small { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.meta-steps[data-stage="credenciais"] li:first-child,.meta-steps[data-stage="numero"] li:nth-child(2),.meta-steps[data-stage="webhook"] li:last-child,.meta-steps[data-stage="concluido"] li { border-color: var(--green); background: var(--light); }
+.meta-setup fieldset { border: 0; margin: 24px 0 0; padding: 0; min-width: 0; }
+.meta-setup legend { font-weight: 700; padding: 0 0 12px; }
+.meta-result:not(:empty) { padding: 16px; border: 1px solid var(--line); background: var(--light); border-radius: 12px; overflow-wrap: anywhere; }
+@media(max-width:800px) { .meta-steps { grid-template-columns: 1fr; gap: 8px; } .meta-steps li { padding: 12px; } }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --ink: #edf5f1;

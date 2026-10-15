@@ -75,6 +75,7 @@ def situacao():
         pendentes = c.execute("SELECT COUNT(*) FROM tarefas_bot WHERE estado!='CONCLUIDA'").fetchone()[0]
         ultima = c.execute('SELECT MAX(entregue_em) FROM meta_mensagens_custo WHERE numero_id=?', (config.WHATSAPP_PHONE_NUMBER_ID,)).fetchone()[0]
     return {'provedor': config.WHATSAPP_PROVIDER, 'ambiente': config.WHATSAPP_META_AMBIENTE,
+            'app_id': config.WHATSAPP_APP_ID,
             'numero_id': config.WHATSAPP_PHONE_NUMBER_ID, 'waba_id': config.WHATSAPP_BUSINESS_ACCOUNT_ID,
             'credenciais': {k: bool(getattr(config, k)) for k in ('WHATSAPP_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN')},
             'callback': endereco.rstrip('/') + '/webhook' if endereco.startswith('https://') else '',

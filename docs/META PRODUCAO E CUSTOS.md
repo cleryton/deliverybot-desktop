@@ -4,6 +4,23 @@ Em **Meta oficial e custos**, o responsável pode preparar a futura troca do nú
 
 ## Preparação e troca
 
+### Cada pessoa conecta a própria conta
+
+O instalador é distribuído sem `.env`, tokens, bancos de uso real ou sessões. Não envie sua pasta de dados nem sua instalação configurada para outra pessoa: entregue somente a distribuição gerada. Cada instalação deve usar um app Meta próprio; o webhook pertence ao app e atualizar o callback pode interromper outra instalação que compartilhe esse app.
+
+1. Em **Meta oficial e custos → Conectar minha conta Meta**, abra os passos de primeira configuração. Crie seu app com WhatsApp na Meta e comece pelo número de teste.
+2. Informe o ID do seu app, o ID da sua conta WhatsApp Business, o seu token e o seu App Secret. Esses valores nunca são herdados da conta do desenvolvedor. O token é conferido com o app e as permissões de mensagens e gerenciamento; validade do token e do acesso aos dados são verificadas. Tokens de usuário do sistema sem expiração ainda podem ser revogados pela Meta ou pelo administrador.
+3. Clique em **Encontrar meus números**. A seleção vem da própria conta consultada. Editar credenciais invalida a consulta anterior; respostas atrasadas não liberam o botão. Escolha teste ou produção de acordo com o número real selecionado — isso não transforma um número de teste em produção.
+4. Ao confirmar, o aplicativo revalida a conta e o número, protege os segredos no Windows e gera uma chave de verificação local. Se a opção de webhook estiver marcada, prepara o HTTPS e tenta registrar o callback `/webhook` e a assinatura `messages`. Isso substitui o callback do app informado. Somente consultas e assinaturas são realizadas; nenhum teste envia mensagens automaticamente.
+5. Caso a Meta não confirme o webhook, os dados salvos ficam preservados e o painel informa o resultado parcial. Confira internet, domínio e permissões; use **Atualizar webhook da conta já salva**, sem colar novamente as credenciais. Um túnel temporário muda ao reiniciar, exigindo esse ajuste. Para operação diária, prefira HTTPS fixo e mantenha o computador ligado.
+6. Cadastre e verifique seus próprios destinatários de teste na Meta. Envie uma mensagem ao número da sua conta para verificar recebimento e resposta. A confirmação de configuração da API, sozinha, não comprova esse fluxo completo.
+
+As alterações de conta são exclusivas e bloqueadas com mensagens pendentes, inclusive se a mensagem chegar durante a consulta. Funcionários não acessam os endpoints de credenciais e configuração. As notas do Obsidian e a IA não recebem autorização para modificar a conexão. Diagnósticos ocultam parâmetros de token e chaves dos logs.
+
+O botão de login Meta sem copiar credenciais requer **Embedded Signup**, configuração/aprovação da Meta e um serviço seguro que faça a troca do código por credenciais. Não se deve embutir o App Secret do desenvolvedor no executável de terceiros. Esta versão oferece configuração independente com credenciais próprias; não promete um Embedded Signup aprovado. Referências: [fluxo oficial Embedded Signup](https://www.postman.com/meta/whatsapp-business-platform/documentation/du6gzjv/embedded-signup) e [aplicativo de exemplo da Meta](https://github.com/fbsamples/business-messaging-sample-tech-provider-app).
+
+### Número definitivo
+
 1. Adicione e verifique seu número no painel da Meta. Se ele já é usado no WhatsApp Business, confira o fluxo de coexistência ou migração disponibilizado para a conta antes de alterar o cadastro. O DeliveryBot não exclui sua conta móvel nem registra números automaticamente.
 2. Conclua as etapas de produção exigidas pela Meta, incluindo as autorizações, verificação, publicação e pagamento quando aplicáveis. Use um token de usuário do sistema apropriado à conta; sua duração e revogação são controladas pela Meta. O aplicativo não transforma um token temporário em permanente.
 3. Prepare um domínio e túnel HTTPS fixos. Configure o callback `/webhook`, o token de verificação e a assinatura `messages`. A consulta do número não comprova que o webhook funciona. O túnel rápido muda de endereço ao reiniciar; ter um número definitivo não torna o endereço do servidor permanente. O computador precisa continuar ligado para o atendimento local.

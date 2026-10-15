@@ -78,7 +78,7 @@ def registrar_login(ok):
 def reduzir_dados(texto):
     texto = str(texto)
     texto = re.sub(r"(?i)(/m/|/webhook/waha/|/api/bot/mensagem/)[^\s?\"'<>]+", r"\1[privado]", texto)
-    texto = re.sub(r"(?i)(acesso=|Bearer\s+)[^\s&\"']+", r"\1[privado]", texto)
+    texto = re.sub(r"(?i)(acesso=|input_token=|access_token=|client_secret=|appsecret_proof=|Bearer\s+)[^\s&\"']+", r"\1[privado]", texto)
     texto = re.sub(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", "[e-mail]", texto)
     texto = re.sub(r"(?<!\d)(?:\+?\d[\s().-]*){10,15}(?!\d)", "[telefone/documento]", texto)
     return texto

@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.38.0 — 2026-10-15
+
+Assistente individual da Meta com credenciais próprias por instalação, consulta dos números, validação de aplicativo e validade do token, chave de webhook automática e configuração do HTTPS/webhook com confirmação. Interface em etapas, campos protegidos durante a gravação, tratamento de respostas atrasadas e recuperação de configuração parcial. Oculta tokens de diagnóstico nos logs e impede escritas simultâneas e troca de conta com fila pendente. Nenhuma credencial do autor é incluída na distribuição. Testes de isolamento, autenticação, CSRF, concorrência e formulários.
+
 ## 2.37.0 — 2026-10-13
 
 Prepara a migração local para um número próprio da Meta com validação de acesso e vínculo à conta, confirmação e bloqueio de troca com fila pendente. Adiciona acompanhamento idempotente por mensagem, tarifas com histórico, custos pendentes explícitos e orçamento mensal separado entre teste e produção, restrito ao administrador e sem conteúdo ou telefones de clientes. Mantém a proteção de credenciais e inclui roteiro, interface e testes simulados.

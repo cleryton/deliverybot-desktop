@@ -74,3 +74,44 @@ test('troca exige confirmação e usa POST com o número anterior, limpando os c
   assert.equal(form.elements.WHATSAPP_VERIFY_TOKEN.value,'');
   assert.equal(botao.disabled,true);
 });
+
+test('conta individual lista números escapados e invalida seleção ao editar credenciais',async()=>{
+  const {contexto:c,elementos:e}=ambiente();
+  const form=e.get('#meta-own-form');form.entradas=[['WHATSAPP_TOKEN','token-proprio']];
+  const chamadas=[];
+  c.api=async(...args)=>{chamadas.push(args);return {numeros:[{id:'12345',telefone:'<img>',nome:'<script>'}],expira_em:0,acesso_dados_expira_em:1};};
+  await form.eventos.submit({preventDefault(){},submitter:{},target:form});
+  assert.equal(chamadas[0][0],'meta/numeros');assert.equal(chamadas[0][1],'POST');
+  assert.ok(!e.get('#meta-own-number').innerHTML.includes('<img>'));
+  assert.match(e.get('#meta-own-number').innerHTML,/&lt;script&gt;/);
+  assert.match(e.get('#meta-own-validity').textContent,/Acesso aos dados/);
+  assert.equal(e.get('#meta-own-connect').disabled,false);
+  form.eventos.input({target:{name:'WHATSAPP_TOKEN'}});
+  assert.equal(e.get('#meta-own-connect').disabled,true);
+});
+
+test('resposta atrasada da consulta não valida credenciais editadas enquanto aguardava',async()=>{
+  const {contexto:c,elementos:e}=ambiente();
+  const form=e.get('#meta-own-form');form.entradas=[];
+  let resolver;c.api=()=>new Promise(r=>resolver=r);
+  const promessa=form.eventos.submit({preventDefault(){},submitter:{},target:form});
+  form.eventos.input({target:{name:'WHATSAPP_APP_SECRET'}});
+  resolver({numeros:[{id:'12345',telefone:'antigo',nome:'antigo'}],expira_em:0});
+  await promessa;
+  assert.equal(e.get('#meta-own-connect').disabled,true);
+  assert.ok(!e.get('#meta-own-number').innerHTML.includes('antigo'));
+});
+
+test('conexão própria exige confirmação, bloqueia formulário e remove credenciais após salvar',async()=>{
+  const {contexto:c,elementos:e}=ambiente();
+  const form=e.get('#meta-own-form');form.entradas=[['WHATSAPP_TOKEN','token-proprio'],['WHATSAPP_APP_SECRET','segredo-proprio'],['WHATSAPP_PHONE_NUMBER_ID','12345']];
+  form.elements={WHATSAPP_TOKEN:{value:'token-proprio'},WHATSAPP_APP_SECRET:{value:'segredo-proprio'},configurar_webhook:{checked:true}};
+  vm.runInContext("metaCurrent={numero_id:''};metaOwnValidated=true;",c);
+  c.confirm=()=>true;c.metaLoad=async()=>{};
+  let dados;c.api=async(path,method,d)=>{assert.equal(path,'meta/conectar');assert.equal(method,'POST');assert.equal(e.get('#meta-own-fields').disabled,true);dados=d;return {salvo:true,webhook_configurado:false,aviso:'Conta salva, webhook pendente'};};
+  await e.get('#meta-own-connect').eventos.click({currentTarget:e.get('#meta-own-connect')});
+  assert.equal(dados.confirmar,true);assert.equal(dados.configurar_webhook,true);assert.equal(dados.numero_anterior,'');
+  assert.equal(form.elements.WHATSAPP_TOKEN.value,'');assert.equal(form.elements.WHATSAPP_APP_SECRET.value,'');
+  assert.equal(e.get('#meta-own-fields').disabled,false);assert.equal(e.get('#meta-own-connect').disabled,true);
+  assert.equal(e.get('#meta-setup-steps').dataset.stage,'webhook');
+});

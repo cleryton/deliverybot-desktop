@@ -80,6 +80,29 @@ def meta_migrar():
     return jsonify(migrar(dados_json()))
 
 
+@bp.post('/gestao/api/meta/numeros')
+@protegido
+def meta_numeros():
+    from .meta_configuracao import consultar
+    return jsonify(consultar(dados_json()))
+
+
+@bp.post('/gestao/api/meta/conectar')
+@protegido
+def meta_conectar():
+    from .meta_configuracao import conectar
+    return jsonify(conectar(dados_json()))
+
+
+@bp.post('/gestao/api/meta/webhook')
+@protegido
+def meta_webhook():
+    from .meta_configuracao import configurar_webhook
+    if dados_json().get('confirmar') is not True:
+        raise ValueError('Confirme a configuração do webhook da sua conta Meta.')
+    return jsonify(configurar_webhook())
+
+
 @bp.route('/gestao/api/meta/custos', methods=['GET', 'PUT'])
 @protegido
 def meta_custos():

@@ -59,6 +59,7 @@ WHATSAPP_PROVIDER = os.getenv("WHATSAPP_PROVIDER", "TESTE").strip().upper()
 
 # --- WhatsApp Business Cloud API (Meta) ---
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "").strip()
+WHATSAPP_APP_ID = os.getenv("WHATSAPP_APP_ID", "").strip()
 WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "").strip()
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
 WHATSAPP_BUSINESS_ACCOUNT_ID = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID", "").strip()
