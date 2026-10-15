@@ -108,7 +108,9 @@ class PaginaPublica:
     """Permite somente endpoints públicos conhecidos; ignora identidade de proxy."""
     ENDPOINTS = {'pagina_pedido', 'enviar_pedido', 'pagina_minijogo', 'catalogo_cliente_pdf', 'foto_produto', 'aviso_privacidade', 'primeiros_passos.confirmar', 'verificar_webhook', 'receber_webhook', 'receber_webhook_waha'}
 
-    ASSETS = {'pedido.css', 'pedido.js', 'pong.css', 'pong-core.js', 'pong.js'}
+    ASSETS = {'pedido.css', 'pedido.js', 'pong.css', 'pong-core.js', 'pong.js', 'remoto.css', 'remoto.js'}
+
+    REMOTOS = {'remoto.pagina', 'remoto.entrar', 'remoto.estado', 'remoto.avancar', 'remoto.sair'}
 
     def __init__(self, app, obter_url, verificacao='', esta_pronto=lambda: True):
         self.app = app
@@ -136,8 +138,9 @@ class PaginaPublica:
             return _resposta_publica('Página não encontrada.',404)(env, start_response)
         imagem = endpoint == 'static' and re.fullmatch(r'produtos/[a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif)', args.get('filename', ''), re.I)
         asset_publico = endpoint == 'static' and args.get('filename') in self.ASSETS
-        if endpoint not in self.ENDPOINTS and not imagem and not asset_publico:
+        if endpoint not in self.ENDPOINTS | self.REMOTOS and not imagem and not asset_publico:
             return _resposta_publica('Página não encontrada.',404)(env, start_response)
+        env['deliverybot.remote_gateway'] = endpoint in self.REMOTOS
         return self.app(env, start_response)
 
 

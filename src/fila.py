@@ -59,15 +59,20 @@ def listar_fila():
     return fila
 
 
-def avancar_status(pedido_id: int) -> dict:
+def avancar_status(pedido_id: int, *, _autorizar=None, status_esperado=None) -> dict:
     """Avança o pedido para o próximo status da fila e notifica o cliente no WhatsApp."""
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        if _autorizar:
+            _autorizar(conn)
         fila = conn.execute(
             "SELECT * FROM fila_preparo WHERE pedido_id = ?", (pedido_id,)
         ).fetchone()
         if fila is None:
             raise ValueError("Pedido não encontrado na fila de preparo.")
+
+        if status_esperado is not None and fila['status'] != status_esperado:
+            raise ValueError('O pedido mudou. Atualize a lista antes de continuar.')
 
         proximo = _TRANSICOES.get(fila["status"])
         if proximo is None:

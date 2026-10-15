@@ -504,6 +504,10 @@ def api_fila():
 
 from .gestao import bp as gestao_bp
 app.register_blueprint(gestao_bp)
+from .acesso_remoto import bp as remoto_bp
+app.register_blueprint(remoto_bp)
+from .acesso_remoto import encerrar_ao_iniciar
+encerrar_ao_iniciar()
 from .primeiros_passos import bp as preparacao_bp
 app.register_blueprint(preparacao_bp)
 

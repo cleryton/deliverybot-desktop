@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="csrf-token" content="{{ csrf }}"><meta name="robots" content="noindex,nofollow">
+<title>DeliveryBot · Acesso remoto</title><link rel="stylesheet" href="{{ url_for('static', filename='remoto.css') }}">
+<script defer src="{{ url_for('static', filename='remoto.js') }}"></script></head>
+<body><header><a class="brand" href="/remoto"><span>D</span> DeliveryBot <small>ACESSO REMOTO</small></a><span class="secure">HTTPS · acesso com prazo</span></header>
+<main><div class="intro"><p class="eyebrow">SUA LOJA, MAIS PERTO</p><h1>{{ loja }}</h1><p>Acompanhe a operação com o acesso autorizado pelo responsável.</p></div>
+<p id="remote-message" role="status" aria-live="polite"></p>
+<section id="remote-login" class="login-layout"><article class="card"><p class="eyebrow">ENTRADA PROTEGIDA</p><h2>Entre com sua conta</h2><p>O convite funciona uma vez e exige a senha da conta vinculada.</p>
+<form id="remote-login-form"><label>Código do convite<input id="remote-code" name="convite" type="password" required minlength="43" maxlength="43" autocomplete="off"></label>
+<label>Login<input name="login" required maxlength="80" autocomplete="username"></label><label>Senha<input name="senha" type="password" required minlength="12" maxlength="256" autocomplete="current-password"></label><button class="primary">Entrar na loja</button></form></article>
+<aside class="card guide"><div class="shield">◇</div><h2>Você controla o acesso</h2><p>O responsável escolhe as permissões e pode encerrar o acesso a qualquer momento.</p><ul><li>Consulta ou avanço de pedidos.</li><li>Encerramento após 15 minutos sem atividade.</li><li>Configurações e credenciais ficam no aplicativo.</li></ul><p>Use seu convite apenas em um dispositivo de confiança.</p></aside></section>
+<section id="remote-panel" hidden><div class="toolbar card"><div><p class="eyebrow" id="remote-person"></p><h2 id="remote-permission"></h2><p id="remote-expiry"></p></div><div class="buttons"><button id="remote-refresh">Atualizar agora</button><button id="remote-logout" class="danger">Encerrar acesso</button></div></div>
+<div class="metrics"><article class="card"><span>Pedidos em andamento</span><strong id="remote-count">0</strong></article><article class="card"><span>Valor dos pedidos em andamento</span><strong id="remote-total">R$ 0,00</strong></article></div>
+<h2>Pedidos da loja</h2><p>As atualizações são manuais. Avançar uma etapa também tenta avisar o cliente pelo WhatsApp.</p><div id="remote-orders" class="orders"></div>
+<details class="card"><summary>Consultar produtos ativos</summary><p>Preços e disponibilidade atuais, sem custos internos.</p><div id="remote-products" class="products"></div></details></section>
+<footer>Mantenha o aplicativo da loja aberto e o computador conectado. O acesso encerra quando o prazo termina ou o responsável revoga a permissão.</footer></main></body></html>

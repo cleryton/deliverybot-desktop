@@ -16,6 +16,7 @@
   <script defer src="{{ url_for('static', filename='catalogo_avancado.js') }}"></script>
   <script defer src="{{ url_for('static', filename='documentos_estoque.js') }}"></script>
   <script defer src="{{ url_for('static', filename='operadores.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='acesso_remoto_admin.js') }}"></script>
   <script defer src="{{ url_for('static', filename='caixa_admin.js') }}"></script>
 <script defer src="{{ url_for('static', filename='atualizacoes.js') }}"></script>
 <script defer src="{{ url_for('static', filename='publicacao.js') }}"></script><script defer src="{{ url_for('static', filename='meta_oficial.js') }}"></script></head>
@@ -35,17 +36,19 @@
       <button data-admin-only data-page="movimentos"><span>⇄</span> Movimentações</button>
       <button data-admin-only data-page="conexoes"><span>⌁</span> WhatsApp e IA</button>
       <button data-admin-only data-page="meta"><span>◎</span> Meta oficial e custos</button>
+      <button data-admin-only data-page="remoto"><span>↗</span> Acesso remoto</button>
       <button data-admin-only data-page="privacidade"><span>🔒</span> Privacidade e LGPD</button>
       <button data-admin-only data-page="bot"><span>☏</span> Testar atendimento</button>
       <button data-page="humano"><span>☏</span> Atendimento humano</button>
       <button data-admin-only data-page="configuracoes"><span>⚙</span> Configurações</button>
     <button data-admin-only data-page="caixas">▣ Caixas dos funcionários</button><button data-admin-only data-page="operadores">♙ Funcionários e auditoria</button><button data-admin-only data-page="atualizacoes">↻ Atualizações</button></nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.38.0</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.39.0</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
   </aside>
   <button id="menu-overlay" class="menu-overlay" type="button" aria-label="Fechar menu" hidden></button>
   <main id="main-content" tabindex="-1">
     <header class="topbar"><button id="menu-toggle" class="menu-toggle" type="button" aria-controls="app-menu" aria-expanded="false" aria-label="Abrir menu">☰ Menu</button><span id="breadcrumb">Sua operação, em um só lugar</span><div><label class="theme-picker">Tema<select data-theme-picker aria-label="Tema do aplicativo"><option value="sistema">Seguir o Windows</option><option value="claro">Claro</option><option value="escuro">Escuro</option></select></label><span id="connection" class="badge" role="status">Verificando conexão…</span><button id="refresh" class="icon-button" title="Atualizar dados" aria-label="Atualizar dados">↻</button></div><span id="theme-status" class="theme-feedback" role="status" hidden></span><span id="sync-status" class="sync-status" role="status" aria-live="polite"></span></header>
     <div class="content">
+      {% include 'acesso_remoto_admin.html' %}
       <section id="page-tutorial" class="page" hidden data-admin-only>
         <div class="page-heading"><div><p class="eyebrow">COM VOCÊ, PASSO A PASSO</p><h1>Vamos preparar seu aplicativo</h1><p>Escolha uma etapa. Cada guia explica o que fazer e leva você à tela certa.</p></div><button id="tutorial-refresh" type="button">Verificar configuração</button></div>
         <p class="notice">Os guias funcionam no próprio aplicativo, sem precisar do Ollama. Eles orientam; você decide quando salvar, conectar ou iniciar um serviço.</p>
