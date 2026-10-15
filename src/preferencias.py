@@ -14,7 +14,7 @@ TEXTOS = {
     "BASE_URL": 500, "WAHA_URL": 500, "WAHA_SESSION": 80,
     "TUNEL_URL": 500,
     "WAHA_WEBHOOK_BASE_URL": 500,
-    "WHATSAPP_PHONE_NUMBER_ID": 80, "WHATSAPP_BUSINESS_ACCOUNT_ID": 80, "OLLAMA_URL": 500, "OLLAMA_MODEL": 100,
+    "WHATSAPP_APP_ID": 80, "WHATSAPP_PHONE_NUMBER_ID": 80, "WHATSAPP_BUSINESS_ACCOUNT_ID": 80, "OLLAMA_URL": 500, "OLLAMA_MODEL": 100,
     "ANTHROPIC_MODEL": 100,
     "LGPD_RESPONSAVEL": 160, "LGPD_CONTATO": 200, "LGPD_RETENCAO_PEDIDOS": 1000,
 }
@@ -61,7 +61,7 @@ def obter():
             "segredos_configurados": {k: bool(getattr(config, k)) for k in SEGREDOS}}
 
 
-def salvar(dados, *, numero_meta_esperado=None):
+def salvar(dados, *, numero_meta_esperado=None, conta_meta_esperada=None, meta_sem_pendencias=False):
     if any(k.startswith('TUNEL_') for k in dados):
         from .publicacao import situacao
         if situacao()['ativo']:
@@ -113,6 +113,14 @@ def salvar(dados, *, numero_meta_esperado=None):
         raise ValueError("Preencha a chave da Anthropic para ativar a IA.")
     with get_conn() as conn:
         conn.execute('BEGIN IMMEDIATE')
+        if conta_meta_esperada is not None:
+            for chave in ('WHATSAPP_PROVIDER', 'WHATSAPP_APP_ID', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_BUSINESS_ACCOUNT_ID'):
+                linha = conn.execute('SELECT valor FROM configuracoes WHERE chave=?', (chave,)).fetchone()
+                atual = linha[0] if linha else getattr(config, chave)
+                if atual != conta_meta_esperada[chave]:
+                    raise ValueError('A conta foi alterada durante a consulta. Atualize a página antes de conectar.')
+        if meta_sem_pendencias and conn.execute("SELECT 1 FROM tarefas_bot WHERE estado!='CONCLUIDA' LIMIT 1").fetchone():
+            raise ValueError('Revise as mensagens pendentes antes de conectar outra conta.')
         if numero_meta_esperado is not None:
             armazenado = conn.execute("SELECT valor FROM configuracoes WHERE chave='WHATSAPP_PHONE_NUMBER_ID'").fetchone()
             atual = armazenado[0] if armazenado else config.WHATSAPP_PHONE_NUMBER_ID

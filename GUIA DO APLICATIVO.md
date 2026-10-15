@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.37.0
+# DeliveryBot Desktop 2.38.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -41,6 +41,8 @@ O perfil acompanha os backups. O Ollama recebe a descrição como referência da
 As importações de catálogo seguem o padrão do comércio. No CSV, a coluna opcional `controlar_estoque` aceita `sim` ou `nao`. Na leitura de PDF ou planilha, confira a opção de controle de cada novo item na revisão; entradas e contagens de produtos existentes continuam exigindo SKU e controle de estoque já cadastrado.
 
 ## API oficial da Meta
+
+Para testar em outros computadores, entregue o instalador, sem sua pasta de dados. Cada pessoa abre **Meta oficial e custos → Conectar minha conta Meta** e usa o próprio app, conta e credenciais. O assistente consulta os números, valida o token e pode configurar o HTTPS e webhook com confirmação, sem compartilhar seu token. Use um app Meta separado por instalação. Se o HTTPS temporário mudar, use **Atualizar webhook da conta já salva**. Veja os passos e os limites em `docs/META PRODUCAO E CUSTOS.md`.
 
 Abra **Meta oficial e custos** para preparar a futura troca para um número próprio, validar o acesso ao número e à conta Meta e acompanhar mensagens e estimativas de gasto. Cadastre tarifas e orçamento mensal; os preços não são presumidos. O painel distingue testes de produção, evita duplicar cobranças de eventos repetidos e mostra custos desconhecidos como pendentes. Veja o roteiro completo em `docs/META PRODUCAO E CUSTOS.md`. A troca local exige revisão da fila e confirmação e preserva os dados da loja; não publica o aplicativo na Meta nem configura pagamentos automaticamente.
 
