@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.39.0 — 2026-10-15
+
+Adiciona gestão remota isolada com convites de uso único, conta vinculada, permissões de consulta ou avanço de pedidos, prazo e revogação local. Inclui proteção de sessão, CSRF, limites de tentativas e revalidação transacional, interface responsiva e testes com dados fictícios.
+
 ## 2.38.0 — 2026-10-15
 
 Assistente individual da Meta com credenciais próprias por instalação, consulta dos números, validação de aplicativo e validade do token, chave de webhook automática e configuração do HTTPS/webhook com confirmação. Interface em etapas, campos protegidos durante a gravação, tratamento de respostas atrasadas e recuperação de configuração parcial. Oculta tokens de diagnóstico nos logs e impede escritas simultâneas e troca de conta com fila pendente. Nenhuma credencial do autor é incluída na distribuição. Testes de isolamento, autenticação, CSRF, concorrência e formulários.

@@ -236,6 +236,23 @@ def operador_atual():
     return jsonify(usuario=operadores.usuario(),administrador=operadores.admin(),contas_ativas=operadores.existem())
 
 
+@bp.route('/gestao/api/remoto', methods=['GET', 'POST', 'DELETE'])
+@bp.route('/gestao/api/remoto/<int:rid>', methods=['DELETE'])
+@protegido
+def acesso_remoto_api(rid=None):
+    from . import acesso_remoto
+    u = operadores.usuario()
+    if not _local() or not current_app.config.get('DESKTOP_TOKEN') or not u or u['perfil'] != 'ADMIN':
+        return jsonify(erro='Gerencie o acesso remoto no aplicativo do responsável, com uma conta administradora.'), 403
+    if request.method == 'POST':
+        return jsonify(acesso_remoto.criar(dados_json())), 201
+    if request.method == 'DELETE':
+        if dados_json().get('confirmar') is not True:
+            raise ValueError('Confirme o encerramento do acesso remoto.')
+        acesso_remoto.revogar(rid)
+    return jsonify(acesso_remoto.situacao())
+
+
 @bp.route('/gestao/api/terminal',methods=['GET','PUT'])
 @protegido
 def terminal_api():

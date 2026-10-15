@@ -16,6 +16,7 @@ DOCUMENTOS = {
     'packaging/LICENCA Pillow.txt': 'LICENCA Pillow.txt',
     'packaging/LICENCAS documentos.txt': 'LICENCAS documentos.txt',
     'GUIA DO FUNCIONARIO.md': 'Como usar o DeliveryBot Funcionario.txt',
+    'docs/ACESSO REMOTO.md': 'Como usar o acesso remoto.txt',
 }
 GERADOS = frozenset((*BINARIOS, *DOCUMENTOS.values(), 'VERSAO.json', 'SHA256SUMS.txt'))
 

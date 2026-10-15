@@ -280,3 +280,13 @@ CREATE TABLE IF NOT EXISTS meta_orcamento (
     alerta_percentual INTEGER NOT NULL DEFAULT 80 CHECK(alerta_percentual BETWEEN 1 AND 100)
 );
 INSERT OR IGNORE INTO meta_orcamento(id) VALUES(1);
+
+-- Convites remotos de uso único. Segredos em texto nunca são persistidos.
+CREATE TABLE IF NOT EXISTS acessos_remotos (
+    id INTEGER PRIMARY KEY, operador_id INTEGER NOT NULL REFERENCES operadores(id),
+    conta_versao TEXT NOT NULL, convite_hash TEXT NOT NULL UNIQUE,
+    permissao TEXT NOT NULL CHECK(permissao IN ('CONSULTA','PEDIDOS')),
+    expira_em REAL NOT NULL, ativo INTEGER NOT NULL DEFAULT 1,
+    usado INTEGER NOT NULL DEFAULT 0, sessao_hash TEXT, ultimo REAL,
+    criado_em TEXT NOT NULL DEFAULT (datetime('now'))
+);

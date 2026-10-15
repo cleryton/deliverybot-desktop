@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.38.0
+# DeliveryBot Desktop 2.39.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -322,3 +322,7 @@ Em telas menores, abra Menu para acessar todas as páginas. Use Escape ou a áre
 ## Verificações de segurança
 
 Os controles e a cobertura de testes OWASP estão em [SEGURANCA OWASP.md](SEGURANCA%20OWASP.md). O Actions verifica as alterações com dados fictícios e relatórios de segurança antes da integração. A varredura ZAP roda somente no ambiente de validação; o cliente não precisa instalar ferramentas adicionais.
+
+## Acesso remoto pela internet
+
+No aplicativo do responsável, abra **Acesso remoto** para gerar um convite individual com prazo e permissão. A pessoa entra pelo navegador usando o convite e sua própria conta cadastrada. O responsável pode revogar um acesso ou encerrar todos. Consulte o [guia de acesso remoto](docs/ACESSO%20REMOTO.md) para configurar HTTPS, contas, prazos e conhecer os limites.
