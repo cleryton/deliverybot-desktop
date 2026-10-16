@@ -5,10 +5,16 @@
 ```mermaid
 flowchart LR
     Operador[Operador] --> Desktop[Desktop e painel local]
+    Funcionario[Funcionário em dispositivo pareado] --> TLS[Gateway TLS privado e caixa individual]
+    TLS --> Regras
+    Remoto[Conta com convite e senha] --> HTTPS
     Cliente[Cliente] --> WA[Adaptador WhatsApp]
     Cliente --> HTTPS[Endereço HTTPS]
     HTTPS --> Gateway[Gateway de rotas públicas]
     Gateway --> Flask[Aplicação Flask]
+    Gateway --> Acesso[Área remota de consulta ou avanço de pedidos]
+    Acesso --> Autorizacao[Autorização revalidada na transação]
+    Autorizacao --> Regras
     Desktop --> Flask
     WA --> Bot[Fluxo de atendimento]
     Bot --> Regras[Regras e validação comercial]
@@ -23,6 +29,8 @@ flowchart LR
 ```
 
 O desenho representa responsabilidades; não é um inventário de todas as chamadas entre módulos. O modo de IA externa é opcional e fica fora da comparação principal. O Graph é uma visualização das notas, não um mecanismo de persistência de pedidos.
+
+O adaptador Meta usa a API oficial com credenciais próprias por instalação; LOCAL e WAHA são modos diferentes e não devem ser apresentados como APIs oficiais da Meta. A área remota foi adicionada na v2.39.0 com contrato reduzido: não publica o painel administrativo completo. O laboratório acadêmico em `packaging/avaliacao_tcc.py` roda separado da aplicação, sem importar o banco ou iniciar serviços. As [fronteiras de confiança](AMEACAS_E_DECISOES.md) detalham os acessos.
 
 ## Modelo de dados do núcleo comercial
 
@@ -136,6 +144,14 @@ As referências identificam arquivos e funções existentes. A evidência de apr
 | RNF06 | Rejeitar entradas HTTP ambíguas e manter controles no gateway. | `src/validacao_http.py`, `src/seguranca.py`, `src/publicacao.py` | `tests/test_owasp.py`, `tests/test_zap.py` |
 | RNF07 | Distribuir aplicativo e instalador com integridade verificável. | `DeliveryBot.spec`, `packaging/distribuicao.py`, `desktop.py` | `tests/test_distribuicao.py` e smoke do executável no Actions |
 | RNF08 | Explicar o próximo passo e preservar interação na atualização. | `web/static/experiencia.js`, `web/templates/gestao.html` | `tests/test_experiencia.py`, `tests/js/experiencia.test.cjs` |
+| RF10 | Configurar uma conta Meta individual sem herdar a credencial do autor. | `src/meta_configuracao.py` | `tests/test_meta_configuracao.py::test_consulta_usa_credenciais_explicitamente_e_nunca_retoma_token_de_outra_pessoa` |
+| RF11 | Autorizar consulta remota e avanço opcional com convite único e conta vinculada. | `src/acesso_remoto.py` | `tests/test_acesso_remoto.py::test_link_so_aceita_conta_vinculada_e_uma_unica_entrada`, `test_consulta_nao_avanca_e_operacao_usa_status_esperado` |
+| RNF09 | Impedir alteração remota se a autorização foi revogada antes da gravação. | `src/acesso_remoto.py`, `src/fila.py` | `tests/test_acesso_remoto.py::test_revogacao_antes_da_transacao_impede_pedido_e_aviso` |
+| RNF10 | Vincular terminal à conta de caixa e revalidar permissão dentro da transação. | `src/terminal.py`, `src/politica_terminal.py` | `tests/test_politica_terminal.py::test_revogacao_no_meio_da_requisicao_impede_transacao` |
+| RA01 | Preparar a avaliação sem inventar medidas ou descartar tentativas. | `packaging/avaliacao_tcc.py` | `tests/test_avaliacao_tcc.py::test_plano_tem_72_tentativas_sem_notas_nem_resultados_fabricados`, `test_nao_aceita_remover_duplicar_ou_incluir_dados_pessoais` |
+| RA02 | Separar falhas e respostas locais da comparação do modelo. | `packaging/avaliacao_tcc.py` | `tests/test_avaliacao_tcc.py::test_timeout_e_erro_nao_desaparecem_e_nao_recebem_nota`, `test_fallback_e_resposta_local_nao_recebem_credito_do_modelo` |
+
+RF e RNF descrevem o produto; RA identifica o instrumento de pesquisa. Passar nos testes RA demonstra os cálculos e validações do instrumento em dados sintéticos, sem comprovar melhoria de respostas reais.
 
 ## Decisões e limites
 
@@ -145,6 +161,6 @@ As referências identificam arquivos e funções existentes. A evidência de apr
 | Estoque opcional por item | Separar produtos prontos, encomendas e serviços. | Não há gestão automática de ingredientes ou composição de custos de produção. |
 | Inferência local opcional | Permitir geração sem API paga obrigatória. | Exige Ollama, modelo instalado e recursos de hardware; consumo de energia e custo do equipamento permanecem. |
 | Notas editoriais aprovadas | Tornar a personalização inspecionável e revogável. | Requer revisão humana; seleção textual pode recuperar conteúdo incompleto ou irrelevante. |
-| Gateway público restrito | Expor catálogo e pedidos sem publicar o painel. | Não elimina todas as vulnerabilidades nem os riscos do dispositivo hospedeiro. |
+| Gateway público restrito | Expor catálogo, pedidos, webhooks e área remota com operações explicitamente permitidas, sem publicar o painel interno. | Não elimina todas as vulnerabilidades nem os riscos do dispositivo hospedeiro. |
 | Túnel temporário | Simplificar demonstração e acesso remoto. | URL pode mudar, rede e provedor podem falhar; disponibilidade contínua não é garantida. |
 | Testes em dados fictícios | Reproduzir regressões preservando clientes reais. | Não reproduzem integralmente rede, mensagens e comportamento de pessoas em produção. |

@@ -35,6 +35,7 @@ Desenvolver e avaliar um aplicativo desktop que integre atendimento conversacion
 - Organizar conhecimento editorial por segmento e etapa de atendimento, usando somente notas aprovadas e válidas.
 - Disponibilizar diagnóstico de serviços, preparação do endereço público e recuperação limitada de falhas.
 - Verificar controles de acesso, proteção dos dados e integridade das operações com testes automatizados.
+- Delimitar os acessos de cliente, caixa, visitante remoto e responsável, com verificação de autorização na persistência.
 - Comparar respostas com e sem conhecimento editorial e avaliar tarefas de uso em ambiente controlado.
 
 ### 1.4 Justificativa e recorte
@@ -67,6 +68,18 @@ O guia da ANPD sobre fins acadêmicos orienta o tratamento de dados em estudos e
 
 As fontes e os endereços consultados estão em [Referências](REFERENCIAS.md). Complementar a fundamentação com estudos acadêmicos de atendimento conversacional e avaliação de interação humano-computador selecionados com o orientador.
 
+### 2.5 Trabalhos relacionados e distinção do artefato
+
+Esta é uma seleção inicial e não sistemática de fontes primárias, consultadas em 15 out. 2026. Ela não permite afirmar esgotamento da literatura ou ineditismo do sistema.
+
+| Trabalho | Relação com a pesquisa | Distinção e limite |
+| --- | --- | --- |
+| Peffers et al. (2007) | Estrutura a pesquisa orientada à construção e avaliação do artefato. | É fundamento metodológico; não demonstra utilidade comercial do DeliveryBot. |
+| Lewis et al. (2020) | Investiga geração associada à recuperação de conhecimento externo aos parâmetros. | O artigo usa recuperador neural, índice denso e ajuste de modelos. O DeliveryBot usa seleção textual de notas e não reproduz essa arquitetura ou seu treinamento; os resultados do artigo não podem ser transferidos ao aplicativo. |
+| Amershi et al. (2019) | Apresenta diretrizes de interação humano–IA, desenvolvidas e avaliadas em cenários de interface. | É uma referência para discutir a interação; a facilidade de uso do DeliveryBot exige avaliação própria, ainda pendente. |
+
+Ampliar a revisão com bases, expressões de busca, critérios de inclusão/exclusão e fichamentos documentados com o orientador. A contribuição delimitada é a integração verificável entre registro comercial e contexto editorial revisável, acompanhada de instrumento de avaliação; não a criação de um novo modelo ou algoritmo de recuperação neural.
+
 ## 3 Metodologia
 
 A proposta é uma pesquisa aplicada, orientada ao desenvolvimento e à avaliação de um artefato de software. A avaliação técnica é experimental em ambiente controlado; eventual estudo com usuários terá caráter exploratório. Essas classificações descrevem o plano, sujeito à aprovação do orientador.
@@ -74,6 +87,14 @@ A proposta é uma pesquisa aplicada, orientada ao desenvolvimento e à avaliaç�
 O processo compreende delimitação do problema, especificação de requisitos, desenvolvimento incremental, demonstração em dados fictícios, avaliação e comunicação. Os requisitos são vinculados a módulos e testes na [matriz de rastreabilidade](ARQUITETURA_E_REQUISITOS.md). O histórico Git permite identificar os estados avaliados e as alterações realizadas.
 
 A avaliação combina três camadas. A primeira verifica comportamento funcional e falhas por testes automatizados. A segunda compara respostas geradas sob condições controladas, variando a presença de conhecimento editorial. A terceira observa tarefas de configuração, cadastro e acompanhamento de pedido. O [protocolo](AVALIACAO.md) define tarefas, medidas, critérios e limitações. As camadas ainda não executadas devem permanecer identificadas como planejamento.
+
+### 3.1 Operacionalização e instrumento de avaliação
+
+As perguntas Q1–Q4 e suas evidências estão no [plano de pesquisa](PLANO_DE_PESQUISA.md). O laboratório DB-TCC-1 organiza 12 casos fictícios, duas condições e três repetições, totalizando 72 tentativas. O instrumento registra metadados e medidas declaradas pelo pesquisador, valida a completude e calcula estatística descritiva. Não executa a coleta, infere notas ou verifica a autenticidade das declarações.
+
+O analisador distingue pendência, resposta entregue, erro, timeout e bloqueio de proteção. Informa proporções com denominadores, medianas e P95 pelo método R7, com durações separadas conforme origem da resposta. Respostas locais e de contingência permanecem na avaliação do sistema, sem serem atribuídas como acertos do modelo. Diferenças editoriais B−A são calculadas somente nos pares caso/repetição elegíveis, com cobertura explicitada. A rubrica é exploratória, com dois julgamentos individuais, médias descritivas e concordância exata; não se presume validade psicométrica ou significância estatística.
+
+O código e seus testes sintéticos tornam o cálculo verificável. A interpretação científica ainda depende da coleta real, dos materiais preservados, da revisão independente e da discussão das ameaças à validade. O [guia do laboratório](LABORATORIO.md) define campos, comandos, limites e preservação dos registros.
 
 ## 4 Desenvolvimento
 
@@ -87,9 +108,15 @@ O cofre editorial mantém estilo, conhecimento e padrões de segmento e etapa. A
 
 Os diagramas e os módulos concretos estão em [Arquitetura e requisitos](ARQUITETURA_E_REQUISITOS.md).
 
+### 4.1 Papéis e fronteiras de acesso
+
+O aplicativo dos funcionários utiliza gateway TLS na rede privada, dispositivo pareado e conta de caixa vinculada. A área remota pela internet exige convite de uso único, senha, prazo e permissão reduzida, com revogação local. A autorização é novamente conferida na transação antes de avançar um pedido. Dados de credenciais, configuração e backups não fazem parte do contrato remoto.
+
+A integração Meta oficial usa credenciais próprias por instalação e valida a relação entre aplicativo, token e conta antes da configuração. Os demais provedores de transporte são distinguidos na documentação. Esses mecanismos ampliam as fronteiras que precisam ser avaliadas; não tornam o sistema automaticamente seguro. A [análise de ameaças e decisões](AMEACAS_E_DECISOES.md) liga tentativas adversariais a controles e riscos residuais.
+
 ## 5 Resultados e discussão preliminar
 
-Na referência técnica v2.33.0, a validação local registrou 516 testes Python aprovados e um ignorado, além de 35 testes JavaScript. O Actions do commit de referência concluiu os checks exigidos. O ZAP apresentou seis avisos e nenhum bloqueio segundo a política configurada. Os links, o commit e as condições de reprodução estão em [Evidências](EVIDENCIAS.md). Esses números pertencem àquela versão e não devem ser reutilizados como resultado de outra execução.
+Na referência técnica preservada v2.39.0, commit `70fb8d4b43c0c765298e3dabe2f277595872f63d`, o relatório JUnit do check Windows do Actions registrou 785 casos aprovados, sem falhas, erros ou ignorados naquele ambiente. Os checks de código/WhatsApp e OWASP/ZAP, a compilação e os testes dos executáveis também concluíram com sucesso. A referência anterior v2.33.0 permanece registrada como histórico. Os links, hashes e condições de reprodução estão em [Evidências](EVIDENCIAS.md). Os números pertencem a essas execuções e não devem ser apresentados como resultados de inferência ou da versão atual sem nova coleta técnica.
 
 Os testes cobrem, entre outros comportamentos, pedidos não duplicados, separação entre produção e estoque controlado, recusa de links inventados, seleção de notas aprovadas e controles de acesso. A aprovação demonstra que os casos executados atenderam às asserções; não demonstra ausência de todos os defeitos.
 

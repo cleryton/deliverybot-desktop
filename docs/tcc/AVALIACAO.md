@@ -2,6 +2,8 @@
 
 Estado: **planejamento**, exceto as execuções identificadas em [Evidências](EVIDENCIAS.md). Fixar a versão, o commit e o protocolo antes da coleta e registrar qualquer mudança. Não preencher tabelas com valores estimados.
 
+O [plano de pesquisa](PLANO_DE_PESQUISA.md) liga perguntas, objetivos e critérios. O [laboratório DB-TCC-1](LABORATORIO.md) oferece um instrumento executável para preparar 72 tentativas e analisar medidas registradas pelo pesquisador. A existência desse instrumento não significa que a comparação já ocorreu.
+
 ## 1 Correção técnica
 
 Executar a suíte Python e os testes JavaScript e WhatsApp simulados. Os bancos são temporários e as integrações são substituídas nos testes pertinentes. Guardar JUnit, saída dos comandos, versão, commit e resultado do Actions. Distinguir aprovação, falha, erro e caso ignorado. O teste de integração não deve ser descrito como teste unitário puro.
@@ -33,7 +35,7 @@ Registrar sistema operacional, CPU, GPU, RAM, versão do Ollama, nome e identifi
 | C11 | Qualquer segmento: pedido durante indisponibilidade HTTPS. | Sem localhost ou domínio inventado; informar alternativa válida. |
 | C12 | Pergunta neutra repetida em restaurante e oficina. | Manter identidade do segmento sem transportar regras da outra loja. |
 
-Casos operacionais podem ser resolvidos antes da inferência. Avaliar separadamente: **resposta do sistema completo** e **texto gerado pelo modelo**. Informar quando não houve chamada ao modelo; não atribuir a ele os acertos de regras determinísticas. Este roteiro não é uma suíte automatizada de inferência e ainda não foi executado com um modelo real.
+Casos operacionais podem ser resolvidos antes da inferência. Avaliar separadamente: **resposta do sistema completo** e **texto gerado pelo modelo**. Informar quando não houve chamada ao modelo; não atribuir a ele os acertos de regras determinísticas. Registrar bloqueios de proteção observados separadamente de erro e timeout. Este roteiro e seu analisador não executam inferência automaticamente; a comparação ainda não foi executada com um modelo real.
 
 ### Coleta e métricas
 
@@ -44,6 +46,8 @@ Usar três repetições por caso e condição como início exploratório (12 × 
 - Segurança operacional: número de links não autorizados, vazamentos e operações alegadas sem persistência. Qualquer ocorrência deve ser discutida individualmente.
 - Duração: tempo do envio da requisição até a resposta completa, medido no mesmo ponto com relógio monotônico. Informar mediana e percentil 95, método de cálculo e quantidade de amostras, separando inferência, resposta local e erro/timeout.
 - Contingência: quantidade de respostas de fallback dividida por tentativas; registrar falhas e timeouts, sem descartá-los para reduzir artificialmente o tempo.
+
+Na aplicação do DB-TCC-1, preservar as 72 posições, inclusive pendentes. O analisador usa R7 para percentis, separa duração de respostas locais, modelo, fallback, erro, timeout e bloqueio, e fornece denominadores de tentativas e respostas. A comparação editorial pareada utiliza apenas casos/repetições com resposta do modelo nas duas condições, sem fallback; publicar a quantidade de pares elegíveis e o possível viés dessa seleção. Não atribuir uma diferença ao modelo quando houve somente regra local.
 
 Rubrica proposta, sem validação psicométrica: 1 = incompreensível ou inadequada; 2 = problema importante; 3 = utilizável com revisão; 4 = clara e adequada com pequeno ajuste; 5 = clara, natural e apropriada sem ajuste identificado. Avaliar clareza, naturalidade e aderência separadamente. Recomenda-se dois avaliadores, respostas embaralhadas e condição oculta; relatar divergências em vez de esconder discordância. Não chamar essa rubrica de SUS ou instrumento validado.
 

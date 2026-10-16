@@ -20,6 +20,8 @@ Proposta de apresentação de 12 a 15 minutos, ajustável ao tempo da instituiç
 4. Mostrar orientação editorial aprovada, seu segmento e sua etapa. Revogar uma nota e apresentar a evidência de que ela sai do contexto.
 5. Demonstrar a indisponibilidade do serviço em dados de laboratório, sem parar serviços de uso real. O atendimento deve informar o problema ou usar contingência conforme o caso.
 6. Apresentar o endereço público somente se o túnel estiver verificado. Caso esteja indisponível, utilizar a captura preparada e explicar a dependência de rede.
+7. Se o recorte da apresentação incluir segurança, mostrar uma permissão remota reduzida e sua revogação com dados fictícios. Relacionar a ação à revalidação dentro da transação.
+8. Abrir o plano DB-TCC-1 e explicar que as 72 posições não são 72 resultados coletados. Não usar saídas sintéticas dos testes como evidência de melhoria da IA. Para um vídeo curto da entrega, seguir [Entrega acadêmica](ENTREGA_ACADEMICA.md).
 
 Uma demonstração ao vivo com transporte WhatsApp real exige autorização específica e preparação separada; o roteiro padrão usa testes e capturas com dados fictícios. Capturas antigas de testes de amigos com nomes e telefones precisam ser removidas ou anonimizadas antes da apresentação.
 

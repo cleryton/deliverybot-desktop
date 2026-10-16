@@ -11,6 +11,10 @@ Este material organiza o aplicativo como um artefato de pesquisa aplicada em des
 | [Base da monografia](MONOGRAFIA.md) | Introdução, objetivos, fundamentação, metodologia, desenvolvimento e discussão inicial. |
 | [Arquitetura e requisitos](ARQUITETURA_E_REQUISITOS.md) | Diagramas e rastreabilidade entre requisito, código e teste. |
 | [Protocolo de avaliação](AVALIACAO.md) | Casos fictícios, comparação das respostas, métricas e formulário de observação. |
+| [Plano de pesquisa](PLANO_DE_PESQUISA.md) | Perguntas, objetivos, critérios, etapas do método e ameaças à validade. |
+| [Laboratório reproduzível](LABORATORIO.md) | Plano de 72 tentativas e análise A/B com medidas explícitas, sem coleta automática. |
+| [Ameaças e decisões](AMEACAS_E_DECISOES.md) | Fronteiras entre cliente, remoto, caixa e responsável, com testes negativos. |
+| [Entrega acadêmica](ENTREGA_ACADEMICA.md) | Links de código, descrição das mudanças, trechos principais, roteiro de vídeo e preparação do resumo expandido. |
 | [Evidências técnicas](EVIDENCIAS.md) | Reprodução dos testes, limites dos resultados e histórico verificável. |
 | [Apresentação à banca](APRESENTACAO.md) | Roteiro da demonstração e perguntas técnicas. |
 | [Referências](REFERENCIAS.md) | Fontes primárias consultadas e pontos em que fundamentam o trabalho. |
@@ -19,7 +23,7 @@ Este material organiza o aplicativo como um artefato de pesquisa aplicada em des
 
 1. Validar pergunta, recorte e critérios com o orientador. Usar uma loja fictícia de produção e uma de revenda, mantendo os demais segmentos como extensão.
 2. Executar a validação técnica no checkout escolhido e guardar os relatórios junto à versão e ao commit.
-3. Executar a comparação controlada de respostas definida no protocolo; anotar modelo, hardware e configuração. Os resultados de inferência ainda precisam ser coletados.
+3. Preparar o [laboratório DB-TCC-1](LABORATORIO.md), fixar materiais e executar a comparação controlada definida no protocolo; anotar modelo, hardware e configuração. O analisador calcula as métricas declaradas, mas os resultados de inferência ainda precisam ser coletados.
 4. Se houver participantes, acertar previamente com a instituição o procedimento ético e a proteção dos dados; usar somente tarefas fictícias. A avaliação com pessoas ainda está pendente.
 5. Preencher resultados, discutir falhas e limitações e revisar a monografia. Substituir todos os campos marcados como pendentes antes da entrega.
 
