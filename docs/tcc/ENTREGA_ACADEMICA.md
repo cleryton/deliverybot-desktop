@@ -9,7 +9,7 @@ Confirmar horário, canal de envio e eventuais exigências adicionais com a inst
 
 ## 1 Código atualizado e histórico
 
-Repositório: [cleryton/deliverybot-desktop](https://github.com/cleryton/deliverybot-desktop). O código desta preparação acadêmica ficará na [tag v2.40.0](https://github.com/cleryton/deliverybot-desktop/tree/v2.40.0); o [histórico dessa versão](https://github.com/cleryton/deliverybot-desktop/commits/v2.40.0) e a [comparação com v2.39.0](https://github.com/cleryton/deliverybot-desktop/compare/v2.39.0...v2.40.0) mostram as alterações. Conferir que a tag e os checks existem antes de enviar os links.
+Repositório: [cleryton/deliverybot-desktop](https://github.com/cleryton/deliverybot-desktop). O código desta preparação acadêmica está identificado pela [tag v2.40.1](https://github.com/cleryton/deliverybot-desktop/tree/v2.40.1); o [histórico dessa versão](https://github.com/cleryton/deliverybot-desktop/commits/v2.40.1) e a [comparação com v2.39.0](https://github.com/cleryton/deliverybot-desktop/compare/v2.39.0...v2.40.1) mostram as alterações. Conferir que a tag e os checks existem antes de enviar os links.
 
 Evolução imediatamente anterior: [commit 70fb8d4 — acesso remoto controlado](https://github.com/cleryton/deliverybot-desktop/commit/70fb8d4b43c0c765298e3dabe2f277595872f63d), integrado pelo [PR 24](https://github.com/cleryton/deliverybot-desktop/pull/24). A evidência técnica dessa versão está identificada em [Evidências](EVIDENCIAS.md).
 

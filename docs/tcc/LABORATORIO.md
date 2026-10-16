@@ -14,11 +14,15 @@ O comando cria um arquivo novo com 72 posições pendentes: os casos C01–C12 d
 
 O arquivo registra versão, commit e alterações locais existentes ao preparar o plano. Esses dados são declarativos: conferir que a coleta usou o mesmo código, guardar comandos e horários e reiniciar a rodada se o código avaliado mudar. O plano não autentica uma execução futura. Em CI, diferenciar o SHA da branch do commit de merge temporário usado no teste de um pull request.
 
+Uma posição é uma tentativa da entrada final do caso; não uma conversa inteira com quantidade variável de respostas. Preparações como revogar a nota no C08 ou introduzir histórico de restaurante antes do C12 não entram no tempo medido e devem ser idênticas no par A/B. Os casos C05/C12 são extensões do recorte principal, não uma terceira população comercial estudada.
+
 ## 2 Fixar os materiais
 
 Preencher `ambiente` antes de medir: nome e digest do modelo, versão do Ollama, CPU, GPU (ou `Sem GPU`), RAM em GB, temperatura, janela de contexto e seed, ou `null` se não suportada. Usar o mesmo ambiente nas duas condições. Registrar as configurações efetivamente usadas, não valores recomendados genéricos.
 
 Registrar SHA-256 em hexadecimal com 64 caracteres, sem prefixo, para digest do modelo, prompts A/B, catálogo e material editorial. Para um conjunto de notas, preparar um manifesto ordenado de nomes relativos e hashes dos arquivos fictícios, guardar esse manifesto e usar seu hash em `notas_sha256`. Os hashes não substituem a preservação dos materiais. Não usar credenciais ou dados reais nesses arquivos.
+
+Como os casos utilizam perfis e estados diferentes, o catálogo e o material editorial devem conter snapshots identificados por caso. O manifesto deve incluir versões aprovadas/revogadas das notas, políticas fictícias e as referências esperadas. Os hashes de prompts identificam os templates A/B; preservar também as entradas, o histórico e a associação a cada caso. O ambiente global do JSON não comprova que esses materiais foram mantidos: a revisão do caderno e dos snapshots é parte da reprodução.
 
 Separar aquecimento das tentativas e marcar `aquecimento_excluido: true` somente depois de fazê-lo. O analisador exige o campo, mas não tem como verificar a declaração. Prompts A/B diferem somente no contexto editorial; regras comerciais, catálogo, modelo e demais parâmetros permanecem iguais. Usar histórico controlado e reiniciar entre casos independentes, como definido no protocolo.
 

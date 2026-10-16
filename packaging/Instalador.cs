@@ -93,7 +93,7 @@ class Instalador : Form {
             Atalho(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),"DeliveryBot.lnk"),exe);
             Atalho(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs),"DeliveryBot.lnk"),exe);
             using(RegistryKey key = Registry.CurrentUser.CreateSubKey(Registro)) {
-                key.SetValue("DisplayName","DeliveryBot"); key.SetValue("DisplayVersion","2.40.0");
+                key.SetValue("DisplayName","DeliveryBot"); key.SetValue("DisplayVersion","2.40.1");
                 key.SetValue("Publisher","DeliveryBot"); key.SetValue("InstallLocation",Destino);
                 key.SetValue("DisplayIcon",Path.Combine(Destino,"DeliveryBot.ico"));
                 key.SetValue("UninstallString","\"" + Path.Combine(Destino,"Desinstalar.exe") + "\"");
