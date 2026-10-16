@@ -245,7 +245,7 @@ def _criar_se_ausente(caminho: Path, conteudo: str) -> None:
         pass
 
 
-def _preparar() -> Path:
+def _preparar(*, sincronizar_mapa=True) -> Path:
     pasta = diretorio()
     categoria = padroes_atendimento.categoria()
     padroes = pasta / 'Atendimentos' / padroes_atendimento.PERFIS[categoria][0]
@@ -391,7 +391,8 @@ O lançamento será feito somente após a revisão no aplicativo. Esta nota não
         "newFileFolderPath": "Conhecimento",
         "attachmentFolderPath": "Anexos",
     }, ensure_ascii=False, indent=2) + "\n")
-    _sincronizar_mapa(pasta)
+    if sincronizar_mapa or not (pasta / _ARQUIVO_MAPA).exists():
+        _sincronizar_mapa(pasta)
     return pasta
 
 
@@ -470,13 +471,13 @@ def registrar_documento_estoque(token: str, linhas: str) -> Path:
 
 def situacao() -> dict:
     pasta = _preparar()
-    estilo = instrucoes_estilo()
+    _, estilo = _ler(pasta / _ARQUIVO_ESTILO)
     categoria = padroes_atendimento.categoria()
     padroes = _padroes_aprovados(pasta)
     ativos = bool(estilo) + len(_notas_aprovadas(pasta)) + len(padroes)
     return {
         "pasta": str(pasta),
-        "arquivo": str(arquivo_inicio()),
+        "arquivo": str(pasta / 'Início.md'),
         "cofre_obsidian": True,
         "notas_contexto": ativos,
         "consulta_por_assunto": True,
@@ -707,7 +708,9 @@ def instrucoes_estilo() -> str:
 
 def instrucoes_contexto(pergunta: str = '') -> str:
     """Seleciona conhecimento aprovado pelo assunto; nunca grava a pergunta no cofre."""
-    pasta = _preparar()
+    # O Graph é uma visão derivada, atualizada ao abrir o cofre/leitor/estado.
+    # As notas continuam sendo relidas e revalidadas em cada resposta.
+    pasta = _preparar(sincronizar_mapa=False)
     secoes = []
     _, estilo = _ler(pasta / _ARQUIVO_ESTILO)
     if estilo:

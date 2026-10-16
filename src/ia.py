@@ -41,10 +41,9 @@ from .links import gerar_link_pedido
 
 logger = logging.getLogger(__name__)
 
-try:
-    import anthropic
-except ImportError:  # biblioteca não instalada -- provedor ANTHROPIC fica indisponível
-    anthropic = None
+# O SDK remoto é carregado somente quando esse provedor é utilizado.
+# Ollama, respostas locais e abertura do painel não precisam importar o SDK.
+anthropic = None
 
 
 class IAIndisponivel(Exception):
@@ -341,10 +340,15 @@ def _mensagens_atualizadas(telefone: str, texto: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def _responder_anthropic(telefone: str, texto: str) -> str:
-    if not anthropic:
-        raise IAIndisponivel("Biblioteca 'anthropic' não instalada (pip install anthropic).")
+    global anthropic
     if not config.ANTHROPIC_API_KEY:
         raise IAIndisponivel("ANTHROPIC_API_KEY não configurada no .env.")
+    if anthropic is None:
+        try:
+            import anthropic as biblioteca_anthropic
+        except ImportError:
+            raise IAIndisponivel("Biblioteca 'anthropic' não instalada (pip install anthropic).") from None
+        anthropic = biblioteca_anthropic
 
     cliente = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
     mensagens = _mensagens_atualizadas(telefone, texto)

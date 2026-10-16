@@ -203,6 +203,31 @@ def criar_pedido(
     return obter_pedido(pedido_id, _conn=_conn)
 
 
+def listar_pedidos(limite=200):
+    """Lê cabeçalhos e itens em lote no mesmo snapshot, sem abrir N conexões."""
+    limite = inteiro(limite, 'Limite', 1)
+    if limite > 200:
+        raise ValueError('Consulte até 200 pedidos por vez.')
+    with get_conn() as conn:
+        conn.execute('BEGIN')
+        linhas = conn.execute(
+            'SELECT p.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone, '
+            'c.cep AS cliente_cep, c.endereco AS cliente_endereco '
+            'FROM pedidos p JOIN clientes c ON c.id=p.cliente_id '
+            'ORDER BY p.id DESC LIMIT ?', (limite,)).fetchall()
+        resultado = [dict(p, itens=[]) for p in linhas]
+        if not resultado:
+            return resultado
+        por_id = {p['id']: p for p in resultado}
+        marcadores = ','.join('?' for _ in por_id)
+        for item in conn.execute(
+                'SELECT ip.*, COALESCE(ip.nome_produto, pr.nome) AS produto_nome '
+                'FROM itens_pedido ip JOIN produtos pr ON pr.id=ip.produto_id '
+                f'WHERE ip.pedido_id IN ({marcadores}) ORDER BY ip.id', tuple(por_id)):
+            por_id[item['pedido_id']]['itens'].append(dict(item))
+    return resultado
+
+
 def obter_pedido(pedido_id: int, _conn=None) -> dict | None:
     with (get_conn() if _conn is None else nullcontext(_conn)) as conn:
         pedido = conn.execute(
