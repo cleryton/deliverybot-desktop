@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 2.40.1 — 2026-10-15
+
+Esclarece a unidade de uma tentativa no protocolo DB-TCC-1, a preparação dos casos C08/C12 e o registro de snapshots por caso. Delimita oficina como extensão dos cenários principais e atualiza os links da entrega acadêmica.
+
+## 2.40.0 — 2026-10-15
+
+Fortalece a base acadêmica com plano de pesquisa, trabalhos relacionados, fronteiras de segurança, requisitos atualizados e roteiro de entrega. Adiciona laboratório DB-TCC-1 para preparar 72 tentativas A/B e analisar medidas declaradas, preservando falhas, bloqueios, denominadores e limites da comparação. Inclui testes do instrumento sem produzir resultados empíricos.
+
 ## 2.39.0 — 2026-10-15
 
 Adiciona gestão remota isolada com convites de uso único, conta vinculada, permissões de consulta ou avanço de pedidos, prazo e revogação local. Inclui proteção de sessão, CSRF, limites de tentativas e revalidação transacional, interface responsiva e testes com dados fictícios.
