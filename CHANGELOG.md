@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.40.2 — 2026-10-15
+
+Profissionaliza o relatório acadêmico com síntese, rastreabilidade dos commits, justificativas das implementações, resultados técnicos identificados por versão, limitações e roteiro de demonstração. Acrescenta a evidência preservada da validação da v2.40.1, sem atribuir resultados de testes à qualidade da IA.
+
 ## 2.40.1 — 2026-10-15
 
 Esclarece a unidade de uma tentativa no protocolo DB-TCC-1, a preparação dos casos C08/C12 e o registro de snapshots por caso. Delimita oficina como extensão dos cenários principais e atualiza os links da entrega acadêmica.

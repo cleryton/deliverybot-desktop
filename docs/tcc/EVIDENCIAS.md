@@ -1,5 +1,13 @@
 # Evidências e reprodução
 
+## Referência preservada v2.40.1
+
+Tag **v2.40.1**, commit `753db1f9599d4ebfeae5d7ebd2d1638d54d952d0`, [código do commit](https://github.com/cleryton/deliverybot-desktop/commit/753db1f9599d4ebfeae5d7ebd2d1638d54d952d0), integrado pelo [PR 25](https://github.com/cleryton/deliverybot-desktop/pull/25). O [Actions de push 38837977393](https://github.com/cleryton/deliverybot-desktop/actions/runs/38837977393) executou esse SHA, com checkout sem alterações versionadas.
+
+O artifact `relatorios-windows`, ID `12019804882`, registra **825 testes Python executados e aprovados; zero falhas, erros ou ignorados**. SHA-256 do JUnit: `dd9bdebaf7bc19ac13d44c170ee2878650d2832e35188ac81086fa1888693f32`. Os checks de código, WhatsApp simulado, segurança OWASP/ZAP, compilação, instaladores e smoke dos executáveis passaram. O total inclui testes unitários e de integração; não mede qualidade das respostas do modelo.
+
+A cópia local do ZIP e da síntese está em `artifacts/tcc/referencia-v2.40.1/`, ignorada pelo Git. Preservar esses relatórios em armazenamento de pesquisa aprovado antes de remover caches. O [Actions do PR 25](https://github.com/cleryton/deliverybot-desktop/actions/runs/38837983442) também concluiu com sucesso; a referência acima utiliza a execução de push para identificar o checkout do commit da versão. Uma rodada futura deve ser registrada separadamente.
+
 ## Referência preservada v2.39.0
 
 Tag **v2.39.0**, commit `70fb8d4b43c0c765298e3dabe2f277595872f63d`, [código do commit](https://github.com/cleryton/deliverybot-desktop/commit/70fb8d4b43c0c765298e3dabe2f277595872f63d), integrado pelo [PR 24](https://github.com/cleryton/deliverybot-desktop/pull/24). O [Actions de push](https://github.com/cleryton/deliverybot-desktop/actions/runs/38807190189) executou esse SHA; o consolidador registrou checkout sem alterações versionadas.
