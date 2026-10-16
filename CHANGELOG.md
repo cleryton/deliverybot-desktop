@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.40.3 — 2026-10-16
+
+Reduz consultas e conexões da listagem de pedidos com leitura em lote e snapshot consistente. Calcula o resumo no banco sem carregar catálogo ou itens; cria índices para itens, posição da fila e ordem das mensagens por contato. Separa a atualização do Obsidian Graph da preparação de cada resposta, mantendo a releitura e a validação das notas. Carrega o SDK Anthropic somente quando utilizado. Acrescenta testes de regressão e benchmark isolado com dados fictícios e medições reproduzíveis.
+
 ## 2.40.2 — 2026-10-15
 
 Profissionaliza o relatório acadêmico com síntese, rastreabilidade dos commits, justificativas das implementações, resultados técnicos identificados por versão, limitações e roteiro de demonstração. Acrescenta a evidência preservada da validação da v2.40.1, sem atribuir resultados de testes à qualidade da IA.

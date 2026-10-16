@@ -336,17 +336,21 @@ def auditoria_operadores():
 @bp.route("/gestao/api/resumo")
 @protegido
 def resumo():
-    produtos = estoque.listar_produtos()
     with get_conn() as conn:
+        conn.execute('BEGIN')
+        catalogo = dict(conn.execute(
+            'SELECT COUNT(*) AS produtos, COALESCE(SUM(ativo),0) AS ativos, '
+            'COALESCE(SUM(CASE WHEN ativo AND estoque IS NOT NULL AND estoque<=estoque_minimo THEN 1 ELSE 0 END),0) AS baixos, '
+            'COUNT(estoque) AS produtos_controlados FROM produtos').fetchone())
         total = dict(conn.execute(
             "SELECT COUNT(*) AS pedidos, COALESCE(SUM(total_pedido),0) AS vendas FROM pedidos WHERE status != 'CANCELADO'").fetchone())
+        pendentes = conn.execute(
+            'SELECT COUNT(*) FROM fila_preparo f JOIN pedidos p ON p.id=f.pedido_id '
+            "JOIN clientes c ON c.id=p.cliente_id WHERE f.status NOT IN ('RETIRADO','ENTREGUE','CANCELADO')").fetchone()[0]
     if not operadores.admin():
         total['vendas']=0
-    return jsonify(produtos=len(produtos), ativos=sum(p["ativo"] for p in produtos),
-                   baixos=sum(p["ativo"] and p["estoque"] is not None and p["estoque"] <= p["estoque_minimo"] for p in produtos),
-                   pendentes=len(fila.listar_fila()), **total, nome=config.NOME_RESTAURANTE,
+    return jsonify(**catalogo, pendentes=pendentes, **total, nome=config.NOME_RESTAURANTE,
                    comercio={k: v for k, v in perfil_comercio.obter().items() if k != 'descricao'},
-                   produtos_controlados=sum(p['estoque'] is not None for p in produtos),
                    modo_teste=config.MODO_TESTE, whatsapp=config.WHATSAPP_PROVIDER,
                    privacidade_configurada=bool(config.LGPD_RESPONSAVEL and config.LGPD_CONTATO),
                    base_url=publicacao.endereco(), pasta=str(Path(config.DATABASE_PATH).resolve().parent),
@@ -403,9 +407,7 @@ def movimentos():
 @bp.route("/gestao/api/pedidos")
 @protegido
 def listar_pedidos():
-    with get_conn() as conn:
-        ids = [r["id"] for r in conn.execute("SELECT id FROM pedidos ORDER BY id DESC LIMIT 200")]
-    resultado=[pedidos.obter_pedido(i) for i in ids]
+    resultado = pedidos.listar_pedidos()
     if not operadores.admin():
         for p in resultado:
             for item in p['itens']:

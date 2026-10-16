@@ -76,6 +76,10 @@ CREATE TABLE IF NOT EXISTS fila_preparo (
     atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Evita percorrer o histórico completo para localizar itens e numerar a fila.
+CREATE INDEX IF NOT EXISTS idx_itens_pedido_pedido_id ON itens_pedido(pedido_id, id);
+CREATE INDEX IF NOT EXISTS idx_fila_posicao ON fila_preparo(posicao);
+
 CREATE TABLE IF NOT EXISTS mensagens (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     telefone      TEXT NOT NULL,
@@ -153,6 +157,8 @@ CREATE TABLE IF NOT EXISTS tarefas_bot (
     UNIQUE(origem, chave)
 );
 CREATE INDEX IF NOT EXISTS idx_tarefas_estado ON tarefas_bot(estado, id);
+-- As verificações de ordem e envio em andamento são feitas por telefone.
+CREATE INDEX IF NOT EXISTS idx_tarefas_telefone_estado ON tarefas_bot(telefone, estado, id);
 
 -- Auditoria sem telefone, conteúdo de conversa, credenciais ou endereço.
 CREATE TABLE IF NOT EXISTS auditoria_privacidade (
