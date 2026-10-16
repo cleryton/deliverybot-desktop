@@ -14,7 +14,7 @@ Este material organiza o aplicativo como um artefato de pesquisa aplicada em des
 | [Plano de pesquisa](PLANO_DE_PESQUISA.md) | Perguntas, objetivos, critérios, etapas do método e ameaças à validade. |
 | [Laboratório reproduzível](LABORATORIO.md) | Plano de 72 tentativas e análise A/B com medidas explícitas, sem coleta automática. |
 | [Ameaças e decisões](AMEACAS_E_DECISOES.md) | Fronteiras entre cliente, remoto, caixa e responsável, com testes negativos. |
-| [Entrega acadêmica](ENTREGA_ACADEMICA.md) | Links de código, descrição das mudanças, trechos principais, roteiro de vídeo e preparação do resumo expandido. |
+| [Relatório técnico de entrega](ENTREGA_ACADEMICA.md) | Síntese do projeto, rastreabilidade dos commits, justificativas, explicação das implementações, resultados e roteiro de demonstração. |
 | [Evidências técnicas](EVIDENCIAS.md) | Reprodução dos testes, limites dos resultados e histórico verificável. |
 | [Apresentação à banca](APRESENTACAO.md) | Roteiro da demonstração e perguntas técnicas. |
 | [Referências](REFERENCIAS.md) | Fontes primárias consultadas e pontos em que fundamentam o trabalho. |
