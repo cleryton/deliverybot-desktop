@@ -22,7 +22,7 @@ async function metaLoad(){
   $('#meta-current').textContent=`Provedor: ${metaCurrent.provedor}. ID do número: ${metaCurrent.numero_id||'Não configurado'}. Conta: ${metaCurrent.waba_id||'Não configurada'}. Mensagens pendentes: ${metaCurrent.pendentes}.`;
   $('#meta-own-webhook').disabled=metaCurrent.provedor!=='META'||!metaCurrent.app_id;
   $('#meta-callback').value=metaCurrent.callback;
-  $('#meta-domain-note').textContent=metaCurrent.dominio_fixo?'Túnel fixo selecionado. Confira o endereço e a assinatura messages no painel Meta.':'Para produção, use um endereço HTTPS fixo. Um túnel rápido muda de endereço ao reiniciar e exige atualizar o webhook na Meta.';
+  $('#meta-domain-note').textContent=metaCurrent.dominio_fixo?'Túnel fixo selecionado. Com a conta completa, o aplicativo sincroniza o webhook da Meta ao iniciar a página.':'O aplicativo atualiza automaticamente o webhook quando o HTTPS do túnel integrado muda. Mantenha os IDs e as credenciais da sua conta completos. Para produção, prefira um endereço fixo.';
   $('#meta-last-delivery').textContent=`Última entrega confirmada para este número: ${metaDate(metaCurrent.ultima_entrega_confirmada)}. Credenciais configuradas, sozinhas, não comprovam recebimento e resposta.`;
   const f=$('#meta-migration-form');
   if(!f.elements.WHATSAPP_BUSINESS_ACCOUNT_ID.value)f.elements.WHATSAPP_BUSINESS_ACCOUNT_ID.value=metaCurrent.waba_id;

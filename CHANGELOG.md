@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.41.0 — 2026-10-17
+
+Atualização automática do webhook da Meta após validar o HTTPS do túnel integrado, com tarefa em segundo plano, novas tentativas com espera crescente e proteção contra resultados de conexões antigas. Preserva o ajuste manual e a conexão WAHA. Inclui testes de regressão simulados; o catálogo fictício solicitado foi cadastrado somente na instalação local, sem versionar dados de uso.
+
 ## 2.40.3 — 2026-10-16
 
 Reduz consultas e conexões da listagem de pedidos com leitura em lote e snapshot consistente. Calcula o resumo no banco sem carregar catálogo ou itens; cria índices para itens, posição da fila e ordem das mensagens por contato. Separa a atualização do Obsidian Graph da preparação de cada resposta, mantendo a releitura e a validação das notas. Carrega o SDK Anthropic somente quando utilizado. Acrescenta testes de regressão e benchmark isolado com dados fictícios e medições reproduzíveis.
