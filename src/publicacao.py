@@ -164,6 +164,12 @@ class Publicacao:
         self._verificacao = secrets.token_urlsafe(32)
         self._webhook_chave = None
         self._webhook_apos = 0.0
+        self._webhook_retry_chave = None
+        self._webhook_falhas = 0
+        self._webhook_ciclo = 0
+        self._meta_webhook_thread = None
+        self._meta_webhook_resultado = None
+        self._webhook_aviso = ''
         self._diagnostico_https = ''
 
     def situacao(self):
@@ -204,11 +210,15 @@ class Publicacao:
             return False
 
     def _atualizar_webhook(self, url):
-        if config.MODO_TESTE or config.WHATSAPP_PROVIDER != 'WAHA':
+        if config.MODO_TESTE or config.WHATSAPP_PROVIDER not in {'WAHA', 'META'}:
             return True
+        if config.WHATSAPP_PROVIDER == 'META':
+            return self._atualizar_webhook_meta(url)
         chave = (url, config.WAHA_URL, config.WAHA_SESSION, config.WAHA_WEBHOOK_BASE_URL, config.WEBHOOK_SECRET)
         if self._webhook_chave == chave:
             return True
+        if self._webhook_retry_chave != chave:
+            self._webhook_retry_chave, self._webhook_apos = chave, 0.0
         if time.monotonic() < self._webhook_apos:
             return False
         from .conexoes import renovar_webhook_publico
@@ -219,6 +229,62 @@ class Publicacao:
             return False
         self._webhook_chave, self._webhook_apos = chave, 0.0
         return True
+
+    @staticmethod
+    def _chave_meta(url):
+        return (config.WHATSAPP_PROVIDER, url, config.WHATSAPP_APP_ID,
+                config.WHATSAPP_BUSINESS_ACCOUNT_ID, config.WHATSAPP_PHONE_NUMBER_ID,
+                config.WHATSAPP_TOKEN, config.WHATSAPP_APP_SECRET, config.WHATSAPP_VERIFY_TOKEN)
+
+    def _atualizar_webhook_meta(self, url):
+        """Uma tarefa por vez: a rede da Meta nunca bloqueia a saúde do túnel."""
+        chave = self._chave_meta(url)
+        with self._lock:
+            if self._meta_webhook_thread and self._meta_webhook_thread.is_alive():
+                self._webhook_aviso = 'Atualizando automaticamente o webhook da Meta. O atendimento aguarda a confirmação.'
+                return False
+            resultado, self._meta_webhook_resultado = self._meta_webhook_resultado, None
+            if self._webhook_retry_chave != chave:
+                self._webhook_retry_chave = chave
+                self._webhook_apos, self._webhook_falhas = 0.0, 0
+            if resultado and resultado['chave'] == chave:
+                if resultado['ok']:
+                    self._webhook_chave, self._webhook_apos = chave, 0.0
+                    self._webhook_falhas = 0
+                else:
+                    self._webhook_falhas += 1
+                    self._webhook_apos = time.monotonic() + min(300, 15 * 2 ** min(self._webhook_falhas - 1, 5))
+            if self._webhook_chave == chave:
+                return True
+            self._webhook_aviso = 'Atualizando automaticamente o webhook da Meta. O atendimento aguarda a confirmação.'
+            if not all(chave[2:]):
+                self._webhook_aviso = 'Meta: complete os IDs do aplicativo e da conta WhatsApp e as credenciais em Meta oficial e custos.'
+                return False
+            if time.monotonic() < self._webhook_apos:
+                self._webhook_aviso = 'A Meta ainda não confirmou o webhook. A atualização será tentada novamente; confira a validade e as permissões da credencial se persistir.'
+                return False
+            ciclo = self._webhook_ciclo
+
+            def permitir():
+                with self._lock:
+                    return (self.ativo and not self._stop.is_set() and _gerente is self
+                            and self._estado == 'ONLINE' and self._webhook_ciclo == ciclo
+                            and not config.MODO_TESTE and self._chave_meta(self._url) == chave)
+
+            def atualizar():
+                from .meta_configuracao import renovar_webhook_automatico
+                ok = False
+                try:
+                    ok = bool(renovar_webhook_automatico(url, permitir=permitir)) and permitir()
+                except Exception:
+                    # Falhas não encerram o monitor e não expõem tokens ou respostas da Meta.
+                    pass
+                with self._lock:
+                    self._meta_webhook_resultado = {'chave': chave, 'ok': ok}
+
+            self._meta_webhook_thread = threading.Thread(target=atualizar, name='DeliveryBot-Meta-Webhook', daemon=True)
+            self._meta_webhook_thread.start()
+            return False
 
     def iniciar(self):
         with self._lock:
@@ -232,6 +298,9 @@ class Publicacao:
                 validar_dominio(config.TUNEL_URL)
             self._dominio, self._token, self._porta = config.TUNEL_URL, config.TUNEL_TOKEN, config.TUNEL_PORTA
             self.ativo = True
+            self._webhook_ciclo += 1
+            self._webhook_chave = None
+            self._webhook_retry_chave = None
             self._stop.clear()
             self._status('INICIANDO', 'Iniciando a página pública em segundo plano…')
             self._thread = threading.Thread(target=self._executar, name='DeliveryBot-Publicacao', daemon=True)
@@ -327,7 +396,8 @@ class Publicacao:
                             tentativas = 0
                             self._status('ONLINE', 'Página HTTPS verificada e pronta para receber pedidos. A conexão é monitorada automaticamente.', url)
                             if not self._atualizar_webhook(url):
-                                self._status('ONLINE', 'Página HTTPS pronta. Reconectando o recebimento das mensagens do WAHA externo; confira esse servidor se a demora continuar.', url)
+                                aviso = (self._webhook_aviso if config.WHATSAPP_PROVIDER == 'META' else 'Reconectando o recebimento das mensagens do WAHA externo; confira esse servidor se a demora continuar.')
+                                self._status('ONLINE', 'Página HTTPS pronta. ' + aviso, url)
                         else:
                             https_ate = 0.0
                             mensagem = ('O endereço não foi encontrado no DNS. No domínio fixo, configure o registro do seu domínio na Cloudflare. No temporário, o aplicativo tentará gerar outra conexão automaticamente.' if self._diagnostico_https == 'DNS' else 'Verificando o acesso HTTPS aos pedidos. Confira a internet; no domínio fixo, confira também o destino na Cloudflare.')

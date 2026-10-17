@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.40.3
+# DeliveryBot Desktop 2.41.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -42,7 +42,7 @@ As importações de catálogo seguem o padrão do comércio. No CSV, a coluna op
 
 ## API oficial da Meta
 
-Para testar em outros computadores, entregue o instalador, sem sua pasta de dados. Cada pessoa abre **Meta oficial e custos → Conectar minha conta Meta** e usa o próprio app, conta e credenciais. O assistente consulta os números, valida o token e pode configurar o HTTPS e webhook com confirmação, sem compartilhar seu token. Use um app Meta separado por instalação. Se o HTTPS temporário mudar, use **Atualizar webhook da conta já salva**. Veja os passos e os limites em `docs/META PRODUCAO E CUSTOS.md`.
+Para testar em outros computadores, entregue o instalador, sem sua pasta de dados. Cada pessoa abre **Meta oficial e custos → Conectar minha conta Meta** e usa o próprio app, conta e credenciais. O assistente consulta os números, valida o token e pode configurar o HTTPS e webhook com confirmação, sem compartilhar seu token. Use um app Meta separado por instalação. Com os IDs e as credenciais completos, o aplicativo atualiza o webhook automaticamente quando o HTTPS do túnel integrado muda. O botão **Atualizar webhook da conta já salva** continua disponível. Veja os passos e os limites em `docs/META PRODUCAO E CUSTOS.md`.
 
 Abra **Meta oficial e custos** para preparar a futura troca para um número próprio, validar o acesso ao número e à conta Meta e acompanhar mensagens e estimativas de gasto. Cadastre tarifas e orçamento mensal; os preços não são presumidos. O painel distingue testes de produção, evita duplicar cobranças de eventos repetidos e mostra custos desconhecidos como pendentes. Veja o roteiro completo em `docs/META PRODUCAO E CUSTOS.md`. A troca local exige revisão da fila e confirmação e preserva os dados da loja; não publica o aplicativo na Meta nem configura pagamentos automaticamente.
 
@@ -50,7 +50,7 @@ Em **Configurações → WhatsApp**, escolha **META** e preencha o **ID do núme
 
 No painel Meta, abra o caso de uso WhatsApp e a etapa de teste para obter os dados e emitir o token. Autorize um destinatário de teste no próprio painel antes de enviar uma mensagem. O token de acesso é emitido pela Meta; o token de verificação é um segredo escolhido pela equipe e deve ser igual no aplicativo e na configuração do webhook. Tokens temporários precisam ser renovados conforme a validade mostrada pela Meta.
 
-Para receber eventos, mantenha o DeliveryBot e a página HTTPS ativos. Use como callback o endereço HTTPS atual acrescido de `/webhook`, configure o mesmo token de verificação e assine o campo `messages`. O endereço temporário muda quando o túnel é recriado, exigindo atualização do callback na Meta. Para uso contínuo, configure um domínio e túnel fixos. A seleção do provedor e o preenchimento das credenciais, sozinhos, não comprovam que o recebimento está configurado.
+Para receber eventos, mantenha o DeliveryBot e a página HTTPS ativos. O callback usa o endereço HTTPS atual acrescido de `/webhook`, com o mesmo token de verificação e a assinatura `messages`. Com a conta completa, o monitor do túnel integrado sincroniza esse destino em segundo plano e tenta novamente com espera crescente se a Meta falhar. Sem o conector integrado, configure o callback manualmente. Para uso contínuo, configure um domínio e túnel fixos. A seleção do provedor e o preenchimento das credenciais, sozinhos, não comprovam que o recebimento está configurado.
 
 ## Aparência
 

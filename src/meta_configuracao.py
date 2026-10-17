@@ -89,29 +89,62 @@ def _post(caminho, token, dados=None):
         return False
 
 
+def _aplicar_webhook(snapshot, base, permitir):
+    """Reconfere conta e destino antes de cada chamada, inclusive após a rede."""
+    def atual():
+        return (permitir() and publicacao.endereco() == base
+                and all(getattr(config, k) == v for k, v in snapshot.items()))
+
+    if not atual():
+        return False
+    aplicado = _post(snapshot['WHATSAPP_APP_ID'] + '/subscriptions',
+                     snapshot['WHATSAPP_APP_ID'] + '|' + snapshot['WHATSAPP_APP_SECRET'],
+                     {'object': 'whatsapp_business_account', 'callback_url': base + '/webhook',
+                      'verify_token': snapshot['WHATSAPP_VERIFY_TOKEN'],
+                      'fields': 'messages', 'include_values': 'true'})
+    if not aplicado or not atual():
+        return False
+    vinculado = _post(snapshot['WHATSAPP_BUSINESS_ACCOUNT_ID'] + '/subscribed_apps', snapshot['WHATSAPP_TOKEN'])
+    return vinculado and atual()
+
+
+def _snapshot_webhook():
+    return {k: getattr(config, k) for k in ('WHATSAPP_PROVIDER', 'WHATSAPP_APP_ID',
+        'WHATSAPP_BUSINESS_ACCOUNT_ID', 'WHATSAPP_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN')}
+
+
+@_exclusivo
+def renovar_webhook_automatico(endereco, *, permitir):
+    """Sincroniza somente a conta salva e o HTTPS já verificado pelo monitor."""
+    if config.MODO_TESTE or config.WHATSAPP_PROVIDER != 'META':
+        return False
+    snapshot = _snapshot_webhook()
+    _id(snapshot['WHATSAPP_APP_ID'], 'ID do aplicativo')
+    _id(snapshot['WHATSAPP_BUSINESS_ACCOUNT_ID'], 'ID da conta WhatsApp Business')
+    if not all(snapshot.values()) or snapshot['WHATSAPP_VERIFY_TOKEN'] == 'trocar_por_uma_palavra_secreta':
+        return False
+    base = publicacao.validar_dominio(endereco)
+    return _aplicar_webhook(snapshot, base, permitir)
+
+
 @_exclusivo
 def configurar_webhook(conta_esperada=None):
     if conta_esperada and any(getattr(config, k) != v for k, v in conta_esperada.items()):
         raise ValueError('A conta mudou. Atualize a página antes de configurar o webhook.')
     if config.WHATSAPP_PROVIDER != 'META':
         raise ValueError('Conecte sua conta Meta antes de configurar o webhook.')
-    app = _id(config.WHATSAPP_APP_ID, 'ID do aplicativo')
-    waba = _id(config.WHATSAPP_BUSINESS_ACCOUNT_ID, 'ID da conta WhatsApp Business')
-    snapshot = {k: getattr(config, k) for k in ('WHATSAPP_PROVIDER', 'WHATSAPP_APP_ID', 'WHATSAPP_BUSINESS_ACCOUNT_ID', 'WHATSAPP_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN')}
+    _id(config.WHATSAPP_APP_ID, 'ID do aplicativo')
+    _id(config.WHATSAPP_BUSINESS_ACCOUNT_ID, 'ID da conta WhatsApp Business')
+    snapshot = _snapshot_webhook()
     publicacao.preparar_para_whatsapp(lambda mensagem: None, timeout=30)
     callback = publicacao.validar_dominio(publicacao.endereco()) + '/webhook'
     # Meta verifica o challenge em nosso endpoint, usando a chave local já salva.
     if any(getattr(config, k) != v for k, v in snapshot.items()):
         raise ValueError('A conta mudou durante a preparação. Atualize a página e tente novamente.')
-    aplicado = _post(app + '/subscriptions', app + '|' + snapshot['WHATSAPP_APP_SECRET'],
-                    {'object': 'whatsapp_business_account', 'callback_url': callback,
-                     'verify_token': snapshot['WHATSAPP_VERIFY_TOKEN'], 'fields': 'messages', 'include_values': 'true'})
-    mesma_conta = all(getattr(config, k) == v for k, v in snapshot.items())
-    vinculado = _post(waba + '/subscribed_apps', snapshot['WHATSAPP_TOKEN']) if aplicado and mesma_conta else False
-    vinculado = vinculado and all(getattr(config, k) == v for k, v in snapshot.items())
-    return {'webhook_configurado': aplicado and vinculado, 'callback': callback,
+    confirmado = _aplicar_webhook(snapshot, callback.removesuffix('/webhook'), lambda: True)
+    return {'webhook_configurado': confirmado, 'callback': callback,
             'aviso': 'Webhook configurado pela Meta. Faça um teste de recebimento e resposta com seu próprio WhatsApp.'
-                     if aplicado and vinculado else 'A Meta não confirmou toda a configuração do webhook. A conexão local foi preservada. Confira permissões e HTTPS, ou configure no painel Meta e tente novamente.'}
+                     if confirmado else 'A Meta não confirmou toda a configuração do webhook. A conexão local foi preservada. Confira permissões e HTTPS, ou configure no painel Meta e tente novamente.'}
 
 
 @_exclusivo
