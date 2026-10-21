@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.42.0 — 2026-10-21
+
+Adiciona publicação web isolada para QA no Render Free, com HTTPS, catálogo fictício com fotos e fluxo de pedido sem WhatsApp real. Restringe a hospedagem às páginas do cliente, usa banco descartável separado e inclui testes de isolamento e instruções de publicação.
+
 ## 2.41.0 — 2026-10-17
 
 Atualização automática do webhook da Meta após validar o HTTPS do túnel integrado, com tarefa em segundo plano, novas tentativas com espera crescente e proteção contra resultados de conexões antigas. Preserva o ajuste manual e a conexão WAHA. Inclui testes de regressão simulados; o catálogo fictício solicitado foi cadastrado somente na instalação local, sem versionar dados de uso.

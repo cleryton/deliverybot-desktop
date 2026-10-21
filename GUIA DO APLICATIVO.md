@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.41.0
+# DeliveryBot Desktop 2.42.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -326,3 +326,7 @@ Os controles e a cobertura de testes OWASP estão em [SEGURANCA OWASP.md](SEGURA
 ## Acesso remoto pela internet
 
 No aplicativo do responsável, abra **Acesso remoto** para gerar um convite individual com prazo e permissão. A pessoa entra pelo navegador usando o convite e sua própria conta cadastrada. O responsável pode revogar um acesso ou encerrar todos. Consulte o [guia de acesso remoto](docs/ACESSO%20REMOTO.md) para configurar HTTPS, contas, prazos e conhecer os limites.
+
+## Testes da página web em servidor
+
+O [guia de hospedagem QA](docs/HOSPEDAGEM%20QA.md) descreve uma publicação gratuita independente do computador da loja. Ela expõe somente o catálogo, pedido, fotos, PDF e minijogo, com dados fictícios e sem enviar WhatsApp. Os dados são descartáveis e a hospedagem gratuita pode hibernar.
