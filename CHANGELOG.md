@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.42.2 — 2026-10-21
+
+Corrige as opções de pagamento no formulário hospedado para QA, reutilizando o contexto público da loja. Acrescenta regressão para impedir que o seletor seja publicado vazio.
+
 ## 2.42.1 — 2026-10-21
 
 Atualiza Pillow para 13.0.0 e certifi para 2026.10.19, corrigindo os alertas encontrados pelo Actions antes da hospedagem QA. Valida catálogo, fotos, controles OWASP e distribuição com as dependências corrigidas.

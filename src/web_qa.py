@@ -39,7 +39,7 @@ def criar_app(pasta,base,chave_sessao):
         setattr(config,campo,'')
     init_db(seed_cardapio=False)
     # Importar as funções existentes não inicia o desktop nem consumidores da fila.
-    from .app import app as original, catalogo_do_comercio
+    from .app import app as original, catalogo_do_comercio, dados_da_loja
     config.WHATSAPP_PROVIDER='TESTE';config.MODO_TESTE=True
     config.IA_PROVIDER='';config.TUNEL_AUTOMATICO='NAO'
     from . import estoque
@@ -67,7 +67,7 @@ def criar_app(pasta,base,chave_sessao):
     seguranca.instalar(app)
     app.jinja_env.filters.update(original.jinja_env.filters)
     app.jinja_env.globals.update({k:v for k,v in original.jinja_env.globals.items() if k=='icone_categoria'})
-    app.context_processor(lambda:{**catalogo_do_comercio(),'qa_mode':True})
+    app.context_processor(lambda:{**catalogo_do_comercio(),**dados_da_loja(),'qa_mode':True})
     for regra in original.url_map.iter_rules():
         if regra.endpoint in PUBLICOS:
             app.add_url_rule(regra.rule,endpoint=regra.endpoint,view_func=original.view_functions[regra.endpoint],methods=regra.methods)

@@ -29,6 +29,7 @@ def test_so_rotas_de_cliente_sao_publicadas_e_catalogo_ficticio(qa):
     r=novo(c);assert r.status_code==302 and r.location.startswith('/m/')
     pagina=c.get(r.location,base_url='https://qa-ficticio.example')
     assert pagina.status_code==200 and 'TESTE' in pagina.text
+    assert '<option value="Dinheiro"' in pagina.text and '<option value="Pix"' in pagina.text
     with get_conn() as conn:
         assert conn.execute('SELECT COUNT(*) FROM produtos').fetchone()[0]==8
         assert conn.execute('SELECT COUNT(*) FROM fotos_produto').fetchone()[0]==8
