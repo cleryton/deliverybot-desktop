@@ -34,10 +34,11 @@ def test_itens_repetidos_somam_antes_de_validar_saldo(loja):
             pedidos._resolver_itens(conn,[{'produto_id':1,'quantidade':60},{'produto_id':1,'quantidade':60}])
 
 
-@pytest.mark.parametrize('mudanca', ['inativo','ausente','inteiro'])
+@pytest.mark.parametrize('mudanca', ['inativo','marcador_invalido','ausente','inteiro'])
 def test_dados_atuais_do_banco_sempre_prevalecem(loja,mudanca):
     with db.get_conn() as conn:
         if mudanca=='inativo':conn.execute('UPDATE produtos SET ativo=0 WHERE id=1')
+        elif mudanca=='marcador_invalido':conn.execute('UPDATE produtos SET ativo=2 WHERE id=1')
         elif mudanca=='ausente':conn.execute('DELETE FROM produtos WHERE id=1')
         else:conn.execute('UPDATE produtos SET fracionado=0 WHERE id=1')
         with pytest.raises(ValueError):

@@ -57,7 +57,7 @@ def _resolver_itens(conn, itens):
     itens_resolvidos = []
     for produto_id, quantidade in quantidades.items():
         produto = produtos.get(produto_id)
-        if produto is None or not produto['ativo']:
+        if produto is None or produto['ativo'] != 1:
             raise ValueError("Um produto selecionado não está mais disponível. Atualize o catálogo.")
         if produto["estoque"] is not None and quantidade > produto["estoque"]:
             raise ValueError(f"Estoque insuficiente para {produto['nome']}. Disponível: {produto['estoque']} {produto['unidade']}.")

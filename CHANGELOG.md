@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.44.2 — 2026-10-22
+
+Preserva a regra exata ativo=1 na leitura de produtos em lote, recusando marcadores inválidos de bancos antigos ou alterados. Adiciona regressão e valida as suítes de carrinho, comprovante, CEP e pedidos.
+
 ## 2.44.1 — 2026-10-22
 
 Atualiza duas regressões legadas para conferir o redirecionamento da confirmação e a leitura do comprovante, preservando validação de estoque e recusa de segunda compra. Testes direcionados aprovados.
