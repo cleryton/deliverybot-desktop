@@ -54,7 +54,7 @@ def test_confirmacao_oferece_jogo_sem_reabrir_link_usado(publico, monkeypatch):
     csrf = re.search(r'name="csrf_token" value="([^"]+)"', pagina.text)[1]
     resposta = publico.post(caminho, data={'csrf_token':csrf,'nome':'Pessoa fictícia','forma_pagamento':'Dinheiro',
                                           'forma_entrega':'RETIRADA BALCAO','qtd_'+str(produto['id']):'1'},
-                            headers={'Origin':config.BASE_URL})
+                            headers={'Origin':config.BASE_URL}, follow_redirects=True)
     assert resposta.status_code == 200
     assert 'Seu pedido foi recebido!' in resposta.text and 'data-pong' in resposta.text
     assert 'href="/jogar"' in resposta.text and 'noreferrer' in resposta.text

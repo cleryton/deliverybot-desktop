@@ -12,7 +12,7 @@ from . import config, seguranca
 from .db import init_db, get_conn
 from .politica_terminal import Limites
 
-PUBLICOS={'pagina_pedido','enviar_pedido','catalogo_cliente_pdf','pagina_minijogo','aviso_privacidade','foto_produto'}
+PUBLICOS={'pagina_pedido','enviar_pedido','comprovante_pedido','catalogo_cliente_pdf','pagina_minijogo','aviso_privacidade','foto_produto'}
 ASSETS={'pedido.css','pedido.js','recibo.js','pong.css','pong-core.js','pong.js'}
 
 ESTADOS_QA = {

@@ -14,7 +14,7 @@
     <dl class="recibo-detalhes"><div><dt>Recebimento</dt><dd>{{ 'Entrega no endereço' if pedido.forma_entrega == 'ENTREGA' else 'Retirada na loja' }}</dd></div><div><dt>Pagamento combinado</dt><dd>{{ pedido.forma_pagamento }}</dd></div></dl>
     <section class="acoes-recibo" aria-label="Guardar comprovante"><button type="button" class="botao-secundario" id="imprimir-recibo" hidden>Imprimir ou salvar comprovante</button><p class="ajuda">Na janela de impressão, escolha uma impressora ou “Salvar como PDF”. Comprovante de pedido sem valor fiscal; não comprova pagamento.</p></section>
     {% include 'minijogo.html' %}
-    <p class="nota-estado">Você já pode fechar esta página e voltar à conversa no WhatsApp. Este link confirmou seu pedido e não pode ser usado novamente.</p>
+    <p class="nota-estado">Seu pedido já foi registrado. Atualizar esta página não cria outra compra. Você pode rever este comprovante no mesmo navegador por até 8 horas; para guardá-lo, salve ou imprima. O link de compra continua sendo de uso único.</p>
     <p class="rodape-estado"><a href="{{ url_for('aviso_privacidade') }}" target="_blank" rel="noopener">Aviso de privacidade<span class="sr-only"> (abre em outra aba)</span></a></p>
   </main>
 </body>

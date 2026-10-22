@@ -27,6 +27,8 @@ A entrada não carrega `.env` e não usa a pasta de dados do desktop. O banco de
 
 Após confirmar, **Imprimir ou salvar comprovante** abre a impressão do próprio navegador: escolha uma impressora ou Salvar como PDF. O comprovante identifica a loja, os itens, o total e a forma de recebimento; não tem valor fiscal nem comprova pagamento. O botão não envia dados a serviços externos e não reenvia o pedido. O jogo e os controles são ocultados na impressão.
 
+A confirmação redireciona para o comprovante. Atualizar essa página não repete pedidos ou mensagens. Ele pode ser consultado por até oito horas no mesmo navegador; a sessão guarda até cinco autorizações. Abrir o endereço em outro navegador não libera a consulta. O link original de compra continua sendo de uso único. Reiniciar a hospedagem pode encerrar o acesso antes desse prazo; salve o PDF se precisar guardar o resultado.
+
 Sessão expirada, link usado, página inexistente, excesso de tentativas e falha do serviço apresentam uma orientação com retorno ao início. Os códigos HTTP e os bloqueios continuam ativos; erros internos não exibem detalhes técnicos. Um link usado não deve ser reenviado para tentar repetir a mesma compra.
 
 A página é pública, contém aviso de dados fictícios e solicita não indexação aos buscadores; não use dados pessoais nem senhas reais. Os dados de cada pedido não são expostos em listas ou painéis públicos. A confirmação HTTP usa CSRF. A geração de links e os pedidos têm limite global de 60 gravações por minuto, mil links e 500 pedidos por ciclo da instância, para conter consumo do laboratório. O estoque fictício começa com mil unidades por produto e não é redefinido a cada acesso.

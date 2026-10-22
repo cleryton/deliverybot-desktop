@@ -94,7 +94,7 @@ def test_pedido_fracionado_csrf_confirmacao_e_link_unico(cliente, monkeypatch):
     dados = {'nome': 'Pessoa fictícia', 'forma_entrega': 'RETIRADA BALCAO', 'forma_pagamento': 'Pix',
              'qtd_' + str(produto['id']): '0.5'}
     assert cliente.post(caminho, data=dados).status_code == 403
-    resposta = cliente.post(caminho, data={**dados, 'csrf_token': csrf})
+    resposta = cliente.post(caminho, data={**dados, 'csrf_token': csrf}, follow_redirects=True)
     assert resposta.status_code == 200
     html = resposta.get_data(as_text=True)
     assert 'Seu pedido foi recebido!' in html and 'R$ 5,01' in html

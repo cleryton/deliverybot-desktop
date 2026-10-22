@@ -82,7 +82,7 @@ def test_compra_https_cookie_seguro_e_csrf(aplicativo, monkeypatch):
     dados = {'csrf_token': csrf, 'nome': 'Pessoa fictícia', 'forma_pagamento': 'Dinheiro', 'forma_entrega': 'RETIRADA BALCAO', 'qtd_' + str(produto['id']): '1'}
     assert c.post(caminho, base_url=publicacao.endereco(), data=dados, headers={'Origin': 'https://outro.example'}).status_code == 403
     assert c.post(caminho, base_url=publicacao.endereco(), data=dados, headers={'Origin': 'null'}).status_code == 403
-    assert c.post(caminho, base_url=publicacao.endereco(), data=dados, headers={'Origin': publicacao.endereco()}).status_code == 200
+    assert c.post(caminho, base_url=publicacao.endereco(), data=dados, headers={'Origin': publicacao.endereco()}).status_code == 303
     assert estoque.listar_produtos()[0]['estoque'] == 1
     assert c.post(caminho, base_url=publicacao.endereco(), data=dados).status_code == 410
 

@@ -44,7 +44,7 @@ def test_csrf_e_pedido_real_da_aplicacao_sem_envio_externo(qa,monkeypatch):
     from unittest.mock import Mock
     rede=Mock(side_effect=AssertionError('Não acessar a rede do WhatsApp'))
     monkeypatch.setattr(whatsapp._http,'request',rede)
-    r=c.post(url,base_url='https://qa-ficticio.example',data={'csrf_token':csrf(pagina),'nome':'Pessoa QA','forma_entrega':'RETIRADA BALCAO','forma_pagamento':'Dinheiro','qtd_1':'1'})
+    r=c.post(url,base_url='https://qa-ficticio.example',data={'csrf_token':csrf(pagina),'nome':'Pessoa QA','forma_entrega':'RETIRADA BALCAO','forma_pagamento':'Dinheiro','qtd_1':'1'},follow_redirects=True)
     assert r.status_code==200 and 'Nenhuma mensagem real' in r.text
     assert config.MODO_TESTE and rede.call_count==0
     assert c.get(url,base_url='https://qa-ficticio.example').status_code==410
@@ -105,7 +105,7 @@ def test_sessao_expirada_pode_recomecar_sem_burlar_csrf(qa):
     assert r.status_code==403 and 'Sua sessão precisa ser renovada' in r.text
     with get_conn() as conn: assert conn.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0]==0
     pagina=c.get(url,base_url='https://qa-ficticio.example')
-    r=c.post(url,base_url='https://qa-ficticio.example',data={'csrf_token':csrf(pagina),'qtd_1':'1','nome':'Pessoa QA','forma_pagamento':'Dinheiro'})
+    r=c.post(url,base_url='https://qa-ficticio.example',data={'csrf_token':csrf(pagina),'qtd_1':'1','nome':'Pessoa QA','forma_pagamento':'Dinheiro'},follow_redirects=True)
     assert r.status_code==200 and 'Seu pedido foi recebido!' in r.text
     assert 'Imprimir ou salvar comprovante' in r.text and 'não comprova pagamento' in r.text
     assert c.get('/static/recibo.js',base_url='https://qa-ficticio.example').status_code==200
