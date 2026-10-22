@@ -86,3 +86,46 @@ def test_health_modo_qa_e_csrf_errado(qa):
     assert c.get('/healthz',base_url='https://qa-ficticio.example').json=={'ok':True,'ambiente':'QA','whatsapp':'SIMULADO'}
     r=c.get('/',base_url='https://qa-ficticio.example')
     assert c.post('/qa/novo',base_url='https://qa-ficticio.example',headers={'Origin':'https://invasor.example'},data={'csrf_token':csrf(r)}).status_code==403
+
+
+@pytest.mark.parametrize('path,codigo', [('/gestao',404),('/m/inexistente',410)])
+def test_recuperacao_nao_sugere_whatsapp_real_nem_reflete_url(qa,path,codigo):
+    c,_=qa
+    r=c.get(path+'?segredo=NAO_EXIBIR',base_url='https://qa-ficticio.example')
+    assert r.status_code==codigo
+    assert 'Voltar ao laboratório' in r.text and 'href="/"' in r.text
+    assert 'NAO_EXIBIR' not in r.text and 'conversa com a loja no WhatsApp' not in r.text
+    assert 'no-store' in r.headers['Cache-Control']
+
+
+def test_sessao_expirada_pode_recomecar_sem_burlar_csrf(qa):
+    c,_=qa
+    url=novo(c).location
+    r=c.post(url,base_url='https://qa-ficticio.example',data={'csrf_token':'incorreto','qtd_1':'1'})
+    assert r.status_code==403 and 'Sua sessão precisa ser renovada' in r.text
+    with get_conn() as conn: assert conn.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0]==0
+    pagina=c.get(url,base_url='https://qa-ficticio.example')
+    r=c.post(url,base_url='https://qa-ficticio.example',data={'csrf_token':csrf(pagina),'qtd_1':'1','nome':'Pessoa QA','forma_pagamento':'Dinheiro'})
+    assert r.status_code==200 and 'Seu pedido foi recebido!' in r.text
+    assert 'Imprimir ou salvar comprovante' in r.text and 'não comprova pagamento' in r.text
+    assert c.get('/static/recibo.js',base_url='https://qa-ficticio.example').status_code==200
+
+
+def test_limite_orienta_sem_desativar_protecao(qa,monkeypatch):
+    c,_=qa
+    from src.politica_terminal import Limites
+    monkeypatch.setattr(Limites,'consumir',lambda *args:False)
+    r=novo(c)
+    assert r.status_code==429 and r.headers['Retry-After']=='60'
+    assert 'pequena pausa' in r.text and 'Voltar ao laboratório' in r.text
+    with get_conn() as conn: assert conn.execute('SELECT COUNT(*) FROM links_pedido').fetchone()[0]==0
+
+
+def test_falha_interna_nao_expoe_detalhes(qa,monkeypatch):
+    c,_=qa
+    from src import links
+    def falhar(*args):raise RuntimeError('DETALHE_PRIVADO_NAO_EXIBIR')
+    monkeypatch.setattr(links,'gerar_link_pedido',falhar)
+    r=novo(c)
+    assert r.status_code==500
+    assert 'Não foi possível concluir' in r.text and 'DETALHE_PRIVADO' not in r.text

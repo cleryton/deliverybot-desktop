@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ titulo }} · DeliveryBot QA</title><link rel="stylesheet" href="{{ url_for('static',filename='pedido.css') }}"></head>
+<body class="pagina-estado"><main class="cartao-estado">
+  <p class="sobretitulo">LABORATÓRIO QA · {{ codigo }}</p>
+  <h1>{{ titulo }}</h1>
+  <p>{{ orientacao }}</p>
+  <p><a class="botao-principal" href="{{ url_for('qa_inicio') }}">Voltar ao laboratório</a></p>
+  <p class="ajuda">Use somente dados fictícios. Este ambiente não envia mensagens nem realiza pagamentos.</p>
+</main></body></html>

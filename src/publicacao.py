@@ -108,7 +108,7 @@ class PaginaPublica:
     """Permite somente endpoints públicos conhecidos; ignora identidade de proxy."""
     ENDPOINTS = {'pagina_pedido', 'enviar_pedido', 'pagina_minijogo', 'catalogo_cliente_pdf', 'foto_produto', 'aviso_privacidade', 'primeiros_passos.confirmar', 'verificar_webhook', 'receber_webhook', 'receber_webhook_waha'}
 
-    ASSETS = {'pedido.css', 'pedido.js', 'pong.css', 'pong-core.js', 'pong.js', 'remoto.css', 'remoto.js'}
+    ASSETS = {'pedido.css', 'pedido.js', 'recibo.js', 'pong.css', 'pong-core.js', 'pong.js', 'remoto.css', 'remoto.js'}
 
     REMOTOS = {'remoto.pagina', 'remoto.entrar', 'remoto.estado', 'remoto.avancar', 'remoto.sair'}
 

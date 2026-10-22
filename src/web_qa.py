@@ -13,7 +13,18 @@ from .db import init_db, get_conn
 from .politica_terminal import Limites
 
 PUBLICOS={'pagina_pedido','enviar_pedido','catalogo_cliente_pdf','pagina_minijogo','aviso_privacidade','foto_produto'}
-ASSETS={'pedido.css','pedido.js','pong.css','pong-core.js','pong.js'}
+ASSETS={'pedido.css','pedido.js','recibo.js','pong.css','pong-core.js','pong.js'}
+
+ESTADOS_QA = {
+    403: ('Sua sessão precisa ser renovada', 'Volte ao laboratório e abra novamente o pedido. Nenhum novo pedido foi confirmado nesta tentativa.'),
+    404: ('Esta página não está disponível', 'Use o início do laboratório para acessar o catálogo de testes.'),
+    405: ('Esta ação não está disponível', 'Abra a página pelo laboratório e use os botões do formulário.'),
+    410: ('Este link já foi usado ou expirou', 'Se você já confirmou, não repita a compra. Para outro teste, comece um novo pedido no laboratório.'),
+    413: ('Os dados enviados são muito grandes', 'O laboratório aceita somente o formulário de pedidos. Reduza os dados e tente novamente.'),
+    429: ('Vamos fazer uma pequena pausa', 'Aguarde um minuto antes de tentar novamente. Se o limite continuar, peça ao responsável para reiniciar o laboratório.'),
+    500: ('Não foi possível concluir esta etapa', 'Não reenvie o pedido sem conferir se houve confirmação. Anote o horário e informe o responsável pelo teste.'),
+    503: ('O laboratório está temporariamente indisponível', 'Aguarde e tente abrir o início novamente. Se continuar, informe o responsável pelo teste.'),
+}
 
 def criar_app(pasta,base,chave_sessao):
     url=urlsplit(base)
@@ -84,6 +95,11 @@ def criar_app(pasta,base,chave_sessao):
     def cabecalhos(r):
         r.headers['X-Robots-Tag']='noindex, nofollow'
         r.headers['Referrer-Policy']='same-origin'
+        if r.status_code in ESTADOS_QA:
+            titulo, orientacao = ESTADOS_QA[r.status_code]
+            r.set_data(render_template('qa_estado.html', titulo=titulo, orientacao=orientacao, codigo=r.status_code))
+            r.content_type='text/html; charset=utf-8'
+            if r.status_code in {429,503}:r.headers.setdefault('Retry-After','60')
         return r
     @app.get('/')
     def qa_inicio():

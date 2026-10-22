@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.43.0 — 2026-10-21
+
+Melhora a recuperação de falhas no laboratório QA, preservando códigos HTTP, CSRF, limites e ocultação de detalhes internos. Adiciona impressão ou salvamento local do comprovante pelo navegador, com identificação da loja, aviso sem valor fiscal e sem comprovante de pagamento; não reenvia a compra nem utiliza serviços externos. Inclui testes de recuperação, isolamento e impressão.
+
 ## 2.42.2 — 2026-10-21
 
 Corrige as opções de pagamento no formulário hospedado para QA, reutilizando o contexto público da loja. Acrescenta regressão para impedir que o seletor seja publicado vazio.
