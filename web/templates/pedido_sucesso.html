@@ -2,14 +2,17 @@
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>Pedido {{ pedido.numero_pedido }} recebido</title><link rel="stylesheet" href="{{ url_for('static', filename='pedido.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='pong.css') }}"><script src="{{ url_for('static', filename='pong-core.js') }}" defer></script><script src="{{ url_for('static', filename='pong.js') }}" defer></script></head>
 <body class="pagina-estado">
+<script src="{{ url_for('static', filename='recibo.js') }}" defer></script>
 {% include 'qa_banner.html' %}
   <main class="cartao-estado">
+    <p class="sobretitulo">{{ nome_restaurante }}</p>
     <div class="estado-cabecalho"><div class="icone-estado" aria-hidden="true">✓</div><p class="sobretitulo">Pode deixar com a gente</p><h1>Seu pedido foi recebido!</h1><div class="numero-pedido">{{ pedido.numero_pedido }}</div>
       {% if modo_teste %}<p class="aviso">Este pedido foi registrado em modo de teste. Nenhuma mensagem real foi enviada ao WhatsApp.</p>{% elif notificacao_ok %}<p>Enviamos a confirmação no seu WhatsApp. Você pode continuar o acompanhamento na conversa com a loja.</p>{% else %}<p>Seu pedido está salvo. Não conseguimos enviar a confirmação pelo WhatsApp agora. Fale com a loja e informe o número acima para acompanhar.</p>{% endif %}
     </div>
     <div class="tempo-pedido"><span aria-hidden="true">◷</span><span>Tempo estimado: <strong>{{ pedido.tempo_estimado_min }} minutos</strong></span></div>
     <section class="recibo-pedido" aria-labelledby="titulo-recibo"><h2 id="titulo-recibo">O que você escolheu</h2><ul class="recibo-itens">{% for item in pedido.itens %}<li><span>{{ ('%g'|format(item.quantidade)).replace('.', ',') }} × {{ item.produto_nome }}</span><span>R$ {{ item.preco_unitario|dinheiro(item.quantidade) }}</span></li>{% endfor %}</ul>{% if pedido.forma_entrega == 'ENTREGA' %}<p class="recibo-total"><span>Taxa de entrega</span><span>R$ {{ (pedido.total_pedido - pedido.total_itens)|dinheiro }}</span></p>{% endif %}<p class="recibo-total"><strong>Total do pedido</strong><strong>R$ {{ pedido.total_pedido|dinheiro }}</strong></p></section>
     <dl class="recibo-detalhes"><div><dt>Recebimento</dt><dd>{{ 'Entrega no endereço' if pedido.forma_entrega == 'ENTREGA' else 'Retirada na loja' }}</dd></div><div><dt>Pagamento combinado</dt><dd>{{ pedido.forma_pagamento }}</dd></div></dl>
+    <section class="acoes-recibo" aria-label="Guardar comprovante"><button type="button" class="botao-secundario" id="imprimir-recibo" hidden>Imprimir ou salvar comprovante</button><p class="ajuda">Na janela de impressão, escolha uma impressora ou “Salvar como PDF”. Comprovante de pedido sem valor fiscal; não comprova pagamento.</p></section>
     {% include 'minijogo.html' %}
     <p class="nota-estado">Você já pode fechar esta página e voltar à conversa no WhatsApp. Este link confirmou seu pedido e não pode ser usado novamente.</p>
     <p class="rodape-estado"><a href="{{ url_for('aviso_privacidade') }}" target="_blank" rel="noopener">Aviso de privacidade<span class="sr-only"> (abre em outra aba)</span></a></p>

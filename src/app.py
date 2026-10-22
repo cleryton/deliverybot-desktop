@@ -467,7 +467,7 @@ def enviar_pedido(token):
         # WhatsApp não deve impedir de mostrar a confirmação na tela.
         logger.error("Pedido criado; notificação WhatsApp não concluída")
 
-    return render_template("pedido_sucesso.html", pedido=pedido, modo_teste=config.MODO_TESTE, notificacao_ok=notificacao_ok)
+    return render_template("pedido_sucesso.html", pedido=pedido, nome_restaurante=config.NOME_RESTAURANTE, modo_teste=config.MODO_TESTE, notificacao_ok=notificacao_ok)
 
 
 # ---------------------------------------------------------------------------

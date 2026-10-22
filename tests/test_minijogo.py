@@ -36,7 +36,7 @@ def test_jogo_independente_publico_sem_dados_do_cliente_ou_cookie(publico):
         assert conn.execute('SELECT COUNT(*) FROM clientes').fetchone()[0] == 0
 
 
-@pytest.mark.parametrize('asset', ['pong.css','pong-core.js','pong.js'])
+@pytest.mark.parametrize('asset', ['pong.css','pong-core.js','pong.js','recibo.js'])
 def test_recursos_do_jogo_passam_pelo_tunel_sem_liberar_painel(publico, asset):
     assert publico.get('/static/'+asset).status_code == 200
     assert publico.get('/static/gestao.js').status_code == 404
