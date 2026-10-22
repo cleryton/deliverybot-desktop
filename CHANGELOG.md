@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.44.1 — 2026-10-22
+
+Atualiza duas regressões legadas para conferir o redirecionamento da confirmação e a leitura do comprovante, preservando validação de estoque e recusa de segunda compra. Testes direcionados aprovados.
+
 ## 2.44.0 — 2026-10-22
 
 Após confirmar, redireciona com HTTP 303 para um comprovante recarregável somente no navegador que confirmou o pedido, sem repetir gravação, baixa de estoque ou mensagens. Acesso limitado a oito horas e cinco autorizações por sessão, sem dados pessoais no cookie. Mantém link original de uso único e inclui testes de isolamento, expiração e repetição; documenta as melhorias de desempenho e CEP.
