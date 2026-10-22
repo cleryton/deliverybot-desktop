@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: deliverybot-qa
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-web.txt
+    startCommand: gunicorn wsgi_qa:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 90
+    healthCheckPath: /healthz
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: QA_WEB_HABILITADO
+        value: SIM

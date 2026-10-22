@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>Privacidade — {{ aviso.responsavel }}</title><link rel="stylesheet" href="{{ url_for('static', filename='pedido.css') }}"></head>
 <body class="pagina-privacidade">
+{% include 'qa_banner.html' %}
   <a class="pular-conteudo" href="#aviso">Ir para o aviso de privacidade</a>
   <header class="cabecalho-loja"><div class="largura-pagina marca-loja"><span class="marca-simbolo" aria-hidden="true">✦</span><div><span class="sobretitulo">Compra com informação</span><h1>{{ aviso.responsavel }}</h1></div></div></header>
   <main class="documento-privacidade" id="aviso"><p class="sobretitulo">Aviso de privacidade</p><h1>Seus dados merecem cuidado.</h1><p class="introducao-privacidade">Saiba quais informações a loja usa para atender você, quem participa desse atendimento e como exercer seus direitos.</p><div class="contato-privacidade"><p><strong>Responsável pelos dados:</strong> {{ aviso.responsavel }}.</p><p><strong>Contato para privacidade:</strong> {{ aviso.contato or 'Solicite o contato do responsável na conversa com a loja pelo WhatsApp.' }}</p></div>

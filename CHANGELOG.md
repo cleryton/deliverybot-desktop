@@ -1,5 +1,17 @@
 # Histórico de versões
 
+## 2.42.2 — 2026-10-21
+
+Corrige as opções de pagamento no formulário hospedado para QA, reutilizando o contexto público da loja. Acrescenta regressão para impedir que o seletor seja publicado vazio.
+
+## 2.42.1 — 2026-10-21
+
+Atualiza Pillow para 13.0.0 e certifi para 2026.10.19, corrigindo os alertas encontrados pelo Actions antes da hospedagem QA. Valida catálogo, fotos, controles OWASP e distribuição com as dependências corrigidas.
+
+## 2.42.0 — 2026-10-21
+
+Adiciona publicação web isolada para QA no Render Free, com HTTPS, catálogo fictício com fotos e fluxo de pedido sem WhatsApp real. Restringe a hospedagem às páginas do cliente, usa banco descartável separado e inclui testes de isolamento e instruções de publicação.
+
 ## 2.41.0 — 2026-10-17
 
 Atualização automática do webhook da Meta após validar o HTTPS do túnel integrado, com tarefa em segundo plano, novas tentativas com espera crescente e proteção contra resultados de conexões antigas. Preserva o ajuste manual e a conexão WAHA. Inclui testes de regressão simulados; o catálogo fictício solicitado foi cadastrado somente na instalação local, sem versionar dados de uso.

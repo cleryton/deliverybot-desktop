@@ -4,7 +4,7 @@ anthropic==0.69.0
 anyio==4.15.1
 blinker==1.9.0
 bottle==0.13.4
-certifi==2026.7.22
+certifi==2026.10.19
 cffi==2.1.1
 charset-normalizer==3.5.2
 click==8.5.0
@@ -28,7 +28,7 @@ MarkupSafe==3.0.4
 packaging==26.3
 openpyxl==3.1.5
 pefile==2023.2.7
-Pillow==12.3.0
+Pillow==13.0.0
 pluggy==1.6.0
 proxy_tools==0.1.0
 pycparser==3.11
