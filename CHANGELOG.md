@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.43.1 — 2026-10-22
+
+Valida produtos do carrinho em lotes de até 400 parâmetros, preservando ordem, itens repetidos, precisão, estoque e custos internos. A cotação usa uma transação de leitura para não misturar preços durante edições concorrentes. Inclui regressões de desempenho por quantidade de consultas e de consistência concorrente.
+
 ## 2.43.0 — 2026-10-21
 
 Melhora a recuperação de falhas no laboratório QA, preservando códigos HTTP, CSRF, limites e ocultação de detalhes internos. Adiciona impressão ou salvamento local do comprovante pelo navegador, com identificação da loja, aviso sem valor fiscal e sem comprovante de pagamento; não reenvia a compra nem utiliza serviços externos. Inclui testes de recuperação, isolamento e impressão.

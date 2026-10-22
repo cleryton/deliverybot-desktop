@@ -16,6 +16,7 @@ class CotacaoAlterada(ValueError):
 def cotacao(itens, forma_entrega):
     """Calcula o mesmo orçamento usado na gravação, sem reservar saldo."""
     with get_conn() as conn:
+        conn.execute('BEGIN')
         total, resolvidos = _resolver_itens(conn, itens)
     return _cotacao(total, resolvidos, forma_entrega)
 
@@ -29,24 +30,34 @@ def _cotacao(total, itens, entrega):
 def _resolver_itens(conn, itens):
     if not itens:
         raise ValueError("O pedido precisa ter pelo menos um item.")
-    quantidades = {}
+    entradas = []
     for item in itens:
         if not isinstance(item, dict):
             raise ValueError("Item inválido.")
         produto_id = inteiro(item.get("produto_id"), "Produto", 1)
-        atual=conn.execute('SELECT fracionado FROM produtos WHERE id=?',(produto_id,)).fetchone()
+        entradas.append((produto_id, item.get('quantidade', 1)))
+    # Até 400 parâmetros por consulta: funciona também em bancos SQLite antigos.
+    # Sem cache de preços ou saldo; a cotação e a gravação usam seu próprio snapshot.
+    ids = list(dict.fromkeys(pid for pid, _ in entradas))
+    produtos = {}
+    for inicio in range(0, len(ids), 400):
+        lote = ids[inicio:inicio+400]
+        marcadores = ','.join('?' for _ in lote)
+        produtos.update((p['id'], p) for p in conn.execute(
+            f'SELECT * FROM produtos WHERE id IN ({marcadores})', lote))
+    quantidades = {}
+    for produto_id, valor in entradas:
+        atual=produtos.get(produto_id)
         fracionado=bool(atual and atual['fracionado'])
-        quantidade = medida(item.get("quantidade", 1), "Quantidade",fracionado,0.001 if fracionado else 1)
+        quantidade = medida(valor, "Quantidade",fracionado,0.001 if fracionado else 1)
         quantidades[produto_id] = somar(quantidades.get(produto_id, 0),quantidade)
         if quantidades[produto_id] > 999999:
             raise ValueError("Quantidade acima do limite permitido.")
     total_itens = Decimal("0.00")
     itens_resolvidos = []
     for produto_id, quantidade in quantidades.items():
-        produto = conn.execute(
-            "SELECT * FROM produtos WHERE id = ? AND ativo = 1", (produto_id,)
-        ).fetchone()
-        if produto is None:
+        produto = produtos.get(produto_id)
+        if produto is None or not produto['ativo']:
             raise ValueError("Um produto selecionado não está mais disponível. Atualize o catálogo.")
         if produto["estoque"] is not None and quantidade > produto["estoque"]:
             raise ValueError(f"Estoque insuficiente para {produto['nome']}. Disponível: {produto['estoque']} {produto['unidade']}.")
