@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.43.2 — 2026-10-22
+
+Valida o formato e os campos das respostas ViaCEP, impedindo falhas internas com JSON inesperado ou endereço incompleto. Reutiliza somente CEPs válidos por cinco minutos em cache limitado a 256 entradas, sem armazenar nome, número ou complemento. Falhas não ficam em cache, redirecionamentos externos são recusados e a área de entrega é conferida em cada uso.
+
 ## 2.43.1 — 2026-10-22
 
 Valida produtos do carrinho em lotes de até 400 parâmetros, preservando ordem, itens repetidos, precisão, estoque e custos internos. A cotação usa uma transação de leitura para não misturar preços durante edições concorrentes. Inclui regressões de desempenho por quantidade de consultas e de consistência concorrente.
