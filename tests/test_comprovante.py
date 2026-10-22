@@ -50,7 +50,9 @@ def test_token_sozinho_ou_sessao_de_outro_cliente_nao_libera_recibo(loja):
     assert c.get(url+'/comprovante',base_url=BASE).status_code==410
     c.post(url,base_url=BASE,data=dados)
     outro=app.test_client()
-    assert outro.get(url+'/comprovante',base_url=BASE).status_code==410
+    indisponivel=outro.get(url+'/comprovante',base_url=BASE)
+    assert indisponivel.status_code==410 and 'Não refaça o pedido' in indisponivel.text
+    assert 'quero fazer um pedido' not in indisponivel.text
     assert c.get('/m/outro-token/comprovante',base_url=BASE).status_code==410
 
 

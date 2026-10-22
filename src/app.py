@@ -368,7 +368,7 @@ def comprovante_pedido(token):
     acesso = comprovantes.consultar(token,link['pedido_id']) if link and link['usado'] else None
     pedido = pedidos.obter_pedido(acesso['id']) if acesso else None
     if not pedido:
-        return render_template('link_invalido.html',mensagem='Reabra o comprovante no mesmo navegador que confirmou o pedido. O acesso é temporário.'),410
+        return render_template('comprovante_indisponivel.html'),410
     return render_template('pedido_sucesso.html',pedido=pedido,nome_restaurante=config.NOME_RESTAURANTE,
                            modo_teste=acesso['teste'],notificacao_ok=acesso['notificado'])
 

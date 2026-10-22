@@ -1,4 +1,4 @@
-DeliveryBot 2.44.2 — componentes da conexão integrada
+DeliveryBot 2.44.3 — componentes da conexão integrada
 Runtime Node.js: v24.14.0
 Biblioteca de conexão: https://github.com/WhiskeySockets/Baileys (7.0.0-rc14)
 As licenças e os arquivos distribuídos de cada dependência estão incluídos em node_modules.

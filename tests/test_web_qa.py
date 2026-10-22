@@ -88,7 +88,7 @@ def test_health_modo_qa_e_csrf_errado(qa):
     assert c.post('/qa/novo',base_url='https://qa-ficticio.example',headers={'Origin':'https://invasor.example'},data={'csrf_token':csrf(r)}).status_code==403
 
 
-@pytest.mark.parametrize('path,codigo', [('/gestao',404),('/m/inexistente',410)])
+@pytest.mark.parametrize('path,codigo', [('/gestao',404),('/m/inexistente',410),('/m/inexistente/comprovante',410)])
 def test_recuperacao_nao_sugere_whatsapp_real_nem_reflete_url(qa,path,codigo):
     c,_=qa
     r=c.get(path+'?segredo=NAO_EXIBIR',base_url='https://qa-ficticio.example')
