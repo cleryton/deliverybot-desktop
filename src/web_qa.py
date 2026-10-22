@@ -12,7 +12,7 @@ from . import config, seguranca
 from .db import init_db, get_conn
 from .politica_terminal import Limites
 
-PUBLICOS={'pagina_pedido','enviar_pedido','catalogo_cliente_pdf','pagina_minijogo','aviso_privacidade','foto_produto'}
+PUBLICOS={'pagina_pedido','enviar_pedido','comprovante_pedido','catalogo_cliente_pdf','pagina_minijogo','aviso_privacidade','foto_produto'}
 ASSETS={'pedido.css','pedido.js','recibo.js','pong.css','pong-core.js','pong.js'}
 
 ESTADOS_QA = {
@@ -97,6 +97,9 @@ def criar_app(pasta,base,chave_sessao):
         r.headers['Referrer-Policy']='same-origin'
         if r.status_code in ESTADOS_QA:
             titulo, orientacao = ESTADOS_QA[r.status_code]
+            if r.status_code==410 and request.endpoint=='comprovante_pedido':
+                titulo='Este comprovante não está disponível'
+                orientacao='Não refaça o pedido para recuperar o comprovante. Ele exige a sessão do mesmo navegador. Para uma nova rodada fictícia, volte ao laboratório.'
             r.set_data(render_template('qa_estado.html', titulo=titulo, orientacao=orientacao, codigo=r.status_code))
             r.content_type='text/html; charset=utf-8'
             if r.status_code in {429,503}:r.headers.setdefault('Retry-After','60')

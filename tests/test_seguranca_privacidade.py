@@ -102,7 +102,7 @@ def test_formulario_publico_protege_pedido_e_nao_vaza_dados(cliente):
     assert b'aviso de privacidade' in pagina.data and b'csrf_token' in pagina.data
     corpo = {'nome':'Ana', 'forma_pagamento':'Pix',f'qtd_{p["id"]}':'1'}
     assert c.post(url, data=corpo).status_code == 403
-    assert c.post(url, data={**corpo,'csrf_token':headers['X-CSRF-Token']}).status_code == 200
+    assert c.post(url, data={**corpo,'csrf_token':headers['X-CSRF-Token']}).status_code == 303
     assert c.get(url).status_code == 410
 
 

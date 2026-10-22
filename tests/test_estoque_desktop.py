@@ -146,7 +146,8 @@ def test_api_autenticacao_csrf_e_pedido_pelo_formulario(monkeypatch):
     caminho = resposta["caminho"]
     assert b'Notebook' in cliente.get(caminho).data
     r = cliente.post(caminho, data={"nome": "Ana", "forma_pagamento": "Pix", "csrf_token": csrf, f'qtd_{p["id"]}': 1})
-    assert r.status_code == 200
+    assert r.status_code == 303
+    assert cliente.get(r.location).status_code == 200
     assert cliente.post(caminho, data={f'qtd_{p["id"]}': 1}).status_code == 410
     backup = cliente.post("/gestao/api/backup", json={"senha": "senha-de-backup-teste"}, headers=headers).json["caminho"]
     from src.backups import abrir_arquivo

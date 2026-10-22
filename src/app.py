@@ -360,6 +360,19 @@ def catalogo_cliente_pdf(token):
     return send_file(BytesIO(gerar()),mimetype='application/pdf',as_attachment=True,download_name='Catalogo-DeliveryBot.pdf')
 
 
+@app.get('/m/<token>/comprovante')
+def comprovante_pedido(token):
+    from . import comprovantes
+    from .links import obter_link
+    link = obter_link(token)
+    acesso = comprovantes.consultar(token,link['pedido_id']) if link and link['usado'] else None
+    pedido = pedidos.obter_pedido(acesso['id']) if acesso else None
+    if not pedido:
+        return render_template('comprovante_indisponivel.html'),410
+    return render_template('pedido_sucesso.html',pedido=pedido,nome_restaurante=config.NOME_RESTAURANTE,
+                           modo_teste=acesso['teste'],notificacao_ok=acesso['notificado'])
+
+
 @app.after_request
 def origem_formulario_pedido(response):
     if request.endpoint in {'pagina_pedido', 'enviar_pedido'}:
@@ -467,7 +480,9 @@ def enviar_pedido(token):
         # WhatsApp não deve impedir de mostrar a confirmação na tela.
         logger.error("Pedido criado; notificação WhatsApp não concluída")
 
-    return render_template("pedido_sucesso.html", pedido=pedido, nome_restaurante=config.NOME_RESTAURANTE, modo_teste=config.MODO_TESTE, notificacao_ok=notificacao_ok)
+    from . import comprovantes
+    comprovantes.registrar(token,pedido['id'],config.MODO_TESTE,notificacao_ok)
+    return redirect(url_for('comprovante_pedido',token=token),code=303)
 
 
 # ---------------------------------------------------------------------------

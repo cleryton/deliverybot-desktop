@@ -325,5 +325,6 @@ def test_formulario_publico_compra_fracionada(cliente):
     caminho='/m/'+gerar_link_pedido('5511999990044').rsplit('/',1)[-1]
     c.get(caminho)
     r=c.post(caminho,data={'csrf_token':h['X-CSRF-Token'],'nome':'Cliente fictício','forma_pagamento':'Dinheiro','forma_entrega':'RETIRADA BALCAO','qtd_'+str(p['id']):'0.5'})
-    assert r.status_code==200
+    assert r.status_code==303
+    assert c.get(r.location).status_code==200
     assert estoque.listar_produtos()[0]['estoque']==1.5

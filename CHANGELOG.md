@@ -1,5 +1,29 @@
 # Histórico de versões
 
+## 2.44.3 — 2026-10-22
+
+Diferencia comprovante indisponível de link para nova compra: orienta conferir o pedido existente e não refazê-lo para recuperar o recibo. Mantém a recusa de acesso e adapta a orientação ao laboratório fictício. Amplia testes de recuperação e não exposição de dados.
+
+## 2.44.2 — 2026-10-22
+
+Preserva a regra exata ativo=1 na leitura de produtos em lote, recusando marcadores inválidos de bancos antigos ou alterados. Adiciona regressão e valida as suítes de carrinho, comprovante, CEP e pedidos.
+
+## 2.44.1 — 2026-10-22
+
+Atualiza duas regressões legadas para conferir o redirecionamento da confirmação e a leitura do comprovante, preservando validação de estoque e recusa de segunda compra. Testes direcionados aprovados.
+
+## 2.44.0 — 2026-10-22
+
+Após confirmar, redireciona com HTTP 303 para um comprovante recarregável somente no navegador que confirmou o pedido, sem repetir gravação, baixa de estoque ou mensagens. Acesso limitado a oito horas e cinco autorizações por sessão, sem dados pessoais no cookie. Mantém link original de uso único e inclui testes de isolamento, expiração e repetição; documenta as melhorias de desempenho e CEP.
+
+## 2.43.2 — 2026-10-22
+
+Valida o formato e os campos das respostas ViaCEP, impedindo falhas internas com JSON inesperado ou endereço incompleto. Reutiliza somente CEPs válidos por cinco minutos em cache limitado a 256 entradas, sem armazenar nome, número ou complemento. Falhas não ficam em cache, redirecionamentos externos são recusados e a área de entrega é conferida em cada uso.
+
+## 2.43.1 — 2026-10-22
+
+Valida produtos do carrinho em lotes de até 400 parâmetros, preservando ordem, itens repetidos, precisão, estoque e custos internos. A cotação usa uma transação de leitura para não misturar preços durante edições concorrentes. Inclui regressões de desempenho por quantidade de consultas e de consistência concorrente.
+
 ## 2.43.0 — 2026-10-21
 
 Melhora a recuperação de falhas no laboratório QA, preservando códigos HTTP, CSRF, limites e ocultação de detalhes internos. Adiciona impressão ou salvamento local do comprovante pelo navegador, com identificação da loja, aviso sem valor fiscal e sem comprovante de pagamento; não reenvia a compra nem utiliza serviços externos. Inclui testes de recuperação, isolamento e impressão.
