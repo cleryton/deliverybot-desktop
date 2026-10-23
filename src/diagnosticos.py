@@ -17,15 +17,11 @@ def coletar():
         banco_ok = False
 
     try:
-        if config.WHATSAPP_PROVIDER in {"LOCAL", "WAHA"}:
+        if config.WHATSAPP_PROVIDER in {"LOCAL", "WAHA", "META"}:
             wa = conexoes.status_whatsapp()
             whatsapp = {"estado": wa.get("estado", "INDISPONIVEL"),
                         "servico": bool(wa.get("servico")),
                         "conectado": bool(wa.get("conectado"))}
-        elif config.WHATSAPP_PROVIDER == "META":
-            configurado = bool(config.WHATSAPP_TOKEN and config.WHATSAPP_PHONE_NUMBER_ID)
-            whatsapp = {"estado": "CONFIGURADO" if configurado else "INCOMPLETO",
-                        "servico": configurado, "conectado": configurado}
         else:
             whatsapp = {"estado": "TESTE", "servico": True, "conectado": False}
     except Exception:
