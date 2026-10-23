@@ -76,6 +76,12 @@ def executar(forcar=False):
                 temp=destino.with_suffix('.novo')
                 try:
                     shutil.copyfile(origem,temp)
+                    # Valide os bytes no destino antes de publicar a cópia ou
+                    # descartar a origem: discos externos/redes podem falhar.
+                    with temp.open('rb+') as arquivo:
+                        arquivo.flush()
+                        os.fsync(arquivo.fileno())
+                    verificar_arquivo(temp,senha)
                     os.replace(temp,destino)
                     origem.unlink()
                 finally:

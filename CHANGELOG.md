@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.44.4 — 2026-10-23
+
+Protege a publicação dos backups com validação da cópia de destino antes da retenção; corrige o diagnóstico da Meta para não confundir credenciais salvas com conexão comprovada. Inclui seis regressões e roteiro de operação comercial.
+
 ## 2.44.3 — 2026-10-22
 
 Diferencia comprovante indisponível de link para nova compra: orienta conferir o pedido existente e não refazê-lo para recuperar o recibo. Mantém a recusa de acesso e adapta a orientação ao laboratório fictício. Amplia testes de recuperação e não exposição de dados.
