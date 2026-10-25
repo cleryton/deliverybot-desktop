@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.45.0 — 2026-10-25
+
+Adiciona catálogo PDF como alternativa automática quando o link permanece indisponível, com envio de documento por WhatsApp local, Meta e WAHA. Preserva conferência de envios incertos, migra tarefas antigas e mantém custos e dados de clientes fora do catálogo.
+
 ## 2.44.8 — 2026-10-25
 
 Mantém o agendador ativo após falhas inesperadas, isola a consulta de atualizações das rotinas de proteção e normaliza datas com fuso sem interromper backups. Recupera datas inválidas e inclui 18 regressões sem serviços reais.

@@ -147,6 +147,19 @@ export class WhatsAppBridge{
     if(sent?.message&&sent.key?.id){this.messages.set(sent.key.id,sent.message);if(this.messages.size>300)this.messages.delete(this.messages.keys().next().value);}
     return {id:sent?.key?.id};
   }
+  async sendFile({chatId,file,caption}){
+    if(this.status!=='WORKING'||!this.socket)throw new Error('WhatsApp desconectado.');
+    if(!file||file.mimetype!=='application/pdf'||file.url!==undefined||
+       typeof file.filename!=='string'||!/^[-a-zA-Z0-9_]{1,70}\.pdf$/.test(file.filename)||
+       typeof file.data!=='string'||file.data.length>Math.ceil(8*1024*1024/3)*4||
+       file.data.length%4!==0||/[^A-Za-z0-9+/=]/.test(file.data)||
+       typeof caption!=='string'||!caption.trim()||caption.length>1000)throw new Error('Documento PDF inválido.');
+    const document=Buffer.from(file.data,'base64');
+    if(document.length>8*1024*1024||document.subarray(0,5).toString()!=='%PDF-'||document.toString('base64')!==file.data)throw new Error('Documento PDF inválido.');
+    const sent=await this.socket.sendMessage(destination(chatId),{document,mimetype:'application/pdf',fileName:file.filename,caption});
+    if(sent?.message&&sent.key?.id){this.messages.set(sent.key.id,sent.message);if(this.messages.size>300)this.messages.delete(this.messages.keys().next().value);}
+    return {id:sent?.key?.id};
+  }
   async close(){
     this.closed=true;clearTimeout(this.reconnect);clearInterval(this.pump);
     const sock=this.socket;this.socket=null;sock?.end(undefined);

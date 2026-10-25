@@ -139,6 +139,11 @@ def _enviar_via_waha(
     return resp.json() if resp.content else {}
 
 
+def enviar_pdf(telefone, pdf, legenda, chat_id=None, session=None):
+    from .whatsapp_documentos import enviar
+    return enviar(telefone, pdf, legenda, chat_id, session)
+
+
 def _enviar_via_meta(telefone: str, texto: str) -> dict:
     payload = {
         "messaging_product": "whatsapp",

@@ -18,6 +18,12 @@ _status_lock = threading.Lock()
 _status_ate = 0
 _pronto = False
 _ERRO_HTTPS = 'Aguardando a reconexão da página HTTPS.'
+_LEGENDA_CATALOGO = (
+    'A página de pedidos não ficou disponível. Segue nosso catálogo em PDF para você conferir os produtos. '
+    'Para pedir por esta conversa, diga PEDIDO PELO WHATSAPP. '
+    'Preços e disponibilidade serão conferidos ao confirmar; nenhum pedido foi confirmado ainda. '
+    'Para saber como usamos seus dados, digite PRIVACIDADE.'
+)
 
 
 def _mensagem_ruido(texto):
@@ -156,7 +162,20 @@ def processar_proxima():
             with get_conn() as conn:
                 conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', atualizado_em=datetime('now') WHERE id=?",(tarefa['id'],))
             return True
+        usar_pdf = tarefa['origem'] != 'HUMANO' and tarefa['formato_saida'] == 'PDF'
+        if tarefa['origem'] != 'HUMANO' and not usar_pdf and tarefa['erro'] == _ERRO_HTTPS and tarefa['tentativas'] >= 1 and not endereco():
+            from . import ia
+            usar_pdf = tarefa['texto'].strip() == '2' or ia.intencao_pedido(tarefa['texto'], ia._historico_mensagens(tarefa['telefone']))
+        pdf = None
         resposta = tarefa["resposta"]
+        if usar_pdf:
+            resposta = _LEGENDA_CATALOGO
+            # Persiste a escolha antes de gerar/enviar. Uma conferência ou nova
+            # tentativa manual continua sendo de documento, nunca de texto solto.
+            with get_conn() as conn:
+                conn.execute("UPDATE tarefas_bot SET formato_saida='PDF',resposta=? WHERE id=?", (resposta, tarefa['id']))
+            from .catalogo_pdf import gerar
+            pdf = gerar(mostrar_quantidades=False)
         if resposta is None:
             resposta = bot.processar_mensagem(tarefa["telefone"], tarefa["texto"])
             if resposta is None:
@@ -206,7 +225,10 @@ def processar_proxima():
                 if not atual or atual['estado']!='PROCESSANDO':
                     raise protecao_ia.ConversaBloqueada()
                 conn.execute("UPDATE tarefas_bot SET resposta=?, estado='ENVIANDO', atualizado_em=datetime('now') WHERE id=?", (resposta, tarefa['id']))
-            whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"], permitir_externos=humano_externo)
+            if usar_pdf:
+                whatsapp.enviar_pdf(tarefa['telefone'], pdf, resposta, chat_id=tarefa['chat_id'], session=tarefa['sessao'])
+            else:
+                whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"], permitir_externos=humano_externo)
         with get_conn() as conn:
             conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', erro=NULL, atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))
             conn.execute("INSERT INTO mensagens (telefone, direcao, conteudo) VALUES (?, 'SAIDA', ?)", (tarefa["telefone"], resposta))

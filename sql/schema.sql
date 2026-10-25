@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS tarefas_bot (
     chat_id TEXT,
     sessao TEXT,
     resposta TEXT,
+    formato_saida TEXT NOT NULL DEFAULT 'TEXTO',
     entrada_registrada INTEGER NOT NULL DEFAULT 0,
     estado TEXT NOT NULL DEFAULT 'PENDENTE',
     tentativas INTEGER NOT NULL DEFAULT 0,

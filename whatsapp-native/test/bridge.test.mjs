@@ -22,6 +22,38 @@ async function fixture(t,extra={}){
 const message=(id,text='Oi',jid='5547999990000@s.whatsapp.net')=>({key:{id,remoteJid:jid,fromMe:false},message:{conversation:text}});
 const accepted=()=>({ok:true,json:async()=>({status:'recebido'})});
 
+test('envia PDF em memória com legenda e destino LID, sem URL pública',async t=>{
+  const bridge=await fixture(t);let enviado;
+  bridge.status='WORKING';bridge.socket={end:()=>{},sendMessage:async(jid,body)=>{enviado={jid,body};return {key:{id:'PDF-TESTE'},message:{documentMessage:{fileName:body.fileName}}};}};
+  const pdf=Buffer.from('%PDF-1.4\nconteudo ficticio\n%%EOF');
+  const r=await bridge.sendFile({chatId:'123456789@lid',caption:'Catálogo fictício',file:{mimetype:'application/pdf',filename:'Catalogo-DeliveryBot.pdf',data:pdf.toString('base64')}});
+  assert.equal(r.id,'PDF-TESTE');assert.equal(enviado.jid,'123456789@lid');
+  assert.deepEqual(enviado.body.document,pdf);assert.equal(enviado.body.caption,'Catálogo fictício');
+  assert.equal(enviado.body.mimetype,'application/pdf');assert.equal(enviado.body.url,undefined);
+});
+
+test('documentos rejeitam URLs, caminhos, base64 inválido e grupos antes do envio',async t=>{
+  const bridge=await fixture(t);let calls=0;
+  bridge.status='WORKING';bridge.socket={end:()=>{},sendMessage:async()=>{calls++;}};
+  const base={chatId:'123456789@lid',caption:'Catálogo',file:{mimetype:'application/pdf',filename:'Catalogo.pdf',data:Buffer.from('%PDF-1.4\n%%EOF').toString('base64')}};
+  for(const file of [{...base.file,url:'http://localhost/segredo'},{...base.file,filename:'../segredo.pdf'},{...base.file,data:'%%%%'},{...base.file,data:Buffer.from('outro arquivo').toString('base64')}]) {
+    await assert.rejects(bridge.sendFile({...base,file}));
+  }
+  await assert.rejects(bridge.sendFile({...base,chatId:'123@g.us'}));
+  assert.equal(calls,0);
+});
+
+test('API de PDF aceita corpo maior que texto e mantém limite separado para texto',async t=>{
+  const bridge=await fixture(t);bridge.status='WORKING';
+  bridge.socket={end:()=>{},sendMessage:async()=>({key:{id:'PDF-API'}})};
+  const key='p'.repeat(40),server=serverFor(bridge,key);
+  server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>new Promise(r=>server.close(r)));
+  const url=`http://127.0.0.1:${server.address().port}`,headers={'X-Api-Key':key};
+  const data={chatId:'123456789@lid',caption:'Catálogo',file:{mimetype:'application/pdf',filename:'Catalogo.pdf',data:Buffer.concat([Buffer.from('%PDF-'),Buffer.alloc(70000,32)]).toString('base64')}};
+  assert.equal((await fetch(url+'/api/sendFile',{method:'POST',headers,body:JSON.stringify(data)})).status,200);
+  assert.equal((await fetch(url+'/api/sendText',{method:'POST',headers,body:JSON.stringify({chatId:data.chatId,text:'x'.repeat(70000)})})).status,413);
+});
+
 test('rejeita grupos, broadcasts e JIDs malformados no envio',()=>{
   assert.equal(destination('5511999990000@c.us'),'5511999990000@s.whatsapp.net');
   assert.equal(destination('123456789@lid'),'123456789@lid');
