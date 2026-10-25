@@ -11,8 +11,10 @@ export function serverFor(bridge,key,{testMode=false}={}){
     // Não oferece CORS nem acesso por um Host externo ao processo local.
     if(!/^127\.0\.0\.1:\d+$/.test(req.headers.host||''))return respond(403,{erro:'Endereço local obrigatório.'});
     try{
-      let raw='';for await(const chunk of req){raw+=chunk.toString();if(Buffer.byteLength(raw)>65536)return respond(413,{erro:'Requisição muito grande.'});}
-      const data=raw?JSON.parse(raw):{};const path=new URL(req.url,'http://localhost').pathname;
+      const path=new URL(req.url,'http://localhost').pathname;
+      const limit=req.method==='POST'&&path==='/api/sendFile'?12*1024*1024:65536;
+      let raw='',size=0;for await(const chunk of req){size+=chunk.length;if(size>limit)return respond(413,{erro:'Requisição muito grande.'});raw+=chunk.toString();}
+      const data=raw?JSON.parse(raw):{};
       const sessionPath='/api/sessions/'+encodeURIComponent(bridge.session);
       if(req.method==='GET'&&path==='/health')return respond(200,{engine:'DELIVERYBOT_NATIVE',ready:true});
       if(req.method==='GET'&&path===sessionPath)return respond(200,bridge.info());
@@ -25,6 +27,7 @@ export function serverFor(bridge,key,{testMode=false}={}){
       if(req.method==='POST'&&path===sessionPath+'/stop'){await bridge.stop();return respond(200,bridge.info());}
       if(req.method==='POST'&&path===sessionPath+'/restart'){await bridge.restart();return respond(200,bridge.info());}
       if(req.method==='POST'&&path==='/api/sendText')return respond(200,await bridge.send(data));
+      if(req.method==='POST'&&path==='/api/sendFile')return respond(200,await bridge.sendFile(data));
       if(testMode&&req.method==='POST'&&path==='/test/connect'){await bridge.connection(bridge.socket,{connection:'open'});return respond(200,bridge.info());}
       return respond(404,{erro:'Operação inexistente.'});
     }catch(e){respond(400,{erro:e.message||'Não foi possível concluir a operação.'});}

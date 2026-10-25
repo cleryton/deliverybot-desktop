@@ -33,7 +33,8 @@ _MIGRACOES_COLUNAS = {
         ("custo", "REAL"),
     ],
     "itens_pedido": [("nome_produto", "TEXT"), ("custo_unitario", "REAL")],
-    "tarefas_bot": [("entrada_registrada", "INTEGER NOT NULL DEFAULT 0")],
+    "tarefas_bot": [("entrada_registrada", "INTEGER NOT NULL DEFAULT 0"),
+                    ("formato_saida", "TEXT NOT NULL DEFAULT 'TEXTO'")],
     "meta_mensagens_custo": [("precificado_em", "TEXT")],
 }
 
