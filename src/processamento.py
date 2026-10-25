@@ -161,6 +161,17 @@ def processar_proxima():
             with get_conn() as conn:
                 conn.execute("UPDATE tarefas_bot SET estado='PENDENTE' WHERE id=?", (tarefa["id"],))
             return True
+        # Um aviso preparado enquanto o HTTPS reconectava não deve ser enviado
+        # como resposta definitiva quando o cliente pediu o acesso à compra.
+        # Também recupera avisos já persistidos por versões anteriores.
+        if tarefa['origem'] != 'HUMANO':
+            from . import ia
+            if resposta.startswith(ia.PEDIDO_INDISPONIVEL):
+                historico = ia._historico_mensagens(tarefa['telefone'])
+                if tarefa['texto'].strip() == '2' or ia.intencao_pedido(tarefa['texto'], historico):
+                    from .links import gerar_link_pedido
+                    resposta = (ia.resposta_link(gerar_link_pedido(tarefa['telefone']), historico)
+                                + resposta[len(ia.PEDIDO_INDISPONIVEL):])
         from .links import atualizar_resposta
         humano_externo = tarefa['origem'] == 'HUMANO'
         try:

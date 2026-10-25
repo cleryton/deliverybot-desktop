@@ -14,6 +14,8 @@ O relatório de diagnóstico distingue credenciais Meta configuradas de conexão
 
 Antes de disponibilizar uma loja, valide o fluxo completo com um destinatário autorizado: mensagem recebida, resposta, pedido registrado com preço correto e atualização de andamento. Use os indicadores de entrega para investigar falhas. Autorize explicitamente qualquer teste que envie mensagens reais.
 
+O webhook recebe mensagens; o link de compra é pessoal e só é criado quando o cliente pede para comprar, solicita o link ou escolhe a opção 2. A criação desse link não confirma a compra. Durante a reconexão do HTTPS, uma solicitação de link permanece na fila e é retomada quando houver endereço válido, respeitando a expiração da fila e as pausas de atendimento humano. Avisos de indisponibilidade preparados antes da reconexão são substituídos pelo link real antes do envio; endereços locais continuam bloqueados. Se a fila expirar, o cliente precisará solicitar novamente.
+
 ## Aprovação por comércio
 
 - Conferir catálogo, preços, disponibilidade e regras de entrega ou retirada.
