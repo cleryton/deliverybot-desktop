@@ -2,6 +2,22 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const ux = require('../../web/static/experiencia.js');
 
+test('fila explica a espera por HTTPS sem prometer retomada após o prazo',()=>{
+  const dados={pendentes:3,aguardando_https:2};
+  assert.match(ux.fila(dados),/^3 mensagens.*2 aguardando a página HTTPS.*dentro do prazo/);
+  assert.deepEqual(dados,{pendentes:3,aguardando_https:2});
+});
+test('fila vazia e respostas antigas não mostram problemas de HTTPS inexistentes',()=>{
+  assert.equal(ux.fila(),'0 mensagens em processamento ou aguardando');
+  assert.equal(ux.fila({pendentes:1}),'1 mensagem em processamento ou aguardando');
+});
+test('fila limita contagens inconsistentes e rejeita dados inválidos',()=>{
+  assert.match(ux.fila({pendentes:1,aguardando_https:8}),/1 aguardando/);
+  for(const valor of [-1,NaN,Infinity,'<script>',null,0.5]) {
+    assert.equal(ux.fila({pendentes:valor,aguardando_https:valor}),'0 mensagens em processamento ou aguardando');
+  }
+});
+
 const orders = [
   {numero_pedido:'#12',cliente_nome:'João Silva',cliente_telefone:'5542000012',status:'RECEBIDO',itens:[{produto_nome:'Café com pão'}]},
   {numero_pedido:'#13',cliente_nome:'Maria',cliente_telefone:'5542000013',status:'ENTREGUE',itens:[{produto_nome:'Peça de reposição'}]},

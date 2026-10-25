@@ -16,6 +16,8 @@ Antes de disponibilizar uma loja, valide o fluxo completo com um destinatário a
 
 O webhook recebe mensagens; o link de compra é pessoal e só é criado quando o cliente pede para comprar, solicita o link ou escolhe a opção 2. A criação desse link não confirma a compra. Durante a reconexão do HTTPS, uma solicitação de link permanece na fila e é retomada quando houver endereço válido, respeitando a expiração da fila e as pausas de atendimento humano. Avisos de indisponibilidade preparados antes da reconexão são substituídos pelo link real antes do envio; endereços locais continuam bloqueados. Se a fila expirar, o cliente precisará solicitar novamente.
 
+Enquanto o HTTPS estiver indisponível, mensagens de outras conversas que já podem ser atendidas têm prioridade sobre solicitações que aguardam o link. A ordem dentro de cada conversa é preservada. Assim que o endereço volta, a fila retoma a ordem original. O painel informa a quantidade de mensagens aguardando o HTTPS, sem incluir envios incertos que exigem conferência manual.
+
 ## Aprovação por comércio
 
 - Conferir catálogo, preços, disponibilidade e regras de entrega ou retirada.
