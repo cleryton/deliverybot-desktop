@@ -42,7 +42,9 @@ def test_outros_assuntos_nao_autorizam_link_de_compra(texto):
 
 @pytest.mark.parametrize('persistido', [False, True])
 @pytest.mark.parametrize('texto', ['quero o link', '2'])
-def test_aguarda_https_e_envia_link_uma_vez_apos_reconexao(monkeypatch, persistido, texto):
+@pytest.mark.parametrize('provedor', ['LOCAL', 'META'])
+def test_aguarda_https_e_envia_link_uma_vez_apos_reconexao(monkeypatch, persistido, texto, provedor):
+    monkeypatch.setattr(config, 'WHATSAPP_PROVIDER', provedor)
     ident = tarefa(texto)
     if persistido:
         with get_conn() as conn:
