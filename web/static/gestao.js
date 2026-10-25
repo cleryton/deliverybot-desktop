@@ -152,7 +152,7 @@ function renderConnections(c){
   $('#ollama-model').disabled=olBusy;
   const progress=c.tarefas.ollama?.percentual;$('#ol-progress').hidden=!olBusy||progress===null||progress===undefined;if(progress!=null)$('#ol-progress').value=progress;
   $('#public-url-note').textContent=c.links_publicos?'HTTPS pronto: os links de compra usam '+c.endereco_publico+'.':c.pagina_publica?.disponivel?'Ao conectar o WhatsApp, o aplicativo prepara e valida o HTTPS automaticamente antes de liberar o QR Code. '+c.pagina_publica.mensagem:'Configure um endereço público HTTPS antes de conectar o WhatsApp neste servidor.';
-  $('#inbox-count').textContent=c.fila.pendentes+' mensagens em processamento ou aguardando';
+  $('#inbox-count').textContent=DeliveryUX.fila(c.fila);
   $('#inbox-last').textContent='Última mensagem recebida: '+date(c.fila.ultima_mensagem);
   $('#inbox-errors').innerHTML=c.fila.falhas.map(f=>`<div class="inbox-error"><b>${escapeHTML(f.telefone)}</b><p>${escapeHTML(f.erro)}</p><div class="button-row"><button data-message-action="reenviar" data-message-id="${f.id}">Tentar novamente</button><button data-message-action="ignorar" data-message-id="${f.id}">Marcar como resolvida</button></div></div>`).join('');
   $('#connection').textContent=['LOCAL','WAHA'].includes(c.provedor)?(w.conectado?'WhatsApp conectado':'WhatsApp · '+w.mensagem):c.provedor==='TESTE'?'Modo de teste':'WhatsApp · Meta configurada';

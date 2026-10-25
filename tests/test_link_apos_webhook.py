@@ -68,3 +68,46 @@ def test_aguarda_https_e_envia_link_uma_vez_apos_reconexao(monkeypatch, persisti
         assert tuple(link) == ('5547999990000', 0)
         assert conn.execute('SELECT count(*) FROM links_pedido').fetchone()[0] == 1
         assert conn.execute('SELECT count(*) FROM pedidos').fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('provedor', ['LOCAL', 'META'])
+def test_https_indisponivel_nao_bloqueia_outro_cliente_e_preserva_ordem(monkeypatch, provedor):
+    monkeypatch.setattr(config, 'WHATSAPP_PROVIDER', provedor)
+    primeira = tarefa('2')
+    enviar = Mock()
+    monkeypatch.setattr(whatsapp, 'enviar_mensagem', enviar)
+    assert processamento.processar_proxima() is False
+    seguinte = processamento.enfileirar({'telefone': '5547999990000', 'texto': '3'}, 'seguinte')['id']
+    outra = processamento.enfileirar({'telefone': '5547999990001', 'texto': '3'}, 'outra')['id']
+    assert processamento.processar_proxima() is True
+    assert enviar.call_args.args[0] == '5547999990001'
+    with get_conn() as conn:
+        estados = dict(conn.execute('SELECT id,estado FROM tarefas_bot'))
+    assert estados == {primeira: 'PENDENTE', seguinte: 'PENDENTE', outra: 'CONCLUIDA'}
+    assert processamento.situacao()['aguardando_https'] == 1
+    monkeypatch.setattr(config, 'BASE_URL', 'https://loja.example')
+    assert processamento.processar_proxima() is True
+    assert '/m/' in enviar.call_args.args[1]
+    assert processamento.processar_proxima() is True
+    assert '/m/' not in enviar.call_args.args[1]
+    assert processamento.situacao()['aguardando_https'] == 0
+
+
+def test_https_restabelecido_retoma_a_ordem_original(monkeypatch):
+    tarefa('2')
+    enviar = Mock()
+    monkeypatch.setattr(whatsapp, 'enviar_mensagem', enviar)
+    assert processamento.processar_proxima() is False
+    processamento.enfileirar({'telefone': '5547999990001', 'texto': '3'}, 'outra')
+    monkeypatch.setattr(config, 'BASE_URL', 'https://loja.example')
+    assert processamento.processar_proxima() is True
+    assert enviar.call_args.args[0] == '5547999990000'
+
+
+def test_contagem_https_nao_inclui_envios_incertos(monkeypatch):
+    ident = tarefa('2')
+    assert processamento.processar_proxima() is False
+    assert processamento.situacao()['aguardando_https'] == 1
+    with get_conn() as conn:
+        conn.execute("UPDATE tarefas_bot SET estado='VERIFICAR' WHERE id=?", (ident,))
+    assert processamento.situacao()['aguardando_https'] == 0

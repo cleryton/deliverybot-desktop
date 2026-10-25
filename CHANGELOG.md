@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.44.7 — 2026-10-25
+
+Impede que solicitações aguardando HTTPS bloqueiem outros clientes, preserva a ordem de cada conversa e retoma a prioridade original após reconexão. Mostra a espera por HTTPS no painel e adiciona regressões de fila e interface.
+
 ## 2.44.6 — 2026-10-25
 
 Amplia as regressões de recuperação do link para WhatsApp por QR Code e Meta e atualiza setuptools para 84.1.0, corrigindo o alerta GHSA-xmj3-9gf7-h52w sem desativar a auditoria de segurança.

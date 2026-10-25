@@ -37,6 +37,13 @@
     if (!op.fila_ok) return {texto:'Atendimento precisa de atenção', ok:false};
     return {texto:s.whatsapp === 'META' ? 'Meta configurada · confira o webhook' : 'WhatsApp conectado · HTTPS disponível', ok:true};
   }
+  function fila(dados={}) {
+    const quantidade = valor => Number.isSafeInteger(valor) && valor >= 0 ? valor : 0;
+    const pendentes = quantidade(dados.pendentes);
+    const https = Math.min(pendentes, quantidade(dados.aguardando_https));
+    return `${pendentes} ${pendentes === 1 ? 'mensagem' : 'mensagens'} em processamento ou aguardando` +
+      (https ? `. ${https} aguardando a página HTTPS; a retomada é automática dentro do prazo da fila.` : '');
+  }
   async function solicitar(fetcher, url, options, {timeout=30000, agendar=setTimeout, cancelar=clearTimeout}={}) {
     const escrita = !['GET', 'HEAD'].includes(options.method || 'GET');
     const controller = new AbortController();
@@ -75,5 +82,5 @@
         if (aria === null) button.removeAttribute('aria-busy');else button.setAttribute('aria-busy',aria);}
     }
   }
-  return {texto, pedidos, proximoPasso, conexao, solicitar, ocupado};
+  return {texto, pedidos, proximoPasso, conexao, fila, solicitar, ocupado};
 });

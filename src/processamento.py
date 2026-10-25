@@ -17,6 +17,7 @@ _threads = []
 _status_lock = threading.Lock()
 _status_ate = 0
 _pronto = False
+_ERRO_HTTPS = 'Aguardando a reconexão da página HTTPS.'
 
 
 def _mensagem_ruido(texto):
@@ -103,6 +104,9 @@ def processar_proxima():
         return False
     if not _servico_pronto():
         return False
+    from .publicacao import endereco
+    aguardando_https = not bool(endereco())
+    ordem = 'CASE WHEN t.erro=? THEN 1 ELSE 0 END, id' if aguardando_https else 'id'
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
         idade_maxima = max(60, int(config.BOT_FILA_MAX_IDADE_SEGUNDOS))
@@ -118,7 +122,11 @@ def processar_proxima():
             "(SELECT 1 FROM tarefas_bot ativas WHERE ativas.telefone=t.telefone AND ativas.estado IN ('PROCESSANDO','ENVIANDO')) "
             "AND NOT EXISTS (SELECT 1 FROM tarefas_bot anteriores WHERE anteriores.telefone=t.telefone "
             "AND anteriores.id<t.id AND anteriores.estado IN ('PENDENTE','FALHOU','VERIFICAR') "
-            "AND (t.origem!='HUMANO' OR anteriores.origem='HUMANO')) ORDER BY id LIMIT 1"
+            "AND (t.origem!='HUMANO' OR anteriores.origem='HUMANO')) "
+            # Enquanto o HTTPS estiver fora, atenda outras conversas prontas.
+            # Ao voltar, a ordem original é retomada, sem atrasar pedidos antigos.
+            f"ORDER BY {ordem} LIMIT 1",
+            (_ERRO_HTTPS,) if aguardando_https else (),
         ).fetchone()
         if row is None:
             return False
@@ -209,7 +217,7 @@ def processar_proxima():
         # Falha na validação anterior ao transporte: nenhum envio foi iniciado.
         # Mantém a resposta pronta e o token para retomar sem chamar a IA outra vez.
         with get_conn() as conn:
-            conn.execute("UPDATE tarefas_bot SET estado='PENDENTE', erro='Aguardando a reconexão da página HTTPS.', atualizado_em=datetime('now') WHERE id=?", (tarefa['id'],))
+            conn.execute("UPDATE tarefas_bot SET estado='PENDENTE', erro=?, atualizado_em=datetime('now') WHERE id=?", (_ERRO_HTTPS, tarefa['id']))
         return False
     except Exception:
         logger.exception("Falha na tarefa de atendimento %s", tarefa["id"])
@@ -250,8 +258,9 @@ def situacao():
     with get_conn() as conn:
         ultima = conn.execute("SELECT MAX(recebido_em) FROM tarefas_bot").fetchone()[0]
         pendentes = conn.execute("SELECT COUNT(*) FROM tarefas_bot WHERE estado IN ('PENDENTE','PROCESSANDO','ENVIANDO')").fetchone()[0]
+        aguardando_https = conn.execute("SELECT COUNT(*) FROM tarefas_bot WHERE estado='PENDENTE' AND erro=?", (_ERRO_HTTPS,)).fetchone()[0]
         falhas = [dict(r) for r in conn.execute("SELECT id, telefone, erro, estado, recebido_em FROM tarefas_bot WHERE estado IN ('FALHOU','VERIFICAR') ORDER BY id DESC LIMIT 20")]
-    return {"ultima_mensagem": ultima, "pendentes": pendentes, "falhas": falhas}
+    return {"ultima_mensagem": ultima, "pendentes": pendentes, "aguardando_https": aguardando_https, "falhas": falhas}
 
 
 def reenviar(tarefa_id):
