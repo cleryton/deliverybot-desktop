@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 2.44.6 — 2026-10-25
+
+Amplia as regressões de recuperação do link para WhatsApp por QR Code e Meta e atualiza setuptools para 84.1.0, corrigindo o alerta GHSA-xmj3-9gf7-h52w sem desativar a auditoria de segurança.
+
+## 2.44.5 — 2026-10-24
+
+Corrige o envio do link de pedidos após reconexão do HTTPS: a fila aguarda o endereço seguro e substitui avisos preparados anteriormente, inclusive na opção 2. Reconhece solicitações diretas de link sem depender da IA; inclui regressões simuladas da Meta.
+
 ## 2.44.4 — 2026-10-23
 
 Protege a publicação dos backups com validação da cópia de destino antes da retenção; corrige o diagnóstico da Meta para não confundir credenciais salvas com conexão comprovada. Inclui seis regressões e roteiro de operação comercial.

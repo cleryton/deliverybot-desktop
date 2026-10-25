@@ -112,6 +112,10 @@ def intencao_pedido(texto: str, mensagens: list[dict] | None = None) -> bool:
     if re.search(r"\b(quero|gostaria|preciso|vou)\s+(?:de\s+)?(?:fazer\s+|realizar\s+)?(?:(?:um|o|meu|seu)\s+)?(?:pedido|comprar|pedir|encomendar)\b", atual):
         return True
     assunto_link = re.search(r"\b(?:privacidade|lgpd|meus dados|rastreio|rastreamento|status|comprovante|pagamento|instagram|site|catalogo|cardapio)\b", atual)
+    if not assunto_link and re.fullmatch(
+        r"(?:quero|gostaria de|preciso de|pode (?:me )?(?:mandar|enviar))\s+(?:(?:o|um)\s+)?link(?:\s+(?:do pedido|para pedir|pra pedir|para comprar|pra comprar))?[.!? ]*", atual
+    ):
+        return True
     if not assunto_link and re.search(r"\b(?:manda|mande|envia|envie|enviar|mandar|gerar|abre|abrir)\b.{0,35}\b(?:link|pedido)\b", atual):
         return True
     if re.fullmatch(r"(?:quero|gostaria de|vou levar)\s+\d+(?:[,.]\d+)?\s+.+", atual):
