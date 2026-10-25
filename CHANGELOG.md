@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.44.8 — 2026-10-25
+
+Mantém o agendador ativo após falhas inesperadas, isola a consulta de atualizações das rotinas de proteção e normaliza datas com fuso sem interromper backups. Recupera datas inválidas e inclui 18 regressões sem serviços reais.
+
 ## 2.44.7 — 2026-10-25
 
 Impede que solicitações aguardando HTTPS bloqueiem outros clientes, preserva a ordem de cada conversa e retoma a prioridade original após reconexão. Mostra a espera por HTTPS no painel e adiciona regressões de fila e interface.

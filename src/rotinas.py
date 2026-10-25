@@ -1,5 +1,6 @@
 """Backups portáteis agendados e retenção, executados somente no Desktop."""
 import os
+import logging
 import shutil
 import sqlite3
 import threading
@@ -14,6 +15,20 @@ from .estoque import inteiro
 _lock = threading.Lock()
 _parar = threading.Event()
 _thread = None
+logger = logging.getLogger(__name__)
+
+
+def _instante_utc(valor):
+    """Datas antigas sem fuso já eram UTC; datas com fuso são normalizadas."""
+    if not isinstance(valor, str) or not valor or len(valor) > 64:
+        return None
+    try:
+        instante = datetime.fromisoformat(valor)
+        if instante.tzinfo is None:
+            instante = instante.replace(tzinfo=timezone.utc)
+        return instante.astimezone(timezone.utc).replace(tzinfo=None)
+    except (ValueError, OverflowError):
+        return None
 
 
 def _cfg():
@@ -25,7 +40,8 @@ def situacao():
     r=_cfg()
     r['senha_configurada']=bool(r.pop('senha'))
     r['executando']=_lock.locked()
-    r['atrasado']=bool(r['backup_ativo'] and (not r['ultima_copia'] or datetime.fromisoformat(r['ultima_copia']) < datetime.now(timezone.utc).replace(tzinfo=None)-timedelta(hours=r['horas']*2)))
+    ultima = _instante_utc(r['ultima_copia'])
+    r['atrasado']=bool(r['backup_ativo'] and (not ultima or ultima < datetime.now(timezone.utc).replace(tzinfo=None)-timedelta(hours=r['horas']*2)))
     return r
 
 
@@ -63,7 +79,9 @@ def executar(forcar=False):
     try:
         r=_cfg()
         agora=datetime.now(timezone.utc).replace(tzinfo=None)
-        if r['backup_ativo'] and (forcar or not r['ultima_copia'] or agora-datetime.fromisoformat(r['ultima_copia'])>=timedelta(hours=r['horas'])):
+        ultima_copia = _instante_utc(r['ultima_copia'])
+        ultima_limpeza = _instante_utc(r['ultima_limpeza']) if r['limpar'] else None
+        if r['backup_ativo'] and (forcar or not ultima_copia or agora-ultima_copia>=timedelta(hours=r['horas'])):
             senha=seguranca.revelar_segredo(r['senha'])
             origem=Path(backups.criar(senha))
             verificar_arquivo(origem,senha)
@@ -93,7 +111,7 @@ def executar(forcar=False):
             for antigo in copias[r['quantidade']:]:
                 if not antigo.is_symlink():
                     antigo.unlink()
-        if r['limpar'] and (forcar or not r['ultima_limpeza'] or agora-datetime.fromisoformat(r['ultima_limpeza'])>=timedelta(days=1)):
+        if r['limpar'] and (forcar or not ultima_limpeza or agora-ultima_limpeza>=timedelta(days=1)):
             privacidade.limpar_historico()
             with get_conn() as c:
                 c.execute('UPDATE rotinas SET ultima_limpeza=? WHERE id=1',(agora.isoformat(),))
@@ -113,9 +131,17 @@ def iniciar():
     _parar.clear()
     def rotina():
         while not _parar.is_set():
-            executar()
-            from . import atualizacoes
-            atualizacoes.rotina()
+            try:
+                executar()
+            except Exception:
+                # Nem a indisponibilidade do banco ao registrar uma falha deve
+                # matar o agendador. Não exponha dados do erro de terceiros.
+                logger.warning('Rotina de proteção indisponível; nova tentativa no próximo ciclo.')
+            try:
+                from . import atualizacoes
+                atualizacoes.rotina()
+            except Exception:
+                logger.warning('Consulta de atualização indisponível; rotinas de proteção mantidas.')
             _parar.wait(60)
     _thread=threading.Thread(target=rotina,name='Rotinas-DeliveryBot',daemon=True)
     _thread.start()
