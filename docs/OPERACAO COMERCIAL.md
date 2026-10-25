@@ -8,6 +8,10 @@ Nas transferências para outra pasta, a rotina verifica a integridade e a senha 
 
 Faça uma restauração de teste em instalação separada, com dados fictícios, antes de depender da recuperação em produção. Cópias portáteis exigem reconfiguração das credenciais e novo pareamento de dispositivos após restaurar.
 
+O agendador trata separadamente falhas inesperadas da rotina de proteção e da consulta de atualizações. Uma falha não encerra o agendador nem impede a outra rotina de ser executada; uma nova tentativa ocorre no ciclo seguinte, com intervalo de um minuto. Isso não garante um backup enquanto o disco ou o banco estiver indisponível. Os avisos registrados evitam incluir o conteúdo bruto das exceções.
+
+Datas de agendamento com fuso são convertidas para UTC. Datas antigas sem fuso mantêm a interpretação UTC usada pelo aplicativo. Uma data inválida é tratada como ausência de confirmação anterior, permitindo nova tentativa da rotina que estiver habilitada. A limpeza continua respeitando as regras de retenção configuradas, e a configuração das rotinas não é alterada por essa recuperação.
+
 ## Conferência da comunicação
 
 O relatório de diagnóstico distingue credenciais Meta configuradas de conexão comprovada. O estado `META_CONFIGURADA` informa apenas que os campos necessários estão presentes; não confirma validade do token, webhook ou entrega. A coleta não chama a conta Meta nem inclui seus segredos.
