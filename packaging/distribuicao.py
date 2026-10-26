@@ -112,15 +112,28 @@ def finalizar(pasta, raiz=ROOT):
     return atual
 
 
-if __name__ == '__main__':
+def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--distpath', type=Path)
-    p.add_argument('--verificar', action='store_true')
-    args = p.parse_args()
+    operacao = p.add_mutually_exclusive_group()
+    operacao.add_argument('--verificar', action='store_true')
+    operacao.add_argument('--hashes', action='store_true',
+                          help='Recalcular somente o manifesto após assinar os executáveis.')
+    args = p.parse_args(argv)
     atual = (ROOT/'VERSION').read_text().strip()
     destino = args.distpath or ROOT/'dist'/('v'+atual)
-    if args.verificar:
+    if args.hashes:
+        nomes = sorted(f.name for f in destino.iterdir() if f.name in GERADOS - {'SHA256SUMS.txt'})
+        gerar_hashes(destino, nomes)
+        print('Manifesto SHA256SUMS.txt recalculado para os arquivos da distribuição.')
+        return 0
+    elif args.verificar:
         verificar(destino, completa=True, esperada=atual)
     else:
         finalizar(destino)
     print(f'Distribuição v{atual}: instalador, aplicativo, guias, licenças e hashes conferidos.')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

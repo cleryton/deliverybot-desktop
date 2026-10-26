@@ -6,8 +6,6 @@
   <meta name="csrf-token" content="{{ csrf }}"><title>DeliveryBot • Gestão da loja</title>
   <script src="{{ url_for('static', filename='tema.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='gestao.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='conexoes.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='tema.css') }}">
   <script defer src="{{ url_for('static', filename='experiencia.js') }}"></script>
   <script defer src="{{ url_for('static', filename='gestao.js') }}"></script>
   <script defer src="{{ url_for('static', filename='primeiros_passos.js') }}"></script>
@@ -15,10 +13,9 @@
   <script defer src="{{ url_for('static', filename='humano.js') }}"></script>
   <script defer src="{{ url_for('static', filename='catalogo_avancado.js') }}"></script>
   <script defer src="{{ url_for('static', filename='documentos_estoque.js') }}"></script>
-  <script defer src="{{ url_for('static', filename='operadores.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='administracao.js') }}"></script>
   <script defer src="{{ url_for('static', filename='acesso_remoto_admin.js') }}"></script>
   <script defer src="{{ url_for('static', filename='caixa_admin.js') }}"></script>
-<script defer src="{{ url_for('static', filename='atualizacoes.js') }}"></script>
 <script defer src="{{ url_for('static', filename='publicacao.js') }}"></script><script defer src="{{ url_for('static', filename='meta_oficial.js') }}"></script></head>
 <body data-admin="{{ 'true' if administrador else 'false' }}" data-whatsapp-provider="{{ provedor_whatsapp }}" data-perfil-pendente="{{ 'true' if perfil_pendente else 'false' }}">
   <a class="skip-link" href="#main-content">Ir para o conteúdo</a>
@@ -42,7 +39,7 @@
       <button data-page="humano"><span>☏</span> Atendimento humano</button>
       <button data-admin-only data-page="configuracoes"><span>⚙</span> Configurações</button>
     <button data-admin-only data-page="caixas">▣ Caixas dos funcionários</button><button data-admin-only data-page="operadores">♙ Funcionários e auditoria</button><button data-admin-only data-page="atualizacoes">↻ Atualizações</button></nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.45.1</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.45.2</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
   </aside>
   <button id="menu-overlay" class="menu-overlay" type="button" aria-label="Fechar menu" hidden></button>
   <main id="main-content" tabindex="-1">
