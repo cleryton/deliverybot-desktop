@@ -138,3 +138,29 @@ def test_assets_locais_sao_servidos_sem_dependencias_externas(cliente):
     assert script.status_code == 200
     codigo = script.get_data(as_text=True)
     assert 'localStorage' not in codigo and 'sessionStorage' not in codigo and 'innerHTML' not in codigo
+
+
+@pytest.mark.parametrize('autenticado', [False, True])
+@pytest.mark.parametrize('tema', ['claro', 'escuro'])
+def test_painel_e_login_carregam_recursos_consolidados(cliente, monkeypatch, autenticado, tema):
+    from src import gestao
+    monkeypatch.setattr(gestao, 'autorizado', lambda: autenticado)
+    monkeypatch.setattr(gestao, 'acesso_base', lambda: True)
+    monkeypatch.setattr(gestao.operadores, 'usuario', lambda: None)
+    monkeypatch.setattr(gestao.operadores, 'admin', lambda: True)
+    monkeypatch.setattr(gestao.aparencia, 'tema', lambda: tema)
+    pagina = cliente.get('/gestao')
+    assert pagina.status_code == 200
+    assert f'data-theme-choice="{tema}"' in pagina.text
+    elementos = Elementos(pagina.text)
+    estilos = [e['href'] for e in elementos.tags('link') if e.get('rel') == 'stylesheet']
+    assert estilos == ['/static/gestao.css']
+    scripts = [e['src'] for e in elementos.tags('script') if 'src' in e]
+    if autenticado:
+        assert scripts.count('/static/administracao.js') == 1
+    for url in estilos + scripts:
+        assert url.startswith('/static/')
+        recurso = cliente.get(url)
+        assert recurso.status_code == 200 and recurso.data
+    css = cliente.get(estilos[0]).text
+    assert ':root[data-theme="dark"]' in css and '.connections-grid' in css

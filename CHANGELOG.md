@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.45.2 — 2026-10-26
+
+Consolida os estilos do painel e login em um arquivo e reúne contas e atualizações no módulo administrativo, reduzindo três requisições de recursos no painel. Remove a proposta visual exploratória e o simulador legado sem referências; concentra a geração pós-assinatura de hashes no utilitário de distribuição. Mantém marca final, funcionalidades, documentação e controles de acesso, com regressões de recursos, contas, atualizações e integridade.
+
 ## 2.45.1 — 2026-10-26
 
 Limpeza de qualidade: removidas três funções internas sem chamadas, uma constante obsoleta, nove importações sem uso e três vínculos locais desnecessários, preservando as operações dos testes de caixa. Revisão de referências Python, navegador e empacotamento; nenhuma alteração de banco, permissões, rotas ou dependências.

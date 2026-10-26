@@ -8,6 +8,14 @@ As referências foram conferidas no Python, nos arquivos do navegador, nos scrip
 
 Para reproduzir a análise, use Pyflakes 3.4.0 nos diretórios `src` e `packaging` e nos scripts Python da raiz, em ambiente de desenvolvimento separado. Vulture 2.14 ajuda a levantar candidatos, mas suas conclusões precisam ser conferidas pelas referências. Essas ferramentas não são dependências do aplicativo distribuído. A validação da limpeza executa a suíte Python completa antes e depois, os testes JavaScript e o workflow do commit atual, incluindo compilação e testes dos executáveis com dados fictícios.
 
+## Consolidação de recursos e manutenção
+
+Na versão 2.45.2, `gestao.css` passou a reunir as regras de layout, conexão e tema, mantendo a ordem anterior da cascata. Painel e login usam a mesma fonte de estilos. `administracao.js` reúne contas e atualizações em um escopo privado, preservando autenticação, CSRF, confirmação e verificação de assinatura. O painel carrega três recursos a menos; isso não constitui uma medição de tempo de inicialização.
+
+A imagem exploratória da marca e o simulador legado `src/main_teste.py` saíram da árvore atual; o histórico Git os conserva. A fonte vetorial, os ícones finais e os testes completos de pedidos permanecem. O README funciona como índice dos guias operacionais, reduzindo instruções duplicadas; a documentação acadêmica foi preservada.
+
+A geração de hashes depois da assinatura está em `python packaging/distribuicao.py --hashes --distpath dist/v<versão>`. A opção exige os quatro executáveis e recalcula o manifesto somente para arquivos conhecidos, sem copiar novamente guias ou metadados. Para conferir a distribuição final, use `--verificar` em uma chamada separada. Os testes cobrem documentos preservados, executável ausente, exclusão de arquivos privados do manifesto, recursos servidos no painel/login, temas e operações administrativas no navegador.
+
 ## Validação do carrinho
 
 A cotação e a gravação leem os produtos em lotes de até 400 IDs. Não há cache de preços ou estoque. Itens repetidos são somados antes de conferir o saldo, e valores monetários continuam usando Decimal e arredondamento por item. A cotação mantém um snapshot de leitura, enquanto a gravação mantém a transação de escrita existente.

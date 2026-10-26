@@ -60,6 +60,40 @@ def test_nao_indica_distribuicao_incompleta(tmp_path):
     assert not (p/'VERSAO.json').exists()
 
 
+def test_cli_recalcula_hashes_apos_assinatura_sem_reescrever_documentos(tmp_path, monkeypatch):
+    raiz = raiz_ficticia(tmp_path)
+    pasta = release(raiz, '3.1.0', True)
+    monkeypatch.setattr(d, 'ROOT', raiz)
+    documentos = {nome: ((pasta/nome).read_bytes(), (pasta/nome).stat().st_mtime_ns)
+                  for nome in d.GERADOS - set(d.BINARIOS) - {'SHA256SUMS.txt'}}
+    (pasta/d.BINARIOS[0]).write_bytes(b'MZ assinatura ficticia adicionada')
+    (pasta/'segredo.key').write_bytes(b'nao deve entrar no manifesto')
+    with pytest.raises(ValueError, match='Integridade divergente'):
+        d.verificar(pasta, completa=True)
+    assert d.main(['--distpath', str(pasta), '--hashes']) == 0
+    assert d.verificar(pasta, completa=True, esperada='3.1.0')
+    assert 'segredo.key' not in (pasta/'SHA256SUMS.txt').read_text()
+    assert all(((pasta/n).read_bytes(), (pasta/n).stat().st_mtime_ns) == estado
+               for n, estado in documentos.items())
+
+
+def test_cli_hashes_exige_os_quatro_executaveis_e_preserva_manifesto(tmp_path, monkeypatch):
+    raiz = raiz_ficticia(tmp_path)
+    pasta = release(raiz, '3.1.0', True)
+    monkeypatch.setattr(d, 'ROOT', raiz)
+    anterior = (pasta/'SHA256SUMS.txt').read_bytes()
+    (pasta/d.BINARIOS[2]).unlink()
+    with pytest.raises(ValueError):
+        d.main(['--distpath', str(pasta), '--hashes'])
+    assert (pasta/'SHA256SUMS.txt').read_bytes() == anterior
+
+
+def test_cli_hashes_e_verificacao_sao_operacoes_exclusivas(tmp_path):
+    with pytest.raises(SystemExit) as exc:
+        d.main(['--distpath', str(tmp_path), '--hashes', '--verificar'])
+    assert exc.value.code == 2 and not list(tmp_path.iterdir())
+
+
 @pytest.mark.parametrize('linha', ['../fora.txt','/etc/passwd','DeliveryBot.exe\n','arquivo.db'])
 def test_manifesto_nao_le_caminhos_ou_dados_privados(tmp_path,linha):
     p=tmp_path/'pacote'
