@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.45.1 — 2026-10-26
+
+Limpeza de qualidade: removidas três funções internas sem chamadas, uma constante obsoleta, nove importações sem uso e três vínculos locais desnecessários, preservando as operações dos testes de caixa. Revisão de referências Python, navegador e empacotamento; nenhuma alteração de banco, permissões, rotas ou dependências.
+
 ## 2.45.0 — 2026-10-25
 
 Adiciona catálogo PDF como alternativa automática quando o link permanece indisponível, com envio de documento por WhatsApp local, Meta e WAHA. Preserva conferência de envios incertos, migra tarefas antigas e mantém custos e dados de clientes fora do catálogo.

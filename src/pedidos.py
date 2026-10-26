@@ -260,14 +260,6 @@ def obter_pedido(pedido_id: int, _conn=None) -> dict | None:
     return pedido
 
 
-def obter_pedido_por_numero(numero_pedido: str) -> dict | None:
-    with get_conn() as conn:
-        row = conn.execute(
-            "SELECT id FROM pedidos WHERE numero_pedido = ?", (numero_pedido,)
-        ).fetchone()
-    return obter_pedido(row["id"]) if row else None
-
-
 def registrar_mensagem(telefone: str, direcao: str, conteudo: str):
     with get_conn() as conn:
         conn.execute(

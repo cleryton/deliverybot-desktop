@@ -8,8 +8,6 @@ from . import config, pedidos
 from .db import get_conn
 from .estoque import texto
 
-FINAIS = {"CANCELADO", "ENTREGUE", "RETIRADO"}
-
 
 def aviso():
     from .conexoes import url_local

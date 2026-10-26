@@ -1,5 +1,4 @@
 """Painel administrativo compartilhado pelo aplicativo e pelo servidor."""
-import hmac
 from concurrent.futures import ThreadPoolExecutor
 import secrets
 from functools import wraps
@@ -7,7 +6,7 @@ from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for, send_file
 
-from . import bot, cardapio, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
+from . import bot, config, estoque, fila, pedidos, preferencias, recibo, whatsapp
 from .db import get_conn
 from . import conexoes, processamento, publicacao, aparencia, cerebro, perfil_comercio, recuperacao
 from . import seguranca, privacidade, backups, operadores, fotos
@@ -355,13 +354,6 @@ def resumo():
                    privacidade_configurada=bool(config.LGPD_RESPONSAVEL and config.LGPD_CONTATO),
                    base_url=publicacao.endereco(), pasta=str(Path(config.DATABASE_PATH).resolve().parent),
                    webhook_waha="Endereço privado de recebimento configurado." if config.WEBHOOK_SECRET else "Configure a conexão do WhatsApp.")
-
-
-def _webhook_exibicao():
-    try:
-        return conexoes.url_webhook()
-    except ValueError:
-        return "Informe o endereço do aplicativo visto pelo WAHA em Configurações."
 
 
 @bp.route('/gestao/api/comercio', methods=['GET', 'PUT'])

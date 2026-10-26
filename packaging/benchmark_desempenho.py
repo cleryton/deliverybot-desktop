@@ -1,7 +1,6 @@
 """Mede caminhos locais com loja fictícia, sem serviços ou dados do usuário."""
 import argparse
 from contextlib import contextmanager
-import hashlib
 import json
 import os
 from pathlib import Path

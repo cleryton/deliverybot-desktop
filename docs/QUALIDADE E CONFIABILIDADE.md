@@ -1,5 +1,13 @@
 # Qualidade e confiabilidade dos pedidos
 
+## Limpeza de código
+
+A revisão da versão 2.45.1 removeu três funções internas sem referências no repositório (`gerar_segredo_sugerido`, `_webhook_exibicao` e `obter_pedido_por_numero`), a constante não utilizada `FINAIS`, nove importações sem uso e três vínculos locais desnecessários. As chamadas de criação de operador e abertura de caixa continuam sendo executadas no teste do aplicativo.
+
+As referências foram conferidas no Python, nos arquivos do navegador, nos scripts, na documentação e no empacotamento. A geração de segredos continua no utilitário `gerar_segredos.py`; a consulta de pedidos em uso continua em `obter_pedido`. Rotas Flask, métodos expostos ao navegador e configurações de bibliotecas podem ser chamados dinamicamente: um alerta isolado de análise estática não justifica removê-los.
+
+Para reproduzir a análise, use Pyflakes 3.4.0 nos diretórios `src` e `packaging` e nos scripts Python da raiz, em ambiente de desenvolvimento separado. Vulture 2.14 ajuda a levantar candidatos, mas suas conclusões precisam ser conferidas pelas referências. Essas ferramentas não são dependências do aplicativo distribuído. A validação da limpeza executa a suíte Python completa antes e depois, os testes JavaScript e o workflow do commit atual, incluindo compilação e testes dos executáveis com dados fictícios.
+
 ## Validação do carrinho
 
 A cotação e a gravação leem os produtos em lotes de até 400 IDs. Não há cache de preços ou estoque. Itens repetidos são somados antes de conferir o saldo, e valores monetários continuam usando Decimal e arredondamento por item. A cotação mantém um snapshot de leitura, enquanto a gravação mantém a transação de escrita existente.
