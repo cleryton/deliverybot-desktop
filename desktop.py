@@ -6,7 +6,6 @@ import logging
 import os
 from pathlib import Path
 import secrets
-import shutil
 import sqlite3
 import sys
 import tempfile
@@ -170,9 +169,9 @@ def smoke_test(destino, janela=False):
         if not janela:
             from src import operadores,caixa
             with app.test_request_context():
-                admin_caixa=operadores.criar({'nome':'Administrador fictício','login':'admin.smoke','senha':'senha-ficticia-smoke-123','perfil':'ADMIN'})
+                operadores.criar({'nome':'Administrador fictício','login':'admin.smoke','senha':'senha-ficticia-smoke-123','perfil':'ADMIN'})
                 funcionario_caixa=operadores.criar({'nome':'Caixa fictício','login':'caixa.smoke','senha':'senha-ficticia-smoke-123','perfil':'CAIXA'})
-            tid=caixa.abrir(funcionario_caixa['id'],{'chave':secrets.token_hex(16),'abertura':100})
+            caixa.abrir(funcionario_caixa['id'],{'chave':secrets.token_hex(16),'abertura':100})
             assert caixa.consultar(funcionario_caixa['id'])[0]['esperado_centavos']==10000
             caixa.fechar(funcionario_caixa['id'],{'chave':secrets.token_hex(16),'contado':99})
             assert caixa.consultar(funcionario_caixa['id'])[0]['diferenca_centavos']==-100
@@ -592,7 +591,7 @@ def main():
                         raise
                     bandeja.sair()
                     return {"ok": True}
-                except Exception as exc:
+                except Exception:
                     temporario.unlink(missing_ok=True)
                     return {"erro": "Não foi possível restaurar. Confira a senha, o formato do backup e a conta Windows da cópia de recuperação."}
         window = webview.create_window("DeliveryBot — Gestão da loja", f"http://127.0.0.1:{port}/gestao?acesso={token}",

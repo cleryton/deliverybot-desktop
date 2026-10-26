@@ -2,13 +2,11 @@
 import os
 import logging
 import shutil
-import sqlite3
 import threading
-from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import backups, config, seguranca, privacidade
+from . import backups, seguranca, privacidade
 from .db import get_conn
 from .estoque import inteiro
 

@@ -1,5 +1,4 @@
 import os
-import secrets as _secrets_module
 
 from dotenv import load_dotenv
 
@@ -142,12 +141,6 @@ FORMAS_PAGAMENTO = os.getenv("FORMAS_PAGAMENTO", "Dinheiro,Pix,Cartão de crédi
 # --- Operação ---
 TEMPO_PREPARO_MIN = int(os.getenv("TEMPO_PREPARO_MIN", "40"))
 VALIDADE_LINK_MIN = int(os.getenv("VALIDADE_LINK_MIN", "30"))
-
-
-def gerar_segredo_sugerido() -> str:
-    """Usado só pelo utilitário de linha de comando (ver gerar_segredos.py)
-    para sugerir valores fortes ao preencher o .env."""
-    return _secrets_module.token_urlsafe(24)
 
 
 # Privacidade: prazos operacionais configuráveis; não definem obrigações fiscais.

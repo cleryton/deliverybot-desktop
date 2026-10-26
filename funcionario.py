@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from urllib.parse import unquote,urlsplit
+from urllib.parse import urlsplit
 
 
 class ClienteSmoke:
