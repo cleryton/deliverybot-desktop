@@ -185,3 +185,20 @@ def test_recusa_pasta_de_padroes_redirecionada_sem_escrever_fora(loja, tmp_path,
         cerebro.arquivo_inicio()
     assert not list(externa.iterdir())
     assert cerebro._ler(alvo/'Perfil.md') == ('','')
+
+
+@pytest.mark.parametrize('segmento,descricao,esperado,leituras', [
+    ('Restaurante', 'Oficina de veículos', 'ALIMENTACAO', 1),
+    ('Comércio especializado', 'Oficina', 'OFICINA', 2),
+    ('Restaurante e oficina', '', 'MISTO', 1),
+])
+def test_categoria_normaliza_cada_campo_uma_vez_sem_mudar_precedencia(monkeypatch, segmento, descricao, esperado, leituras):
+    from unittest.mock import Mock
+    from src import config, padroes_atendimento as padroes
+    monkeypatch.setattr(config, 'COMERCIO_CONFIGURADO', 'SIM')
+    monkeypatch.setattr(config, 'COMERCIO_SEGMENTO', segmento)
+    monkeypatch.setattr(config, 'COMERCIO_DESCRICAO', descricao)
+    normalizar = Mock(wraps=padroes.normalizar)
+    monkeypatch.setattr(padroes, 'normalizar', normalizar)
+    assert padroes.categoria() == esperado
+    assert normalizar.call_count == leituras

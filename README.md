@@ -53,6 +53,8 @@ A marca escolhida combina caixa e balão de conversa em verde esmeralda e menta,
 
 ## Projeto acadêmico e TCC
 
+O [guia do código](docs/tcc/GUIA_DO_CODIGO.md) explica os módulos, fluxos e trechos principais e inclui um roteiro para apresentar o sistema.
+
 As [medições de desempenho](docs/DESEMPENHO.md) descrevem as otimizações do painel, do contexto editorial e da importação do backend, com cenários fictícios, comandos reproduzíveis e limites dos resultados.
 
 A [base para o TCC](docs/tcc/README.md) reúne texto acadêmico editável, arquitetura, requisitos ligados aos testes, protocolo de avaliação, referências e roteiro para a banca. O recorte diferencia validação comercial e geração de respostas com conhecimento editorial; identifica resultados técnicos existentes e as avaliações de IA e usabilidade ainda pendentes. `packaging/evidencias_tcc.py` resume relatórios JUnit em `artifacts/tcc/`, com hashes e contagens sem copiar nomes, mensagens ou saídas dos testes. Consulte as condições de reprodução e os limites do relatório antes de usar os números no trabalho.

@@ -8,6 +8,8 @@ Este material organiza o aplicativo como um artefato de pesquisa aplicada em des
 
 | Material | Uso |
 | --- | --- |
+| [Resumo técnico do trabalho](RESUMO_TECNICO.md) | Objetivo, solução, recursos, arquitetura, melhorias medidas e limites da avaliação. |
+| [Guia de leitura e explicação do código](GUIA_DO_CODIGO.md) | Fluxos, 56 módulos Python, interfaces, banco, instalação, seis trechos reais e roteiro de apresentação. |
 | [Base da monografia](MONOGRAFIA.md) | Introdução, objetivos, fundamentação, metodologia, desenvolvimento e discussão inicial. |
 | [Arquitetura e requisitos](ARQUITETURA_E_REQUISITOS.md) | Diagramas e rastreabilidade entre requisito, código e teste. |
 | [Protocolo de avaliação](AVALIACAO.md) | Casos fictícios, comparação das respostas, métricas e formulário de observação. |
