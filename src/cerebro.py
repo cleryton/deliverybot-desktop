@@ -668,14 +668,11 @@ def _notas_aprovadas(pasta: Path) -> list[Path]:
             extras = []
         candidatas.extend(p for p in extras[:_MAX_ARQUIVOS_BACKUP] if not p.is_symlink())
     aprovadas = []
-    raiz = pasta.resolve()
     for caminho in candidatas:
         if caminho.is_symlink() or not caminho.is_file():
             continue
-        try:
-            caminho.resolve().relative_to(raiz)
-        except (OSError, ValueError):
-            continue
+        # _ler valida raiz, componentes e destino antes de abrir o arquivo.
+        # Repetir resolve aqui acrescentava acesso ao disco sem outra proteção.
         metadados, corpo = _ler(caminho)
         if corpo and _aprovada(metadados):
             aprovadas.append(caminho)

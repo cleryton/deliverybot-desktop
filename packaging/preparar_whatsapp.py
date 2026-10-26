@@ -23,7 +23,7 @@ if not license_file.exists() or not (runtime / "version.txt").exists() or (runti
     response.raise_for_status()
     license_file.write_text(response.text, encoding="utf-8")
 (runtime / "version.txt").write_text(version, encoding="utf-8")
-notices = ["DeliveryBot 2.45.2 — componentes da conexão integrada", "Runtime Node.js: " + version,
+notices = ["DeliveryBot 2.45.3 — componentes da conexão integrada", "Runtime Node.js: " + version,
            "Biblioteca de conexão: https://github.com/WhiskeySockets/Baileys (7.0.0-rc14)",
            "As licenças e os arquivos distribuídos de cada dependência estão incluídos em node_modules.",
            "A conexão por QR Code usa uma biblioteca comunitária de WhatsApp Web. A API oficial da Meta continua disponível em Configurações.", ""]

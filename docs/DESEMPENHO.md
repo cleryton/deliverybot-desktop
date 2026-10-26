@@ -1,5 +1,32 @@
 # Desempenho do painel e do atendimento
 
+## Otimizações editoriais da versão 2.45.3
+
+Foram aceitas duas alterações: a descoberta de notas deixa de resolver novamente um caminho que será validado por `_ler`, e a classificação comercial normaliza cada campo uma vez antes de testar os padrões. A leitura segura continua recusando raiz/componentes vinculados, caminhos externos, falhas de resolução e conteúdo inválido. Não foi criado cache de notas, aprovação, permissões ou perfil entre chamadas; a releitura antes de compor o contexto permanece.
+
+As rodadas gerais mostraram variação grande entre sessões. Por isso a comparação usa ordem alternada A/B e B/A no mesmo processo, com duas rodadas de aquecimento e saídas obrigatoriamente idênticas. A referência é a função do commit `e4ab796e3bfc1c5a11db1bc427a4c5a6751c8b11` (árvore v2.45.2); os demais helpers são os da variante. Isso isola a função e não compara dois executáveis completos. As medidas foram obtidas na cópia de trabalho antes do commit da nova versão.
+
+| Cenário e repetição | P50 antes (ms) | P50 depois (ms) | P95 antes (ms) | P95 depois (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| Contexto com 80 notas, B | 928,275 | 853,838 | 965,164 | 881,782 |
+| Contexto com 80 notas, C | 943,861 | 869,701 | 956,935 | 925,846 |
+| Lote de 200 classificações, A | 101,863 | 44,076 | 406,801 | 165,965 |
+| Lote de 200 classificações, B | 386,416 | 157,258 | 419,296 | 165,639 |
+
+O contexto teve redução de aproximadamente 7,9% a 8,0% na mediana nas duas rodadas de 16 amostras por condição. Na classificação, o lote foi aproximadamente 2,3 a 2,5 vezes mais rápido nas duas rodadas de 20 amostras; o cenário usa segmento genérico e uma descrição fictícia longa. Não representa uma chamada comum de toda loja. A variação dos tempos absolutos reforça o uso da comparação pareada. Não há garantia de redução equivalente no atendimento completo ou na inferência do modelo.
+
+Os registros locais são `v2453-pares-b.json`, `v2453-pares-c.json`, `v2453-perfil-a.json` e `v2453-perfil-b.json` em `artifacts/desempenho/`. O hash do contexto fictício coincidiu nas comparações; o conteúdo das notas não é copiado para o relatório. A referência e os arquivos de coleta precisam ser preservados para reprodução. Não execute builds ou testes em paralelo com a medição.
+
+Com as dependências e a referência Git disponíveis localmente, execute uma rodada por vez:
+
+```powershell
+.venv/Scripts/python.exe packaging/benchmark_desempenho.py --comparar-contexto --repeticoes 16 --saida artifacts/desempenho/contexto-rodada-nova.json
+.venv/Scripts/python.exe packaging/benchmark_desempenho.py --comparar-perfil --repeticoes 20 --saida artifacts/desempenho/perfil-rodada-nova.json
+.venv/Scripts/python.exe -m pytest tests/test_cerebro_contexto.py tests/test_padroes_atendimento.py tests/test_desempenho.py -q
+```
+
+Os modos são exclusivos e recusam um processo com backend já importado. Checkouts rasos podem precisar recuperar o histórico antes; o comparador não busca código pela rede. Use nomes de saída novos. Não há contas, mensagens reais ou inferência nesses cenários. Consulte o [guia do código](tcc/GUIA_DO_CODIGO.md) para explicar as responsabilidades e os trechos otimizados.
+
 ## Alterações da versão 2.40.3
 
 A listagem administrativa passou a ler os últimos 200 pedidos e seus itens em duas consultas na mesma conexão e transação de leitura. O número de consultas deixa de crescer por pedido. A ordenação, os dados históricos do recibo e a remoção de custos para funcionários foram preservados. A transação mantém cabeçalhos e itens no mesmo snapshot, inclusive quando outra conexão altera dados durante a leitura.

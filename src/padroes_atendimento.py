@@ -43,7 +43,8 @@ def categoria():
     if config.COMERCIO_CONFIGURADO != 'SIM':
         return 'GERAL'
     for texto in (config.COMERCIO_SEGMENTO, config.COMERCIO_DESCRICAO):
-        ativos = [nome for nome, padrao in _PALAVRAS.items() if re.search(padrao, normalizar(texto))]
+        normalizado = normalizar(texto)
+        ativos = [nome for nome, padrao in _PALAVRAS.items() if re.search(padrao, normalizado)]
         if len(ativos) == 1:
             return ativos[0]
         if len(ativos) > 1:

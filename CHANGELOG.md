@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.45.3 — 2026-10-26
+
+Otimiza a descoberta de notas eliminando resolução de caminho redundante antes da leitura segura e reutiliza a normalização de cada campo na classificação comercial. Preserva releitura, aprovação, validade e fronteiras de acesso. Inclui comparações alternadas reproduzíveis com dados fictícios, regressões de isolamento e um guia técnico dos módulos, fluxos e trechos principais do código, acompanhado de resumo técnico do trabalho.
+
 ## 2.45.2 — 2026-10-26
 
 Consolida os estilos do painel e login em um arquivo e reúne contas e atualizações no módulo administrativo, reduzindo três requisições de recursos no painel. Remove a proposta visual exploratória e o simulador legado sem referências; concentra a geração pós-assinatura de hashes no utilitário de distribuição. Mantém marca final, funcionalidades, documentação e controles de acesso, com regressões de recursos, contas, atualizações e integridade.

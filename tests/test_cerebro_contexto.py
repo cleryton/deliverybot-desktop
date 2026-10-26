@@ -95,6 +95,48 @@ def test_leitura_de_estilo_nao_sai_do_cofre(cofre, tmp_path):
     assert 'Use o tom revisado por mim.' in cerebro.instrucoes_estilo()
 
 
+def test_descoberta_de_notas_nao_abre_caminho_fora_do_cofre(cofre, tmp_path, monkeypatch):
+    from pathlib import Path
+    fora = tmp_path / 'privado.md'
+    fora.write_text('---\natendimento: true\n---\nConteúdo privado externo.', encoding='utf-8')
+    original = Path.rglob
+    monkeypatch.setattr(Path, 'rglob', lambda p, padrao: iter([fora]) if p == cofre/'Conhecimento' else original(p, padrao))
+    abrir = Path.open
+    def seguro(p, *args, **kwargs):
+        assert p != fora, 'Uma nota externa não pode ser aberta.'
+        return abrir(p, *args, **kwargs)
+    monkeypatch.setattr(Path, 'open', seguro)
+    assert fora not in cerebro._notas_aprovadas(cofre)
+
+
+def test_nota_em_juncao_e_bloqueada_antes_da_leitura(cofre, monkeypatch):
+    from pathlib import Path
+    pasta = cofre/'Conhecimento'/'Vinculo'
+    pasta.mkdir()
+    caminho = pasta/'Garantia.md'
+    caminho.write_text('---\natendimento: true\n---\nNão pode ser lida.', encoding='utf-8')
+    original = getattr(Path, 'is_junction', lambda p: False)
+    monkeypatch.setattr(Path, 'is_junction', lambda p: p == pasta or original(p), raising=False)
+    abrir = Path.open
+    def seguro(p, *args, **kwargs):
+        assert p != caminho
+        return abrir(p, *args, **kwargs)
+    monkeypatch.setattr(Path, 'open', seguro)
+    assert caminho not in cerebro._notas_aprovadas(cofre)
+
+
+def test_falha_ao_resolver_nota_nao_publica_conteudo(cofre, monkeypatch):
+    from pathlib import Path
+    caminho = nota(cofre, 'Garantia', 'Não deve sair após falha de acesso.')
+    resolver = Path.resolve
+    def resolver_com_falha(p, *args, **kwargs):
+        if p == caminho:
+            raise OSError('falha fictícia de leitura')
+        return resolver(p, *args, **kwargs)
+    monkeypatch.setattr(Path, 'resolve', resolver_com_falha)
+    assert caminho not in cerebro._notas_aprovadas(cofre)
+
+
 def test_cofre_existente_preserva_edicoes_e_nao_guarda_perguntas(cofre):
     estilo = cofre / 'Estilo de atendimento.md'
     estilo.write_text('# Voz da marca\n\nFale com calma e simplicidade.\n', encoding='utf-8')

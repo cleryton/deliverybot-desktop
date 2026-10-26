@@ -285,3 +285,24 @@ def test_benchmark_preserva_arquivos_e_recusa_processo_nao_isolado(tmp_path, mon
         with benchmark.ambiente_ficticio(tmp_path):
             pytest.fail('O aplicativo já foi importado neste processo.')
     assert destino.read_text() == '{}'
+
+
+@pytest.mark.parametrize('flags', [
+    ['--comparar-contexto', '--inicializacao'],
+    ['--comparar-perfil', '--inicializacao'],
+    ['--comparar-contexto', '--comparar-perfil'],
+])
+def test_benchmark_comparacoes_nao_misturam_cenarios(tmp_path, flags):
+    with pytest.raises(SystemExit) as erro:
+        benchmark.main(['--saida', str(tmp_path/'nao-criar.json'), *flags])
+    assert erro.value.code == 2 and not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize('funcao', ['comparar_contexto', 'comparar_perfil'])
+def test_comparacoes_recusam_backend_carregado_sem_alterar_configuracao(monkeypatch, funcao):
+    fonte = b'def _notas_aprovadas(pasta): pass\ndef categoria(): pass\n'
+    monkeypatch.setattr(benchmark.subprocess, 'check_output', lambda *a, **kw: fonte)
+    anteriores = (config.DATABASE_PATH, config.COMERCIO_CONFIGURADO, config.COMERCIO_SEGMENTO)
+    with pytest.raises(ValueError, match='processo separado'):
+        getattr(benchmark, funcao)(5)
+    assert (config.DATABASE_PATH, config.COMERCIO_CONFIGURADO, config.COMERCIO_SEGMENTO) == anteriores

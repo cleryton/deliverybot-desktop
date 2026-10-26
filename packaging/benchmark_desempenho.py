@@ -1,7 +1,9 @@
 """Mede caminhos locais com loja fictícia, sem serviços ou dados do usuário."""
 import argparse
+import ast
 from contextlib import contextmanager
 import json
+import hashlib
 import os
 from pathlib import Path
 import platform
@@ -165,22 +167,106 @@ def medir_inicializacao(repeticoes):
             'sdk_anthropic_carregado':any(r['sdk_anthropic_carregado'] for r in registros)}}
 
 
+def comparar_contexto(repeticoes):
+    """Isola a descoberta de notas, alternando referência e variante no mesmo processo."""
+    referencia = 'e4ab796e3bfc1c5a11db1bc427a4c5a6751c8b11'
+    fonte = subprocess.check_output(['git', 'show', referencia+':src/cerebro.py'], cwd=ROOT).decode('utf-8')
+    funcao = next(n for n in ast.parse(fonte).body
+                  if isinstance(n, ast.FunctionDef) and n.name == '_notas_aprovadas')
+    with tempfile.TemporaryDirectory(prefix='deliverybot-contexto-pares-') as temporario:
+        with ambiente_ficticio(Path(temporario)):
+            sys.path.insert(0, str(ROOT))
+            from src import cerebro
+            cofre = cerebro.arquivo_inicio().parent
+            for i in range(80):
+                (cofre/'Conhecimento'/f'Garantia {i:03}.md').write_text(
+                    '---\natendimento: true\ntags: garantia\n---\n# Garantia\n\n'+
+                    'Condição fictícia revisada para a garantia de produtos. '*20, encoding='utf-8')
+            namespace = cerebro.__dict__.copy()
+            # Extrai somente a função da referência fixa; helpers são os da variante.
+            exec(compile(ast.Module(body=[funcao], type_ignores=[]), '<referencia-local>', 'exec'), namespace)
+            original = cerebro._notas_aprovadas
+            variantes = {'antes': namespace['_notas_aprovadas'], 'depois': original}
+            tempos = {k: [] for k in variantes}
+            esperado = None
+            try:
+                for rodada in range(repeticoes+2):
+                    for nome in (['antes','depois'] if rodada%2 == 0 else ['depois','antes']):
+                        cerebro._notas_aprovadas = variantes[nome]
+                        inicio = time.perf_counter_ns()
+                        texto = cerebro.instrucoes_contexto('Como funciona a garantia dos produtos?')
+                        duracao = (time.perf_counter_ns()-inicio)/1_000_000
+                        if esperado is None:
+                            esperado = texto
+                        if texto != esperado:
+                            raise ValueError('A comparação alterou o conteúdo do contexto.')
+                        if rodada >= 2:
+                            tempos[nome].append(duracao)
+            finally:
+                cerebro._notas_aprovadas = original
+            return {'referencia_funcao': referencia, 'contexto_identico': True,
+                    'sha256_contexto_ficticio': hashlib.sha256(esperado.encode()).hexdigest(),
+                    'amostras_por_condicao': repeticoes,
+                    'condicoes': {k: {'p50_ms': round(statistics.median(v),3),
+                                     'p95_ms_r7': round(percentil(v,.95),3),
+                                     'tempos_ms': v} for k,v in tempos.items()}}
+
+
+def comparar_perfil(repeticoes):
+    """Compara 200 classificações por amostra, somente com descrição fictícia."""
+    referencia = 'e4ab796e3bfc1c5a11db1bc427a4c5a6751c8b11'
+    fonte = subprocess.check_output(['git','show',referencia+':src/padroes_atendimento.py'], cwd=ROOT).decode('utf-8')
+    funcao = next(n for n in ast.parse(fonte).body if isinstance(n,ast.FunctionDef) and n.name == 'categoria')
+    with tempfile.TemporaryDirectory(prefix='deliverybot-perfil-pares-') as temporario:
+        with ambiente_ficticio(Path(temporario)):
+            sys.path.insert(0,str(ROOT))
+            from src import config, padroes_atendimento as padroes
+            config.COMERCIO_CONFIGURADO = 'SIM'
+            config.COMERCIO_SEGMENTO = 'Comércio especializado'
+            config.COMERCIO_DESCRICAO = 'Detalhamento revisado pela equipe. '*50+' oficina.'
+            namespace = padroes.__dict__.copy()
+            exec(compile(ast.Module(body=[funcao],type_ignores=[]), '<referencia-local>', 'exec'), namespace)
+            variantes = {'antes':namespace['categoria'], 'depois':padroes.categoria}
+            tempos = {k:[] for k in variantes}
+            for rodada in range(repeticoes+2):
+                for nome in (['antes','depois'] if rodada%2 == 0 else ['depois','antes']):
+                    inicio = time.perf_counter_ns()
+                    for _ in range(200):
+                        if variantes[nome]() != 'OFICINA':
+                            raise ValueError('A comparação alterou o perfil comercial.')
+                    if rodada >= 2:
+                        tempos[nome].append((time.perf_counter_ns()-inicio)/1_000_000)
+            return {'referencia_funcao':referencia, 'saida_identica':True,
+                    'chamadas_por_amostra':200, 'amostras_por_condicao':repeticoes,
+                    'condicoes':{k:{'p50_ms':round(statistics.median(v),3),
+                                   'p95_ms_r7':round(percentil(v,.95),3),
+                                   'tempos_ms':v} for k,v in tempos.items()}}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--saida', required=True)
     parser.add_argument('--repeticoes', type=int, default=15, choices=range(5,101))
-    parser.add_argument('--inicializacao', action='store_true', help='Mede importação do backend em processos novos, sem janela ou serviços.')
+    modos = parser.add_mutually_exclusive_group()
+    modos.add_argument('--inicializacao', action='store_true', help='Mede importação do backend em processos novos, sem janela ou serviços.')
+    modos.add_argument('--comparar-contexto', action='store_true', help='Compara a descoberta de notas com a referência fixa v2.45.2 em ordem alternada.')
+    modos.add_argument('--comparar-perfil', action='store_true', help='Compara a classificação editorial com a referência fixa v2.45.2.')
     args = parser.parse_args(argv)
     try:
         destino = destino_seguro(args.saida)
-        resultado = medir_inicializacao(args.repeticoes) if args.inicializacao else executar(args.repeticoes)
+        if args.comparar_contexto:
+            resultado = comparar_contexto(args.repeticoes)
+        elif args.comparar_perfil:
+            resultado = comparar_perfil(args.repeticoes)
+        else:
+            resultado = medir_inicializacao(args.repeticoes) if args.inicializacao else executar(args.repeticoes)
         registro = {'formato': 1, 'versao': (ROOT/'VERSION').read_text().strip(),
                     'commit': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
                     'alteracoes_versionadas': bool(subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],cwd=ROOT)),
                     'python': platform.python_version(), 'sistema': platform.system(),
-                    'dados': {'banco':'novo e vazio'} if args.inicializacao else {'produtos':1500,'pedidos':3000,'itens':15000,'notas':80},
+                    'dados': {'banco':'novo e vazio'} if args.inicializacao else {'classificacoes_por_amostra':200} if args.comparar_perfil else {'notas':80} if args.comparar_contexto else {'produtos':1500,'pedidos':3000,'itens':15000,'notas':80},
                     'medidas': resultado,
-                    'limites': 'Dados fictícios. Consultas aquecidas incluem leitura e verificação das respostas; importação usa processos novos e banco vazio. Não mede inferência, rede, abertura completa do executável ou renderização do navegador.'}
+                    'limites': 'Dados fictícios. Consultas aquecidas incluem leitura e verificação das respostas; importação usa processos novos e banco vazio. Comparações alternadas isolam uma função com helpers da variante e exigem saídas idênticas. Não mede inferência, rede, abertura completa do executável ou renderização do navegador.'}
         destino.parent.mkdir(parents=True, exist_ok=True)
         with destino.open('x', encoding='utf-8') as arquivo:
             json.dump(registro, arquivo, ensure_ascii=False, indent=2)
