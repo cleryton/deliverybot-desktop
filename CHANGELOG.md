@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.47.0 — 2026-10-28
+
+Simplifica a navegação e a página inicial, permite ajustar o pedido diretamente no resumo e melhora validação, foco e uso no celular. Protege alterações não salvas em Configurações e Meu comércio, incluindo respostas atrasadas e edições durante salvamento. Retornos de erro orientam a recuperação sem repetir operações; controles mantêm o estado de disponibilidade após ações assíncronas.
+
 ## 2.46.0 — 2026-10-27
 
 Atendimento mais ágil com consumidor reservado para respostas locais, perguntas diretas compostas, escopo restrito ao negócio no Ollama e no Obsidian e laboratório fictício de lanchonete. Inclui regressões de concorrência, segurança, contexto e preservação de dados QA.

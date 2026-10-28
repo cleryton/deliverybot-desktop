@@ -151,3 +151,45 @@ test('indicador ocupado preserva elementos internos e rótulos acessíveis do bo
   await ux.ocupado(b,async()=>assert.match(b.innerHTML,/catalog-nav-label/));
   assert.equal(b.getAttribute('aria-label'),'Abrir catálogo');
 });
+
+for (const method of ['GET','POST']) {
+  test('limite em resposta de texto informa a pausa sem repetir '+method,async()=>{
+    let chamadas=0;
+    const fetcher=async()=>{chamadas++;return {status:429,ok:false,headers:{get:()=> '120'},json:async()=>{throw new SyntaxError('HTML de limite');}};};
+    await assert.rejects(ux.solicitar(fetcher,'/local',{method}),/Muitas tentativas.*2 minutos/);
+    assert.equal(chamadas,1);
+  });
+}
+for (const [header,expected] of [['1',/1 segundo/],['60',/1 minuto/],['<script>',/alguns minutos/],['999999',/alguns minutos/]]) {
+  test('tempo de espera é legível e cabeçalho não vira conteúdo: '+header,async()=>{
+    await assert.rejects(ux.solicitar(async()=>({status:429,ok:false,headers:{get:()=>header},json:async()=>({})}),'/local',{method:'GET'}),expected);
+  });
+}
+test('arquivo grande recebe orientação útil mesmo em resposta HTML',async()=>{
+  await assert.rejects(ux.solicitar(async()=>({status:413,ok:false,json:async()=>{throw new SyntaxError();}}),'/local',{method:'POST'}),/Reduza o tamanho/);
+});
+test('recusa não JSON não afirma que a conta perdeu permissão',async()=>{
+  await assert.rejects(ux.solicitar(async()=>({status:403,ok:false,json:async()=>{throw new SyntaxError();}}),'/local',{method:'POST'}),/Reabra o aplicativo/);
+});
+test('falha de serviço mantém resultado incerto de gravação e não mostra detalhes internos',async()=>{
+  let chamadas=0;
+  await assert.rejects(ux.solicitar(async()=>{chamadas++;return response(503,{erro:'PRIVATE_SERVER_TRACE'});},'/local',{method:'POST'}),error=>
+    /pode ter sido concluída.*antes de repetir/.test(error.message)&&!error.message.includes('PRIVATE_SERVER_TRACE'));
+  assert.equal(chamadas,1);
+});
+test('ação em andamento não é duplicada se outra renderização reabilitar o botão',async()=>{
+  const b=button();let concluir,chamadas=0;
+  const primeira=ux.ocupado(b,()=>new Promise(resolve=>{chamadas++;concluir=resolve;}));
+  b.disabled=false;
+  assert.equal(await ux.ocupado(b,()=>chamadas++),false);
+  concluir();await primeira;assert.equal(chamadas,1);
+});
+test('estado de negócio decidido durante a operação permanece após o fim da espera',async()=>{
+  const b=button();ux.disponivel(b,true);
+  await ux.ocupado(b,async()=>{ux.disponivel(b,false);});
+  assert.equal(b.disabled,true);
+  assert.equal(await ux.ocupado(b,()=>assert.fail('Estado de negócio bloqueia ação')),false);
+  ux.disponivel(b,true);
+  await ux.ocupado(b,async()=>{ux.disponivel(b,true);assert.equal(b.disabled,true);});
+  assert.equal(b.disabled,false);
+});

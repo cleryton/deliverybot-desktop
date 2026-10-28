@@ -22,10 +22,10 @@ async function paginaPublica(atualizarFormulario=false){
   $('#public-state').textContent=({ONLINE:'Página HTTPS pronta',DESLIGADO:'Desligada',INICIANDO:'Iniciando…',RECONECTANDO:'Reconectando…',ERRO:'Confira a conexão'})[s.estado]||s.estado;
   $('#public-status').textContent=s.mensagem;
   $('#public-url').value=s.url;
-  $('#public-copy').disabled=!s.url;
-  $('#public-test').disabled=!s.url;
-  $('#public-start').disabled=!s.disponivel||s.ativo&&s.estado!=='ERRO';
-  $('#public-stop').disabled=!s.disponivel||!s.ativo;
+  DeliveryUX.disponivel($('#public-copy'), !!s.url);
+  DeliveryUX.disponivel($('#public-test'), !!s.url);
+  DeliveryUX.disponivel($('#public-start'), s.disponivel&&!(s.ativo&&s.estado!=='ERRO'));
+  DeliveryUX.disponivel($('#public-stop'), s.disponivel&&s.ativo);
   $('#public-settings').disabled=s.ativo||!s.disponivel;
   $('#public-origin').textContent='http://127.0.0.1:'+s.porta;
   $('#public-token').placeholder=s.token_configurado?'Token já salvo. Vazio preserva o atual.':'Cole somente o token do conector';

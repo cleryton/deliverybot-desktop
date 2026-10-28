@@ -44,6 +44,26 @@
     return `${pendentes} ${pendentes === 1 ? 'mensagem' : 'mensagens'} em processamento ou aguardando` +
       (https ? `. ${https} aguardando a página HTTPS; a retomada é automática dentro do prazo da fila.` : '');
   }
+  function erroHttp(response, escrita, result) {
+    if (response.status === 401) return 'Sua sessão terminou. Entre novamente no aplicativo.';
+    if (response.status === 403 && result === undefined) return 'Não foi possível autorizar esta ação. Reabra o aplicativo; se continuar, consulte o administrador.';
+    if (response.status === 403) return /sess[aã]o|csrf/i.test(result?.erro || '') ?
+      'Sua sessão terminou. Entre novamente no aplicativo.' :
+      'Sua conta não permite esta operação. Solicite ajuda ao administrador.';
+    if (response.status === 429) {
+      const cabecalho = response.headers?.get?.('Retry-After') || '';
+      const segundos = /^\d{1,4}$/.test(cabecalho) ? Number(cabecalho) : 0;
+      const tempo = segundos > 0 && segundos <= 3600 ?
+        (segundos < 60 ? `${segundos} ${segundos === 1 ? 'segundo' : 'segundos'}` :
+          `${Math.ceil(segundos / 60)} ${segundos <= 60 ? 'minuto' : 'minutos'}`) : 'alguns minutos';
+      return `Muitas tentativas em pouco tempo. Aguarde ${tempo} antes de tentar novamente.`;
+    }
+    if (response.status === 413) return 'O arquivo ou os dados enviados ultrapassam o limite permitido. Reduza o tamanho e tente novamente.';
+    if (response.status >= 500) return 'O serviço está temporariamente indisponível.' +
+      (escrita ? ' A operação pode ter sido concluída. Atualize os dados antes de repetir.' : ' Tente atualizar novamente em instantes.');
+    return typeof result?.erro === 'string' && result.erro.trim() ? result.erro :
+      'Não foi possível concluir a operação. Confira os dados e tente novamente.';
+  }
   async function solicitar(fetcher, url, options, {timeout=30000, agendar=setTimeout, cancelar=clearTimeout}={}) {
     const escrita = !['GET', 'HEAD'].includes(options.method || 'GET');
     const controller = new AbortController();
@@ -53,13 +73,10 @@
       const response = await fetcher(url, {...options, signal:controller.signal});
       let result;
       try {result = await response.json();}
-      catch {throw new Error(response.status === 401 ? 'Sua sessão terminou. Entre novamente no aplicativo.' :
+      catch {throw new Error(!response.ok ? erroHttp(response, escrita) :
         escrita ? 'Não foi possível confirmar o resultado. Atualize os dados antes de repetir a operação.' :
           'O aplicativo retornou uma resposta incompleta. Tente atualizar os dados.');}
-      if (!response.ok) throw new Error(response.status === 401 ? 'Sua sessão terminou. Entre novamente no aplicativo.' :
-        response.status === 403 ? (/sess[aã]o|csrf/i.test(result?.erro || '') ? 'Sua sessão terminou. Entre novamente no aplicativo.' :
-          'Sua conta não permite esta operação. Solicite ajuda ao administrador.') :
-          result?.erro || 'Não foi possível concluir a operação. Confira os dados e tente novamente.');
+      if (!response.ok) throw new Error(erroHttp(response, escrita, result));
       return result;
     } catch(error) {
       if (expirou || error.name === 'AbortError' || error instanceof TypeError) {
@@ -69,18 +86,25 @@
       throw error;
     } finally {cancelar(timer);}
   }
+  const acoesAtivas = new WeakSet();
+  const disponibilidade = new WeakMap();
+  function disponivel(button, podeUsar) {
+    if (!button) return;
+    disponibilidade.set(button, !podeUsar);
+    button.disabled = acoesAtivas.has(button) || !podeUsar;
+  }
   async function ocupado(button, action) {
-    if (button?.disabled) return false;
+    if (button && (button.disabled || acoesAtivas.has(button))) return false;
     const rotulo = button?.tagName === 'BUTTON';
     const aria = button?.getAttribute('aria-busy');
     const label = button?.getAttribute('aria-label');
-    if (button) {button.disabled=true;button.setAttribute('aria-busy','true');button.classList.add('busy');if(rotulo)button.setAttribute('aria-label','Aguarde…');}
+    if (button) {acoesAtivas.add(button);button.disabled=true;button.setAttribute('aria-busy','true');button.classList.add('busy');if(rotulo)button.setAttribute('aria-label','Aguarde…');}
     try {await action();return true;}
     finally {
-      if (button) {button.disabled=false;button.classList.remove('busy');
+      if (button) {acoesAtivas.delete(button);button.disabled=disponibilidade.get(button) ?? false;button.classList.remove('busy');
         if(rotulo){if(label===null)button.removeAttribute('aria-label');else button.setAttribute('aria-label',label);}
         if (aria === null) button.removeAttribute('aria-busy');else button.setAttribute('aria-busy',aria);}
     }
   }
-  return {texto, pedidos, proximoPasso, conexao, fila, solicitar, ocupado};
+  return {texto, pedidos, proximoPasso, conexao, fila, solicitar, ocupado, disponivel};
 });

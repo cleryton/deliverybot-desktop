@@ -24,7 +24,7 @@ function ambiente(admin = false) {
       release: {nova: true, versao: '1.0.1', mensagem: 'Disponível'},
       download: {assinatura_confiavel: false, caminho: ''}}
   };
-  const c = vm.createContext({$, isAdmin: admin, state: {page: 'inicio'},
+  const c = vm.createContext({$, isAdmin: admin, state: {page: 'inicio'}, DeliveryUX: require('../../web/static/experiencia.js'),
     document: {visibilityState: 'visible'}, window: {}, confirm: () => true,
     location: {reload() { navegacoes.push('reload'); }, assign(url) { navegacoes.push(url); }},
     setInterval(fn, ms) { intervalos.push({fn, ms}); }, date: String,
