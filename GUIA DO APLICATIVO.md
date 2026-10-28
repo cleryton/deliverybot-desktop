@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.47.1
+# DeliveryBot Desktop 2.47.2
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -63,6 +63,14 @@ O menu reúne **No dia a dia**, **Preparar o atendimento** e **Administrar a loj
 Na Visão geral, o próximo passo mostra o que falta configurar e os atalhos levam a pedidos, catálogo e atendimento humano. Os detalhes de conexão e preparação podem ser abertos quando precisar, mantendo as tarefas principais à vista.
 
 Em **Configurações** e **Meu comércio**, um aviso identifica alterações ainda não salvas. Ao trocar de tela ou usar **Atualizar dados**, escolha entre continuar editando e descartar. Não há salvamento automático: clique em **Salvar** para confirmar. Se continuar digitando durante o envio, as mudanças adicionais permanecem na tela para um novo salvamento. Os rascunhos não são recuperados após fechar o aplicativo.
+
+## Limitar a IA ao tipo da loja
+
+Em **Meu comércio**, informe um segmento específico e descreva o que oferece. A triagem usa esse perfil e o catálogo ativo: uma lanchonete atende alimentação; uma oficina atende sua atividade e serviços. Um item antigo de outro ramo não amplia um perfil específico. Para atividades realmente combinadas, escolha **Misto** e descreva as áreas oferecidas.
+
+Horário, contato, entrega, pagamento, privacidade e atendimento humano continuam disponíveis. Perguntas de outro ramo ou sem relação clara recebem uma orientação local, sem chamar o modelo. O histórico e o catálogo usado pela IA são filtrados; respostas evidentemente incompatíveis ou preparadas durante mudança de perfil ou catálogo são descartadas. Não há uma segunda inferência para essas recusas.
+
+Notas em Conhecimento podem usar `categoria_atendimento: ALIMENTACAO`, `MODA`, `ELETRONICOS`, `OFICINA`, `REVENDA`, `PRODUCAO`, `SERVICOS`, `MISTO` ou `GERAL`, conforme o perfil editorial ativo mostrado no painel. Quando presente, a categoria deve corresponder ao perfil ativo. Sem o campo, a nota permanece uma referência geral aprovada. Editar notas não amplia os assuntos permitidos nem concede acesso ao sistema. A triagem é conservadora e pode exigir esclarecimento; use **ATENDENTE** quando necessário.
 
 ## Produtos de qualquer categoria
 

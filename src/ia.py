@@ -13,19 +13,19 @@ e a IA decide o que fazer:
 
 Suporta DOIS provedores, escolhidos por IA_PROVIDER no .env:
 
-- "ANTHROPIC" -> API paga da Anthropic (Claude). Melhor qualidade de
-  conversa, custa uma fração de centavo por mensagem. Precisa de
-  ANTHROPIC_API_KEY.
+- "ANTHROPIC" -> API externa da Anthropic. Precisa de ANTHROPIC_API_KEY,
+  autorização de envio externo e orçamento conforme o uso do provedor.
 - "OLLAMA"    -> modelo rodando LOCAL na sua máquina via Ollama
-  (https://ollama.com). Custo ZERO por mensagem (usa o processador/memória
-  do seu PC), qualidade de conversa um pouco inferior, mais lento sem GPU.
-- vazio / qualquer outro valor -> IA desativada, bot usa direto o menu fixo
-  (sem custo nenhum, sem dependência externa).
+  (https://ollama.com). A execução local usa os recursos do computador;
+  tempo e qualidade dependem do modelo, do hardware e do contexto.
+- vazio / qualquer outro valor -> IA desativada; o bot mantém suas respostas
+  locais e os fluxos determinísticos disponíveis.
 
 Em qualquer provedor, se a chamada falhar por qualquer motivo (sem crédito,
 sem internet, Ollama não rodando, chave inválida, etc.), `responder()`
-levanta `IAIndisponivel` e o chamador (bot.py) cai de volta no menu fixo --
-o atendimento NUNCA para de funcionar por causa de um problema com a IA.
+levanta `IAIndisponivel` e o chamador (bot.py) pode orientar o cliente com
+uma resposta local. A triagem de assunto precede a inferência e as ferramentas
+continuam sujeitas às validações comerciais do aplicativo.
 """
 import json
 import logging
@@ -35,7 +35,7 @@ import unicodedata
 
 import requests
 
-from . import cardapio, config, cerebro
+from . import cardapio, config, cerebro, escopo_loja
 from .db import get_conn
 from .links import gerar_link_pedido
 
@@ -68,16 +68,6 @@ RESPOSTA_FORA_ESCOPO = (
 # O modelo não é um assistente geral. Esta triagem local evita enviar perguntas
 # alheias ao comércio à inferência ou ao cofre. Ela é deliberadamente limitada:
 # assuntos ambíguos pedem esclarecimento, sem punir ou bloquear o cliente.
-_ASSUNTO_COMERCIAL = re.compile(
-    r"\b(?:produtos?|catalogo|cardapio|pedidos?|encomendas?|encomendar|compr[ao]s?|pagamentos?|pagar|pix|cartao|dinheiro|"
-    r"entrega[ms]?|entregam|retira[rd]?|retirada|frete|loja|comercio|orcamentos?|agendamentos?|"
-    r"servicos?|conserto|reparo|garantia|troca[rs]?|devolucao|reembolso|estorno|atendente|"
-    r"horario|funcionamento|endereco|telefone|contato|promocao|promocoes|desconto|estoque|preco|precos|"
-    r"disponibilidade|ingredientes?|alergenos?|alergia|gluten|lactose|vegano|vegetariano|"
-    r"vale (?:alimentacao|refeicao)|comida|sem acucar|porcao|porcoes|"
-    r"embalage[msn]+|montagem|suporte|privacidade|lgpd|meus dados|dados pessoais|comprovante|nota fiscal|"
-    r"como (?:eu )?pago|onde (?:voces )?fica[m]?|localizacao|que horas|abre[m]?|fecha[m]?|abert[oa]s?|fechad[oa]s?)\b"
-)
 _FORA_ASSUNTO = re.compile(
     r"\b(?:qual (?:e |a |e a )?capital|capital (?:do|da|de)|quem (?:ganhou|venceu|e o presidente)|"
     r"previsao do tempo|cotacao (?:do|da)|resultado (?:do jogo|da partida)|horario (?:do jogo|da partida)|"
@@ -94,6 +84,47 @@ _CONTINUACAO = re.compile(
     r"me explique melhor|nao entendi|como assim|pode explicar)(?:\b|[.!?])"
 )
 
+_ASSUNTO_OPERACIONAL = re.compile(
+    r"\b(?:pedidos?|encomendas?|encomendar|pagamentos?|pagar|pix|cartao|dinheiro|"
+    r"entrega[ms]?|entregam|retira[rd]?|retirada|frete|garantia|troca[rs]?|devolucao|"
+    r"reembolso|estorno|atendente|agendamentos?|orcamentos?|horario|funcionamento|endereco|telefone|contato|"
+    r"promocao|promocoes|desconto|disponibilidade|estoque|privacidade|lgpd|meus dados|"
+    r"dados pessoais|comprovante|nota fiscal|suporte|senha|login|catalogo|cardapio|"
+    r"como (?:eu )?pago|onde (?:voces )?fica[m]?|localizacao|que horas|"
+    r"abre[m]?|fecha[m]?|abert[oa]s?|fechad[oa]s?)\b"
+)
+_CONSULTA_LOJA = re.compile(
+    r"(?:(?:quais|que) (?:sao )?(?:os |as )?(?:produtos|servicos|opcoes)(?: (?:voces|vcs) (?:tem|oferecem|vendem))?|"
+    r"(?:qual (?:e )?(?:o )?preco|quanto custa|quanto fica)(?: (?:desse|deste|do) (?:produto|item|servico))?|"
+    r"(?:como funciona|como fica) (?:a |o )?(?:montagem|embalagem)(?: desse produto)?|"
+    r"(?:voces|vcs) (?:fazem|tem|oferecem) (?:adaptacoes|personalizacoes|opcoes)|"
+    r"(?:me )?(?:sugira|recomende|indique) (?:um |algum )?(?:produto|item|servico)(?: da loja)?|"
+    r"(?:conta|conte|qual e) (?:a )?historia d[ao] (?:loja|empresa|marca))"
+)
+_PEDIDO_ABERTO = re.compile(r"(?:quero|gostaria de|preciso de|vou) (?:fazer (?:um |meu |o )?pedido|comprar|pedir|encomendar)|"
+                             r"(?:manda|mande|envia|envie|quero|gostaria de|preciso de|pode (?:me )?(?:mandar|enviar)) (?:o |um )?link(?: do pedido| para pedir| pra pedir| para comprar| pra comprar)?")
+_GERAL_EXPLICITO = re.compile(
+    r"\b(?:fotossintese|teoria da relatividade|equacoes?|raiz quadrada|segunda guerra mundial|"
+    r"programacao|programar|horoscopo|noticias do mundo|aconselhamento juridico|diagnostico medico)\b"
+)
+_DIVIDIR_PERGUNTAS = re.compile(r"(?:[.!?;]\s*|\s+(?:e|mas|tambem|alem disso)\s+)(?=(?:qual|quem|como|por que|me |explique|ensine|escreva|crie|conte|resolva|traduza|fale|o que)\b)")
+_OPERACIONAL_FECHADA = re.compile(
+    r"(?:qual (?:e )?(?:o )?(?:horario(?: de funcionamento)?|endereco|telefone|contato|frete)|"
+    r"que horas (?:voces )?(?:abrem?|fecham?)|onde (?:voces )?ficam?|localizacao|"
+    r"como (?:eu )?pago|aceitam? (?:pix|dinheiro|cartao)|posso retirar|"
+    r"(?:voces |vcs )?estao abertos)(?: da loja| do comercio| de voces)?"
+)
+
+
+def _fora_explicito(atual, regra):
+    return bool(_FORA_ASSUNTO.search(atual) or _GERAL_EXPLICITO.search(atual)
+                or escopo_loja.fora_do_segmento(atual, regra))
+
+
+def _referencia_comercial(atual, regra):
+    return bool(_ASSUNTO_OPERACIONAL.search(atual) or _CONSULTA_LOJA.fullmatch(atual)
+                or _PEDIDO_ABERTO.fullmatch(atual) or escopo_loja.referencia(atual, regra))
+
 
 def assunto_negocio(texto: str, mensagens: list[dict] | None = None, *, telefone: str = '') -> bool:
     """Permite temas comerciais e continuações curtas com contexto recente.
@@ -102,7 +133,7 @@ def assunto_negocio(texto: str, mensagens: list[dict] | None = None, *, telefone
     texto do cliente nunca podem ampliar a autorização de assunto.
     """
     atual = normalizar_texto(texto).strip('.!? ')
-    if not atual or _FORA_ASSUNTO.search(atual):
+    if not atual or _FORA_ASSUNTO.search(atual) or _GERAL_EXPLICITO.search(atual):
         return False
     if atual in {'oi', 'ola', 'opa', 'bom dia', 'boa tarde', 'boa noite', 'e ai',
                  'oie', 'oii', 'oiii', 'hello', 'obrigado', 'obrigada', 'valeu',
@@ -111,29 +142,26 @@ def assunto_negocio(texto: str, mensagens: list[dict] | None = None, *, telefone
         return True
     if atual in {'1', '2', '3', '4', '5', '6', '7', '8', '9', '10'}:
         return True
-    if _ASSUNTO_COMERCIAL.search(atual) or intencao_pedido(atual):
+    # Expressões fechadas não podem carregar um segundo assunto. Mantém as
+    # consultas operacionais simples sem percorrer o catálogo inteiro.
+    if (_OPERACIONAL_FECHADA.fullmatch(atual) or _CONSULTA_LOJA.fullmatch(atual)
+            or _PEDIDO_ABERTO.fullmatch(atual)):
         return True
-    if re.search(r"\b(?:voces|vcs) (?:tem|fazem|vendem|trabalham com|oferecem)\b", atual):
+    regra = escopo_loja.politica()
+    if _fora_explicito(atual, regra):
+        return False
+    partes = _DIVIDIR_PERGUNTAS.split(atual)
+    if len(partes) > 1 and any(not _referencia_comercial(p.strip('.!? '), regra) for p in partes if p):
+        return False
+    if _referencia_comercial(atual, regra):
         return True
-    # Não há cache de autorização: produtos removidos não mantêm um assunto
-    # permitido. Usamos somente nomes/categorias, nunca comandos na descrição.
-    comuns = {'para', 'com', 'sem', 'uma', 'uns', 'das', 'dos', 'que', 'por', 'de',
-              'da', 'do', 'as', 'os', 'em', 'na', 'no', 'ao', 'ou',
-              'produto', 'produtos', 'teste', 'geral', 'outros'}
-    palavras = set(re.findall(r'\b[a-z0-9]{2,}\b', atual))
-    if palavras - comuns:
-        for produto in cardapio.listar_produtos_ativos():
-            termos = set(re.findall(r'\b[a-z0-9]{2,}\b', normalizar_texto(
-                str(produto.get('nome') or '') + ' ' + str(produto.get('categoria') or '')))) - comuns
-            if palavras & termos:
-                return True
     if len(atual) <= 120 and _CONTINUACAO.fullmatch(atual):
         recentes = mensagens
         if recentes is None and telefone:
             recentes = _historico_mensagens(telefone)
         for mensagem in reversed((recentes or [])[-3:]):
             anterior = normalizar_texto(str(mensagem.get('content') or ''))
-            if anterior != atual and not _FORA_ASSUNTO.search(anterior) and _ASSUNTO_COMERCIAL.search(anterior):
+            if anterior != atual and not _fora_explicito(anterior, regra) and _referencia_comercial(anterior, regra):
                 return True
     return False
 
@@ -171,7 +199,14 @@ _http = requests.Session()
 # Cache simples do system prompt: montar o texto do cardápio bate no banco
 # a cada chamada; como o cardápio muda raramente, vale a pena reaproveitar
 # por alguns segundos em vez de reconsultar a cada mensagem recebida.
-_cache_prompt: dict = {"texto": None, "gerado_em": 0.0}
+_cache_prompt: dict = {"texto": None, "gerado_em": 0.0, "revisao": object()}
+
+
+def _assinatura_perfil():
+    return tuple(getattr(config, campo) for campo in (
+        'NOME_RESTAURANTE', 'COMERCIO_SEGMENTO', 'COMERCIO_DESCRICAO', 'COMERCIO_MODELO',
+        'COMERCIO_CONFIGURADO', 'HORARIO_FUNCIONAMENTO', 'TELEFONE_RESTAURANTE',
+        'ENDERECO_RESTAURANTE', 'TAXA_ENTREGA', 'FORMAS_PAGAMENTO'))
 
 
 def normalizar_texto(texto: str) -> str:
@@ -221,10 +256,14 @@ def resposta_link(link: str, mensagens: list[dict] | None = None) -> str:
 
 def _system_prompt() -> str:
     agora = time.monotonic()
-    if _cache_prompt["texto"] is not None and (agora - _cache_prompt["gerado_em"]) < _CACHE_PROMPT_SEGUNDOS:
+    perfil = _assinatura_perfil()
+    revisao = _cache_prompt['revisao']
+    if (_cache_prompt["texto"] is not None and _cache_prompt.get('perfil') == perfil
+            and (agora - _cache_prompt["gerado_em"]) < _CACHE_PROMPT_SEGUNDOS):
         return _cache_prompt["texto"]
 
     produtos = cardapio.listar_produtos_ativos()
+    produtos = escopo_loja.produtos_permitidos(produtos)
     grupos = cardapio.agrupar_por_categoria(produtos)
     linhas_cardapio = []
     for categoria, itens in grupos.items():
@@ -305,8 +344,11 @@ def _system_prompt() -> str:
         f"{cardapio_texto}\n"
     )
 
-    _cache_prompt["texto"] = texto
-    _cache_prompt["gerado_em"] = agora
+    texto += '\n' + escopo_loja.contexto()
+    if _cache_prompt['revisao'] is revisao and _assinatura_perfil() == perfil:
+        _cache_prompt["texto"] = texto
+        _cache_prompt["gerado_em"] = agora
+        _cache_prompt['perfil'] = perfil
     return texto
 
 
@@ -340,6 +382,7 @@ def invalidar_cache_prompt() -> None:
     """Chame depois de alterar o cardápio em tempo real, se precisar que a
     próxima resposta já reflita a mudança sem esperar o cache expirar."""
     _cache_prompt["texto"] = None
+    _cache_prompt['revisao'] = object()
 
 
 def _historico_mensagens(telefone: str) -> list[dict]:
@@ -362,10 +405,12 @@ def _historico_mensagens(telefone: str) -> list[dict]:
     rows = list(reversed(rows))
 
     historico: list[dict] = []
+    regra = escopo_loja.politica() if rows else None
     for row in rows:
         conteudo = str(row["conteudo"] or "").strip()
         from .protecao_ia import classificar
-        if classificar(conteudo) or _FORA_ASSUNTO.search(normalizar_texto(conteudo)):
+        atual = normalizar_texto(conteudo)
+        if classificar(conteudo) or _fora_explicito(atual, regra):
             continue
         if not conteudo:
             continue
@@ -664,10 +709,16 @@ def responder(telefone: str, texto: str) -> str:
     if not assunto_negocio(texto, telefone=telefone):
         return protecao_ia.validar_saida(telefone, RESPOSTA_FORA_ESCOPO, geracao)
 
-    if provedor == "ANTHROPIC":
-        return protecao_ia.validar_saida(telefone,_responder_anthropic(telefone, texto),geracao)
-    if provedor == "OLLAMA":
-        return protecao_ia.validar_saida(telefone,_responder_ollama(telefone, texto),geracao)
+    perfil, revisao = _assinatura_perfil(), _cache_prompt['revisao']
+    if provedor in {'ANTHROPIC', 'OLLAMA'}:
+        gerar = _responder_anthropic if provedor == 'ANTHROPIC' else _responder_ollama
+        resposta = protecao_ia.validar_saida(telefone, gerar(telefone, texto), geracao)
+        # Não há segunda inferência nem bloqueio punitivo por assunto. A mudança
+        # de perfil durante uma geração também impede publicar o contexto antigo.
+        if (_assinatura_perfil() != perfil or _cache_prompt['revisao'] is not revisao
+                or _fora_explicito(normalizar_texto(resposta), escopo_loja.politica())):
+            return protecao_ia.validar_saida(telefone, RESPOSTA_FORA_ESCOPO, geracao)
+        return resposta
 
     raise IAIndisponivel(
         "IA desativada (defina IA_PROVIDER=ANTHROPIC ou IA_PROVIDER=OLLAMA no .env para ativar)."

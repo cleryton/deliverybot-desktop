@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.47.2 — 2026-10-28
+
+Restringe o atendimento ao segmento e ao catálogo da loja, reforça a revisão de contexto e respostas e acrescenta relatório técnico editável sobre arquitetura, melhorias, testes e limites do projeto.
+
 ## 2.47.1 — 2026-10-28
 
 Reduz consultas simultâneas do painel, impede respostas atrasadas de sobrescrever o estado atual e reforça a proteção do catálogo PDF público e das alterações de pedidos concorrentes.
