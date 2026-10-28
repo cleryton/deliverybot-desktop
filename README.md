@@ -18,6 +18,8 @@ O menu separa tarefas diárias, preparação do atendimento e administração. U
 
 O painel evita sobrepor consultas de publicação e atualização em conexões lentas e descarta respostas anteriores a uma alteração. O catálogo PDF público tem limites de frequência e de geração simultânea para preservar recursos. Alterações concorrentes de pedidos exigem conferir o estado atualizado antes de tentar novamente.
 
+O atendimento da IA usa o segmento definido em **Meu comércio**. Uma lanchonete não passa a atender mecânica por conter uma peça antiga no catálogo. A operação mista permite as atividades cadastradas; notas do Obsidian não ampliam essa autorização. Perguntas vagas recebem orientação local. Consulte o [relatório do projeto](docs/tcc/RELATORIO_DO_PROJETO.md) para entender arquitetura, melhorias, módulos e limites.
+
 ## O que existe nesta pasta
 
 | Arquivo ou pasta | Finalidade |

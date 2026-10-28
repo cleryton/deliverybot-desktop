@@ -35,6 +35,10 @@ Mensagens em quarentena ficam no histórico privado para a equipe, marcadas fora
 
 Os testes em `tests/test_protecao_ia.py` usam IA e WhatsApp simulados para cobrir abusos, casos comerciais permitidos, duplicação, corrida entre pausa/liberação/inferência, fila, revisão e privacidade. As heurísticas não cobrem todos os idiomas, codificações ou ataques indiretos e podem gerar falsos positivos; não são garantia de ausência de prompt injection. As ferramentas comerciais e permissões continuam com suas próprias validações.
 
+## Escopo do atendimento por loja
+
+O perfil oficial e o catálogo ativo definem os assuntos da IA. A triagem precede os atalhos e a inferência, sem usar notas para ampliar permissão. Segmentos reconhecidos incompatíveis e solicitações gerais explícitas são recusados; casos vagos pedem esclarecimento local. O histórico elimina desvios reconhecidos e o prompt exclui itens incompatíveis de outro ramo. Uma alteração de perfil ou de catálogo durante a geração invalida a resposta preparada. Notas com categoria editorial explícita precisam corresponder ao perfil ativo também na releitura final. Essas heurísticas podem produzir falsos bloqueios e não asseguram compreensão semântica perfeita; pedidos, estoque, caixa e permissões mantêm suas validações independentes.
+
 ## Referências oficiais
 
 - [OWASP LLM Prompt Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)

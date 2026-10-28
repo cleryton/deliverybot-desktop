@@ -199,6 +199,8 @@ tags: [assunto, palavras-chave]
 
 <!-- Opcional: adicione valido_ate: AAAA-MM-DD no frontmatter para suspender automaticamente o uso após essa data. Prioridade aceita 1 a 5; 5 é a maior. Tags ajudam a encontrar esta nota pela dúvida do cliente. -->
 
+<!-- Para limitar uma nota a um perfil, adicione categoria_atendimento: ALIMENTACAO, MODA, ELETRONICOS, OFICINA, REVENDA, PRODUCAO, SERVICOS, MISTO ou GERAL no frontmatter. A nota só será consultada quando o perfil ativo corresponder. Sem esse campo, ela permanece uma referência geral aprovada, sem ampliar os assuntos permitidos para a loja. -->
+
 <!-- Não inclua dados ou conversas de clientes. Produtos, preços e estoque devem ser consultados no cadastro do aplicativo. -->
 """
 
@@ -638,6 +640,14 @@ def _aprovada(metadados: str) -> bool:
     return True
 
 
+def _do_perfil_ativo(metadados: str) -> bool:
+    """Notas sem categoria são gerais; categoria explícita não amplia o perfil."""
+    if not re.search(r'^categoria_atendimento[ \t]*:', metadados, re.M | re.I):
+        return True
+    categoria = _metadado(metadados, 'categoria_atendimento')
+    return categoria in padroes_atendimento.PERFIS and categoria == padroes_atendimento.categoria()
+
+
 def _termos(texto: str) -> set[str]:
     texto = ''.join(c for c in unicodedata.normalize('NFKD', texto.casefold()) if not unicodedata.combining(c))
     ignorados = {'para', 'como', 'voces', 'queria', 'quero', 'gostaria', 'sobre', 'qual', 'quais', 'porque', 'posso', 'pode', 'essa', 'esse', 'isso', 'tenho', 'loja', 'produto', 'produtos', 'pedido', 'pedidos'}
@@ -683,7 +693,7 @@ def _notas_aprovadas(pasta: Path) -> list[Path]:
         # _ler valida raiz, componentes e destino antes de abrir o arquivo.
         # Repetir resolve aqui acrescentava acesso ao disco sem outra proteção.
         metadados, corpo = _ler(caminho)
-        if corpo and _aprovada(metadados):
+        if corpo and _aprovada(metadados) and _do_perfil_ativo(metadados):
             aprovadas.append(caminho)
     return aprovadas
 
@@ -735,7 +745,7 @@ def instrucoes_contexto(pergunta: str = '') -> str:
     candidatas = []
     for caminho in _notas_aprovadas(pasta):
         metadados, corpo = _ler(caminho)
-        if corpo and _aprovada(metadados):
+        if corpo and _aprovada(metadados) and _do_perfil_ativo(metadados):
             rotulo = caminho.relative_to(pasta).as_posix()[:120]
             titulo = _termos(caminho.stem + ' ' + _tags(metadados))
             afinidade = 4 * len(termos & titulo) + len(termos & _termos(corpo))
