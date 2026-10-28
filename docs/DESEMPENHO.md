@@ -1,5 +1,29 @@
 # Desempenho do painel e do atendimento
 
+## Respostas locais sem aguardar inferências — versão 2.46.0
+
+A fila mantém dois consumidores gerais e acrescenta um consumidor reservado para uma lista fechada de consultas locais. Saudações, agradecimentos e consultas simples conhecidas de outra pessoa podem ser processados mesmo com os dois consumidores gerais ocupados. A ordem de cada telefone continua obrigatória, inclusive quando uma mensagem anterior falhou ou aguarda conferência. Pedidos, links e confirmações contextuais não entram nessa lista. A busca do consumidor reservado examina até 64 candidatos por consulta; isso evita uma varredura ilimitada e pode adiar uma consulta rápida em filas maiores. A quantidade de inferências simultâneas não aumenta.
+
+Perguntas diretas compostas, como horário e endereço, passam a ser respondidas pelo cadastro. Somente combinações integralmente reconhecidas usam esse atalho; feriados, bairros, prazos e qualificadores adicionais continuam exigindo confirmação. A triagem de assunto vem antes dos atalhos e da inferência: perguntas fora do comércio ou sem relação reconhecida recebem esclarecimento local, sem leitura do cofre. O prompt do Ollama foi condensado para reduzir repetição, preservando regras comerciais, privacidade e validação de ações. A conexão ao Ollama tem prazo de três segundos, separado do prazo configurado de inferência; timeout de inferência continua sem repetição automática.
+
+Em 27/10/2026, foram medidas duas rodadas independentes de oito pares, após um par de aquecimento descartado, alternando a ordem A/B e B/A. O cenário mantém duas inferências **simuladas** ocupadas por um evento liberado após 200 ms e enfileira um “oi” de um terceiro telefone. O tempo inclui enfileiramento, banco, seleção e transporte fictício; não inclui a criação inicial da base. A referência usa a mesma implementação com dois consumidores gerais; a variante permite o consumidor reservado. Não é comparação de dois executáveis ou teste real do Ollama/WhatsApp.
+
+| Rodada | P50 dois gerais (ms) | P50 com reservado (ms) | P95 dois gerais (ms) | P95 com reservado (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| A | 370,842 | 53,532 | 485,388 | 59,656 |
+| B | 338,526 | 31,715 | 352,029 | 189,566 |
+
+A redução da espera se repetiu, com variação de disco/escalonamento e uma amostra de 267,749 ms na variante B. As coletas foram feitas no Windows/Python 3.12.3, antes do commit, sobre a árvore derivada de `602881a5abfabc51e0cdc967708cd9df48ebd7d2`. Os JSONs locais `artifacts/desempenho/v2460-respostas-a.json` e `v2460-respostas-b.json` registram amostras e metadados, sem dados reais. Cada ensaio exige três envios únicos, deduplicação da saudação e fila vazia ao final. Os testes unitários usam eventos para demonstrar que a saudação termina antes da liberação das duas inferências, sem impor um prazo frágil em milissegundos.
+
+Para repetir em um processo novo, sem builds ou testes concorrentes:
+
+```powershell
+.venv/Scripts/python.exe packaging/benchmark_respostas.py --repeticoes 8 --espera 0.2 --saida artifacts/desempenho/respostas-rodada-nova.json
+.venv/Scripts/python.exe -m pytest tests/test_fila_rapida.py tests/test_perguntas_diretas.py tests/test_escopo_negocio.py -q
+```
+
+Respostas rápidas não são garantia de entrega instantânea: histórico da mesma conversa, fila, diagnóstico de conexão, disco, rede e provedor ainda podem acrescentar demora. Inferência real depende do modelo, memória e CPU/GPU. A triagem textual de assunto é aproximada e não substitui as validações de segurança e operações; notas aprovadas não concedem novas permissões nem autoridade sobre preços ou pedidos.
+
 ## Otimizações editoriais da versão 2.45.3
 
 Foram aceitas duas alterações: a descoberta de notas deixa de resolver novamente um caminho que será validado por `_ler`, e a classificação comercial normaliza cada campo uma vez antes de testar os padrões. A leitura segura continua recusando raiz/componentes vinculados, caminhos externos, falhas de resolução e conteúdo inválido. Não foi criado cache de notas, aprovação, permissões ou perfil entre chamadas; a releitura antes de compor o contexto permanece.

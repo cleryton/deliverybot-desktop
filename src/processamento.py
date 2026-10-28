@@ -35,6 +35,38 @@ def _mensagem_ruido(texto):
     return compacta.isalpha() and len(compacta) >= 8 and len(set(compacta)) == 1
 
 
+def _mensagem_rapida(texto):
+    """Lista fechada de consultas locais; não infere intenções nem pula a conversa.
+
+    O consumidor reservado usa a mesma autorização, histórico e envio dos demais.
+    Não inclui pedido/link nem confirmações contextuais, que podem esperar HTTPS
+    ou precisar da IA. Perguntas compostas também ficam com os consumidores gerais.
+    """
+    normalizada = " ".join("".join(
+        c for c in unicodedata.normalize("NFKD", texto or "")
+        if not unicodedata.combining(c)
+    ).casefold().split())
+    # Estes comandos são exatos no roteador. Não classifica "1?" ou "humano!"
+    # como locais enquanto o roteador não aceitar essa grafia.
+    comando = normalizada.strip(".!? ")
+    if comando.isdecimal() or comando in {'atendente', 'humano'}:
+        return (texto or '').strip().casefold() in {'1', '3', '4', '5', '6', '7', '8', '9', '10', 'atendente', 'humano'}
+    normalizada = comando
+    return normalizada in {
+        "oi", "ola", "opa", "bom dia", "boa tarde", "boa noite", "e ai",
+        "oie", "oii", "oiii", "hello", "obrigado", "obrigada", "valeu",
+        "muito obrigado", "muito obrigada", "obg", "agradeco",
+        "menu", "ajuda", "opcoes", "falar com atendente",
+        "privacidade", "lgpd", "meus dados", "dados pessoais",
+        "qual o horario", "qual e o horario", "horario", "horario de funcionamento",
+        "que horas abre", "que horas fecha", "formas de pagamento", "como pago",
+        "aceita pix", "aceita cartao", "cardapio", "catalogo",
+        "telefone", "telefone da loja", "contato da loja", "promocao", "promocoes",
+        "taxa de entrega", "qual a taxa de entrega", "quanto custa a entrega",
+        "endereco da loja", "onde fica", "onde voces ficam", "localizacao",
+    }
+
+
 def _concluir_sem_resposta(conn, tarefa_id, motivo):
     # Não coloca ruído no histórico do cliente e apaga o conteúdo sem utilidade.
     conn.execute(
@@ -105,7 +137,7 @@ def recuperar_interrompidas():
         conn.execute("UPDATE tarefas_bot SET estado='VERIFICAR', erro='Confira se a resposta já chegou ao cliente antes de reenviar.' WHERE estado='ENVIANDO'")
 
 
-def processar_proxima():
+def processar_proxima(somente_rapidas=False):
     if config.WHATSAPP_PROVIDER not in {"WAHA", "LOCAL", "META"} or config.MODO_TESTE:
         return False
     if not _servico_pronto():
@@ -123,7 +155,7 @@ def processar_proxima():
         ).fetchall()
         for vencida in vencidas:
             _concluir_sem_resposta(conn, vencida["id"], "fila expirada")
-        row = conn.execute(
+        candidatas = conn.execute(
             "SELECT * FROM tarefas_bot t WHERE estado='PENDENTE' AND NOT EXISTS "
             "(SELECT 1 FROM tarefas_bot ativas WHERE ativas.telefone=t.telefone AND ativas.estado IN ('PROCESSANDO','ENVIANDO')) "
             "AND NOT EXISTS (SELECT 1 FROM tarefas_bot anteriores WHERE anteriores.telefone=t.telefone "
@@ -131,9 +163,12 @@ def processar_proxima():
             "AND (t.origem!='HUMANO' OR anteriores.origem='HUMANO')) "
             # Enquanto o HTTPS estiver fora, atenda outras conversas prontas.
             # Ao voltar, a ordem original é retomada, sem atrasar pedidos antigos.
-            f"ORDER BY {ordem} LIMIT 1",
-            (_ERRO_HTTPS,) if aguardando_https else (),
-        ).fetchone()
+            f"ORDER BY {ordem} LIMIT ?",
+            ((_ERRO_HTTPS,) if aguardando_https else ()) + (64 if somente_rapidas else 1,),
+        ).fetchall()
+        # O mesmo filtro SQL preserva FIFO por telefone, inclusive quando a
+        # entrada anterior falhou ou está em conferência. A busca é limitada.
+        row = next((r for r in candidatas if not somente_rapidas or _mensagem_rapida(r['texto'])), None)
         if row is None:
             return False
         tarefa = dict(row)
@@ -248,10 +283,10 @@ def processar_proxima():
     return True
 
 
-def _executar():
+def _executar(somente_rapidas=False):
     while not _parar.is_set():
         try:
-            if processar_proxima():
+            if processar_proxima(somente_rapidas=somente_rapidas):
                 continue
         except Exception:
             logger.exception("Falha ao consultar fila do bot")
@@ -265,6 +300,10 @@ def iniciar():
     _parar.clear()
     recuperar_interrompidas()
     _threads[:] = [threading.Thread(target=_executar, name=f"Atendimento-{i}", daemon=True) for i in range(2)]
+    # Duas inferências lentas não ocupam o único caminho disponível para uma
+    # saudação de outro cliente. Este terceiro consumidor só atende a lista local.
+    _threads.append(threading.Thread(target=_executar, kwargs={'somente_rapidas': True},
+                                     name="Atendimento-rapido", daemon=True))
     for t in _threads:
         t.start()
 

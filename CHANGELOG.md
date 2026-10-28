@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 2.46.0 — 2026-10-27
+
+Atendimento mais ágil com consumidor reservado para respostas locais, perguntas diretas compostas, escopo restrito ao negócio no Ollama e no Obsidian e laboratório fictício de lanchonete. Inclui regressões de concorrência, segurança, contexto e preservação de dados QA.
+
+A descoberta padrão de testes agora se limita à suíte do projeto, excluindo dependências e artefatos locais. Medições reproduzíveis da fila ficam documentadas em `docs/DESEMPENHO.md`.
+
 ## 2.45.3 — 2026-10-26
 
 Otimiza a descoberta de notas eliminando resolução de caminho redundante antes da leitura segura e reutiliza a normalização de cada campo na classificação comercial. Preserva releitura, aprovação, validade e fronteiras de acesso. Inclui comparações alternadas reproduzíveis com dados fictícios, regressões de isolamento e um guia técnico dos módulos, fluxos e trechos principais do código, acompanhado de resumo técnico do trabalho.

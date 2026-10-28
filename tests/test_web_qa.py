@@ -81,6 +81,58 @@ def test_mesma_sessao_reutiliza_link_e_catalogo_nao_duplica(qa):
     assert novo(c).location==url
     with get_conn() as conn: assert conn.execute('SELECT COUNT(*) FROM links_pedido').fetchone()[0]==1
 
+
+def test_lanchonete_tem_perfil_ficticio_e_estoque_individual(qa):
+    c,_=qa
+    assert config.NOME_RESTAURANTE=='Lanchonete Demonstração'
+    assert config.COMERCIO_SEGMENTO=='Lanchonete de testes'
+    assert config.COMERCIO_MODELO=='PRODUCAO' and config.COMERCIO_ESTOQUE_PADRAO=='NAO'
+    assert config.TELEFONE_RESTAURANTE=='(00) 0000-0000'
+    assert 'Fictícia' in config.ENDERECO_RESTAURANTE
+    assert not config.IA_PROVIDER and config.WHATSAPP_PROVIDER=='TESTE'
+    with get_conn() as conn:
+        itens=[dict(p) for p in conn.execute('SELECT * FROM produtos')]
+    assert len(itens)==8 and all(p['nome'].startswith('TESTE - ') for p in itens)
+    assert all('Não está à venda.' in p['descricao'] for p in itens)
+    lanches=[p for p in itens if p['categoria']=='Lanche']
+    bebidas=[p for p in itens if p['categoria']=='Bebida']
+    assert len(lanches)==4 and all(p['estoque'] is None for p in lanches)
+    assert len(bebidas)==2 and all(p['estoque']==1000 for p in bebidas)
+    assert not any('Pizza' in p['nome'] or p['categoria']=='Pizzas' for p in itens)
+    pagina=c.get(novo(c).location,base_url='https://qa-ficticio.example')
+    assert 'Lanchonete Demonstração' in pagina.text and 'X-bacon' in pagina.text
+
+
+def test_pedido_na_lanchonete_baixa_so_bebida(qa):
+    c,_=qa
+    url=novo(c).location
+    pagina=c.get(url,base_url='https://qa-ficticio.example')
+    r=c.post(url,base_url='https://qa-ficticio.example',data={
+        'csrf_token':csrf(pagina),'nome':'Pessoa QA','forma_entrega':'RETIRADA BALCAO',
+        'forma_pagamento':'Dinheiro','qtd_1':'2','qtd_6':'1'},follow_redirects=True)
+    assert r.status_code==200 and 'Seu pedido foi recebido!' in r.text
+    with get_conn() as conn:
+        assert conn.execute("SELECT estoque FROM produtos WHERE sku='QA-DEMO-1'").fetchone()[0] is None
+        assert conn.execute("SELECT estoque FROM produtos WHERE sku='QA-DEMO-6'").fetchone()[0]==999
+        vendas=conn.execute("SELECT p.sku,m.quantidade FROM movimentos_estoque m JOIN produtos p ON p.id=m.produto_id WHERE m.tipo='VENDA'").fetchall()
+        assert [(p['sku'],p['quantidade']) for p in vendas]==[('QA-DEMO-6',-1)]
+
+
+def test_reabrir_qa_atualiza_demo_antiga_sem_duplicar_ou_repor_bebidas(qa):
+    _,pasta=qa
+    with get_conn() as conn:
+        conn.execute("UPDATE produtos SET nome='TESTE - Pizza antiga',categoria='Pizzas',estoque=5 WHERE sku='QA-DEMO-3'")
+        conn.execute("UPDATE produtos SET estoque=998 WHERE sku='QA-DEMO-6'")
+        ids=[tuple(p) for p in conn.execute('SELECT id,sku FROM produtos ORDER BY id')]
+    from src.web_qa import criar_app
+    criar_app(pasta/'qa','https://qa-ficticio.example','chave-ficticia-'+'a'*40)
+    with get_conn() as conn:
+        assert [tuple(p) for p in conn.execute('SELECT id,sku FROM produtos ORDER BY id')]==ids
+        assert conn.execute('SELECT COUNT(*) FROM fotos_produto').fetchone()[0]==8
+        lanche=conn.execute("SELECT nome,estoque FROM produtos WHERE sku='QA-DEMO-3'").fetchone()
+        assert lanche['nome']=='TESTE - X-bacon' and lanche['estoque'] is None
+        assert conn.execute("SELECT estoque FROM produtos WHERE sku='QA-DEMO-6'").fetchone()[0]==998
+
 def test_health_modo_qa_e_csrf_errado(qa):
     c,_=qa
     assert c.get('/healthz',base_url='https://qa-ficticio.example').json=={'ok':True,'ambiente':'QA','whatsapp':'SIMULADO'}

@@ -2,6 +2,8 @@
 
 Este serviço publica somente o catálogo e as páginas de pedidos, imagens, PDF, privacidade e minijogo. Ele reutiliza as funções do aplicativo, com banco separado e oito produtos fictícios com imagens de demonstração. A gestão, cozinha, WhatsApp, webhooks, IA, contas reais e terminal dos funcionários não são publicados.
 
+O cenário é a **Lanchonete Demonstração**, com quatro lanches, batata frita, duas bebidas e brownie. Lanches, porção e sobremesa são feitos sob encomenda e não têm baixa de estoque de produtos prontos. As bebidas têm controle individual de estoque. Nome, telefone, endereço, horários, taxa e tempo de preparo são fictícios; nenhum item está à venda. Esse perfil é exclusivo do laboratório e não substitui o cadastro da loja instalada.
+
 ## Render
 
 - Repositório: https://github.com/cleryton/deliverybot-desktop
@@ -31,7 +33,7 @@ A confirmação redireciona para o comprovante. Atualizar essa página não repe
 
 Sessão expirada, link usado, página inexistente, excesso de tentativas e falha do serviço apresentam uma orientação com retorno ao início. Os códigos HTTP e os bloqueios continuam ativos; erros internos não exibem detalhes técnicos. Um link usado não deve ser reenviado para tentar repetir a mesma compra.
 
-A página é pública, contém aviso de dados fictícios e solicita não indexação aos buscadores; não use dados pessoais nem senhas reais. Os dados de cada pedido não são expostos em listas ou painéis públicos. A confirmação HTTP usa CSRF. A geração de links e os pedidos têm limite global de 60 gravações por minuto, mil links e 500 pedidos por ciclo da instância, para conter consumo do laboratório. O estoque fictício começa com mil unidades por produto e não é redefinido a cada acesso.
+A página é pública, contém aviso de dados fictícios e solicita não indexação aos buscadores; não use dados pessoais nem senhas reais. Os dados de cada pedido não são expostos em listas ou painéis públicos. A confirmação HTTP usa CSRF. A geração de links e os pedidos têm limite global de 60 gravações por minuto, mil links e 500 pedidos por ciclo da instância, para conter consumo do laboratório. O estoque fictício das bebidas começa com mil unidades e não é redefinido a cada acesso ou reinício com o mesmo banco. Ao atualizar uma base QA antiga, os oito itens conhecidos de demonstração recebem o perfil de lanchonete, preservando seus identificadores e o saldo restante das bebidas; pedidos não são recriados.
 
 ## Limites do plano gratuito
 

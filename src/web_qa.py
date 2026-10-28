@@ -42,8 +42,18 @@ def criar_app(pasta,base,chave_sessao):
     config.WHATSAPP_PROVIDER='TESTE';config.MODO_TESTE=True
     config.IA_PROVIDER='';config.TUNEL_AUTOMATICO='NAO';config.SEED_CATALOGO=False
     config.FLASK_DEBUG=False;config.BASE_URL=base.rstrip('/')
-    config.COMERCIO_MODELO='PRODUCAO';config.COMERCIO_SEGMENTO='Restaurante de testes'
-    config.NOME_RESTAURANTE='DeliveryBot • Loja fictícia QA'
+    perfil_qa = {
+        'COMERCIO_MODELO': 'PRODUCAO', 'COMERCIO_SEGMENTO': 'Lanchonete de testes',
+        'COMERCIO_DESCRICAO': 'Lanchonete fictícia para testar lanches feitos sob encomenda, porções e bebidas. Nenhum item está à venda.',
+        'COMERCIO_ESTOQUE_PADRAO': 'NAO', 'COMERCIO_CONFIGURADO': 'SIM',
+        'NOME_RESTAURANTE': 'Lanchonete Demonstração',
+        'TELEFONE_RESTAURANTE': '(00) 0000-0000',
+        'ENDERECO_RESTAURANTE': 'Rua Fictícia, 123 — Bairro Demonstração (endereço de teste)',
+        'CEP_RESTAURANTE': '00000-000', 'HORARIO_FUNCIONAMENTO': 'Horário fictício: das 18h às 23h',
+        'FORMAS_PAGAMENTO': 'Dinheiro,Pix,Cartão de crédito,Cartão de débito',
+        'TAXA_ENTREGA': 5.0, 'TEMPO_PREPARO_MIN': 20,
+    }
+    for campo, valor in perfil_qa.items():setattr(config, campo, valor)
     config.LGPD_RESPONSAVEL='Ambiente de testes DeliveryBot'
     config.LGPD_CONTATO='Use apenas dados fictícios. Dados descartáveis ao reiniciar a hospedagem.'
     for campo in ('WHATSAPP_TOKEN','WHATSAPP_APP_SECRET','WHATSAPP_PHONE_NUMBER_ID','WHATSAPP_BUSINESS_ACCOUNT_ID','WAHA_API_KEY','WEBHOOK_SECRET','ANTHROPIC_API_KEY','TUNEL_TOKEN'):
@@ -53,23 +63,25 @@ def criar_app(pasta,base,chave_sessao):
     from .app import app as original, catalogo_do_comercio, dados_da_loja
     config.WHATSAPP_PROVIDER='TESTE';config.MODO_TESTE=True
     config.IA_PROVIDER='';config.TUNEL_AUTOMATICO='NAO'
+    for campo, valor in perfil_qa.items():setattr(config, campo, valor)
     from . import estoque
-    itens=[('Hambúrguer clássico','Lanches',24.90),('Hambúrguer vegetariano','Lanches',26.90),
-           ('Pizza de calabresa','Pizzas',49.90),('Pizza de muçarela','Pizzas',45.90),
-           ('Batata frita','Porções',18.00),('Refrigerante lata','Bebidas',6.00),
-           ('Suco de laranja','Bebidas',9.00),('Brownie','Sobremesas',12.00)]
+    itens=[('X-salada','Lanche',22.00,False),('Hambúrguer vegetariano','Lanche',26.90,False),
+           ('X-bacon','Lanche',25.00,False),('Cachorro-quente','Lanche',16.00,False),
+           ('Batata frita','Acompanhamento',18.00,False),('Refrigerante lata','Bebida',6.00,True),
+           ('Suco de caixinha','Bebida',7.00,True),('Brownie','Sobremesa',12.00,False)]
     with get_conn() as c:
         c.execute('BEGIN IMMEDIATE')
-        for i,(nome,categoria,preco) in enumerate(itens,1):
+        for i,(nome,categoria,preco,controle) in enumerate(itens,1):
             sku='QA-DEMO-'+str(i)
-            if c.execute('SELECT 1 FROM produtos WHERE sku=?',(sku,)).fetchone():continue
+            anterior=c.execute('SELECT id FROM produtos WHERE sku=?',(sku,)).fetchone()
             img=Image.new('RGB',(480,320),('#d9eee5','#fff0ce','#e6e9ff')[i%3])
             draw=ImageDraw.Draw(img);draw.rounded_rectangle((70,55,410,265),radius=36,fill='#ffffff')
             draw.text((160,120),'DEMO QA',fill='#14624e');draw.text((160,155),str(i),fill='#14624e')
             foto=BytesIO();img.save(foto,format='JPEG',quality=80)
             estoque.salvar_produto({'nome':'TESTE - '+nome,'categoria':categoria,'preco':preco,'sku':sku,
                 'descricao':'Produto fictício para testar o catálogo e o pedido. Não está à venda.',
-                'estoque':1000,'unidade':'un','ativo':True},_foto=foto.getvalue(),_conn=c)
+                'controlar_estoque':controle,'estoque':1000,'unidade':'un','ativo':True},
+                produto_id=anterior['id'] if anterior else None,_foto=foto.getvalue(),_conn=c)
     app=Flask('deliverybot_qa',template_folder=str(Path(__file__).resolve().parents[1]/'web/templates'),
               static_folder=str(Path(__file__).resolve().parents[1]/'web/static'),static_url_path='/static')
     app.secret_key=chave_sessao
