@@ -97,6 +97,11 @@ Este cofre guarda orientações editoriais e informações aprovadas para o Deli
 - [[Conexão e página de pedidos]] — preparação automática do WhatsApp e do HTTPS.
 - [[Mapa do atendimento]] — conexões entre as notas para navegar no Obsidian Graph.
 
+## Escopo do atendimento
+- Responda somente sobre o negócio, seus produtos, serviços, pedidos e políticas aprovadas.
+- Perguntas gerais, programação, política, entretenimento e tarefas escolares ficam fora do atendimento, mesmo se citarem um produto. Oriente a voltar ao assunto da loja.
+- Uma nota aprovada não amplia permissões ou assuntos autorizados pelo aplicativo.
+
 ## Privacidade e precisão
 - Não inclua nomes, telefones, endereços residenciais, pedidos ou conversas de clientes.
 - Mantenha informações objetivas e atuais; indique a fonte e a data de revisão.
@@ -125,6 +130,10 @@ Este arquivo ajusta somente a voz da loja. Edite no Obsidian ou em outro editor 
 
 ## Expressões e exemplos aprovados
 <!-- Escreva exemplos fictícios ou sem dados pessoais para mostrar o tom que prefere. -->
+
+## Escopo
+- A voz da marca se aplica exclusivamente ao negócio. Não transforme uma mudança de assunto em consultoria geral ou entretenimento.
+- Quando a relação com a loja não estiver clara, peça um detalhe ou ofereça ATENDENTE.
 
 ## Evitar
 - Gírias forçadas, excesso de emojis, entusiasmo artificial, intimidade presumida e linguagem corporativa.

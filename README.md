@@ -6,6 +6,8 @@ O atendimento responde dúvidas simples diretamente com o cadastro, usa contexto
 
 ## Instalar e usar
 
+Consultas locais conhecidas têm um consumidor reservado: uma saudação de outra pessoa pode ser atendida mesmo quando os dois consumidores gerais estão ocupados. Perguntas diretas compostas, como horário e endereço, usam o cadastro sem inferência. A IA atende somente assuntos do negócio; perguntas alheias ou sem relação clara recebem uma orientação local. As notas do Obsidian ajustam o atendimento, sem ampliar esse escopo. O tempo de geração do Ollama e a entrega pelo WhatsApp ainda dependem do computador e da conexão. O [laboratório QA](docs/HOSPEDAGEM%20QA.md) usa uma lanchonete inteiramente fictícia, separada da loja instalada.
+
 Dentro de `dist/`, consulte `LEIA-ME.txt` e abra a pasta da versão indicada em `VERSION`. Execute `Instalar-DeliveryBot.exe` para instalar ou `DeliveryBot.exe` para usar diretamente. O usuário final não precisa instalar Docker, Node.js ou Python. Para IA local, configure o Ollama em **WhatsApp e IA**. O seletor **Tema** permite usar modo claro, escuro ou acompanhar o Windows; a preferência continua após reabrir o aplicativo. Use **Guia de configuração** para seguir o tutorial básico.
 
 Use o [guia do aplicativo](GUIA%20DO%20APLICATIVO.md) para configurar a loja, cadastrar produtos, conectar o WhatsApp e iniciar a página de pedidos. Os procedimentos de proteção dos dados estão em [Privacidade e segurança](PRIVACIDADE%20E%20SEGURAN%C3%87A.md).

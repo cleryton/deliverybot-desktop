@@ -98,6 +98,9 @@ def _resposta_rapida(telefone: str, texto: str) -> str | None:
         return f"{saudacao[:1].upper() + saudacao[1:]}! Boas-vindas! Aqui é {config.NOME_RESTAURANTE}. Como posso te ajudar?"
     if comando in {"obrigado", "obrigada", "valeu", "muito obrigado", "muito obrigada", "obg", "agradeco"}:
         return "Por nada! Foi um prazer ajudar 😊"
+    diretas = _perguntas_diretas(comando)
+    if diretas:
+        return "\n".join(_resposta_opcao(opcao, telefone) for opcao in diretas)
     quer_pedido = ia.intencao_pedido(texto)
     if not quer_pedido and re.search(r"\b(meu pedido|status do pedido|pedido chegou|nao chegou|paguei|estorno|reembolso|cancelar pedido|cancelar meu pedido)\b", comando):
         return "A equipe precisa conferir os detalhes do seu pedido. Digite ATENDENTE para falar com uma pessoa por aqui."
@@ -148,6 +151,36 @@ def _resposta_rapida(telefone: str, texto: str) -> str | None:
             unidade = produto.get("unidade") or "un"
             return f"{produto['nome']} custa R$ {preco}/{unidade}. Você confere o valor e a disponibilidade ao confirmar o pedido."
     return None
+
+
+def _perguntas_diretas(comando: str) -> list[str]:
+    """Combina apenas perguntas inteiras conhecidas; não descarta qualificadores.
+
+    'Qual o horário e o endereço?' dispensa o modelo. 'Qual o horário no
+    feriado?' continua precisando de contexto e confirmação da equipe.
+    """
+    comando = re.sub(r"^(?:oi|ola|opa|bom dia|boa tarde|boa noite)[,! .]+", "", comando)
+    comando = re.sub(r"[, ]*por favor$", "", comando).strip(".!? ")
+    comando = re.sub(r"\bqual e\b", "qual", comando)
+    partes = re.split(r"\s+e\s+|[?;]+\s*", comando)
+    prefixo = r"(?:(?:qual|quais)(?: e| sao)?\s+)?"
+    perguntas = (
+        ("1", prefixo + r"(?:o\s+)?horario(?: de funcionamento| da loja)?"),
+        ("3", prefixo + r"(?:as\s+)?formas? de pagamento"),
+        ("4", prefixo + r"(?:o\s+)?(?:cardapio|catalogo)(?: de produtos)?"),
+        ("5", prefixo + r"(?:o\s+)?telefone(?: da loja)?"),
+        ("7", prefixo + r"(?:a\s+)?taxa de entrega"),
+        ("8", prefixo + r"(?:o\s+)?endereco(?: da loja)?"),
+        ("8", r"onde (?:fica(?: a loja)?|voces ficam)"),
+    )
+    opcoes = []
+    for parte in partes:
+        opcao = next((n for n, padrao in perguntas if re.fullmatch(padrao, parte.strip(".!? ,"))), None)
+        if opcao is None:
+            return []
+        if opcao not in opcoes:
+            opcoes.append(opcao)
+    return opcoes
 
 
 def _processar_mensagem_menu_fixo(telefone: str, texto_limpo: str) -> str:
@@ -213,6 +246,11 @@ def _processar(telefone: str, texto: str) -> str | None:
     resposta_conversa = conversa_pedido.responder(telefone, texto_limpo)
     if resposta_conversa is not None:
         return resposta_conversa
+
+    # Assunto é validado antes dos atalhos: palavras como 'horário' em uma
+    # pergunta sobre futebol não autorizam uma resposta com os dados da loja.
+    if not ia.assunto_negocio(texto_limpo, telefone=telefone):
+        return ia.RESPOSTA_FORA_ESCOPO
 
     resposta_local = _resposta_rapida(telefone, texto_limpo)
     if resposta_local is not None:
