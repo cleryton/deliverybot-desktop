@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.47.0
+# DeliveryBot Desktop 2.47.1
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -88,6 +88,8 @@ Em **Relatórios**, consulte vendas por período (datas UTC), produtos vendidos,
 Em **Atendimento humano**, abra uma solicitação ou informe um telefone e clique em **Assumir e pausar bot**. O cliente também pode digitar **ATENDENTE** ou **10**. Leia as últimas mensagens, escreva sua resposta e confirme o envio. A mensagem entra na fila persistente: falhas e envios incertos precisam ser conferidos em WhatsApp e IA antes de tentar novamente. O modo de teste não envia. Use **Retomar bot** ao terminar; envios manuais pendentes bloqueiam a retomada. Mensagens recebidas durante a pausa ficam no histórico e não recebem resposta automática retroativa.
 
 O painel oferece **Recebido → Em separação → Pronto → Entregue/Retirado**. É possível cancelar pedidos em andamento. Pedidos concluídos não podem ser cancelados nesse fluxo.
+
+Se outra pessoa atualizar um pedido enquanto sua tela ainda mostra o estado anterior, o aplicativo pede uma nova consulta antes de avançar ou cancelar. Confira o pedido atualizado para evitar pular etapas ou cancelar um pedido que já mudou.
 
 O teste de compra usa o mesmo banco de verdade: também baixa estoque. Cancele o pedido de teste para devolver as unidades.
 
@@ -278,6 +280,8 @@ Você pode marcar **Registrar no Obsidian**. O registro revisado fica em `Docume
 Em **Produtos e estoque → Catálogo em PDF para o cliente**, baixe o arquivo com fotos, preços e disponibilidade dos produtos ativos com estoque. Você pode incluir as quantidades disponíveis. O PDF não lista custo, fornecedor, clientes ou pedidos. Ele registra a data de emissão: preços e estoque podem mudar depois de gerado.
 
 O cliente também encontra **Baixar catálogo em PDF** no link HTTPS de pedido, sem quantidade exata de estoque. Esse download exige um link de pedido válido. Links vencidos ou já usados não dão acesso ao arquivo. Envie o PDF baixado como anexo pelo canal que você preferir; o aplicativo não dispara anexos reais durante testes.
+
+Downloads repetidos ou muitas gerações ao mesmo tempo podem receber um aviso para aguardar e tentar novamente. Esse controle protege os recursos do aplicativo; não altera os produtos, o pedido nem o acesso da equipe à geração interna de PDFs.
 
 ## Pedidos pelo WhatsApp
 

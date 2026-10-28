@@ -357,7 +357,14 @@ def catalogo_cliente_pdf(token):
     if not ok:
         return 'Seu link expirou. Solicite um novo link à loja.',410
     from .catalogo_pdf import gerar
-    return send_file(BytesIO(gerar()),mimetype='application/pdf',as_attachment=True,download_name='Catalogo-DeliveryBot.pdf')
+    from .catalogo_publico import CatalogoOcupado, protecao
+    try:
+        with protecao.reservar(token):
+            pdf = gerar()
+    except CatalogoOcupado as exc:
+        return ('O catálogo está ocupado. Aguarde um pouco antes de tentar baixar novamente.',
+                429, {'Retry-After': str(exc.aguardar)})
+    return send_file(BytesIO(pdf),mimetype='application/pdf',as_attachment=True,download_name='Catalogo-DeliveryBot.pdf')
 
 
 @app.get('/m/<token>/comprovante')

@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.47.1 — 2026-10-28
+
+Reduz consultas simultâneas do painel, impede respostas atrasadas de sobrescrever o estado atual e reforça a proteção do catálogo PDF público e das alterações de pedidos concorrentes.
+
 ## 2.47.0 — 2026-10-28
 
 Simplifica a navegação e a página inicial, permite ajustar o pedido diretamente no resumo e melhora validação, foco e uso no celular. Protege alterações não salvas em Configurações e Meu comércio, incluindo respostas atrasadas e edições durante salvamento. Retornos de erro orientam a recuperação sem repetir operações; controles mantêm o estado de disponibilidade após ações assíncronas.

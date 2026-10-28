@@ -410,13 +410,22 @@ def listar_pedidos():
 @bp.route("/gestao/api/pedidos/<int:pedido_id>/avancar", methods=["POST"])
 @protegido
 def avancar(pedido_id):
-    return jsonify(fila.avancar_status(pedido_id))
+    status = status_pedido_informado()
+    esperado = 'AGUARDANDO' if status in {'RECEBIDO', 'CONFIRMADO'} else status
+    return jsonify(fila.avancar_status(pedido_id, status_esperado=esperado))
+
+
+def status_pedido_informado():
+    status = dados_json().get('status')
+    if not isinstance(status, str) or status not in {'RECEBIDO', 'CONFIRMADO', 'EM_PREPARO', 'PRONTO'}:
+        raise ValueError('Atualize os pedidos antes de alterar a etapa.')
+    return status
 
 
 @bp.route("/gestao/api/pedidos/<int:pedido_id>/cancelar", methods=["POST"])
 @protegido
 def cancelar(pedido_id):
-    pedido = pedidos.cancelar_pedido(pedido_id)
+    pedido = pedidos.cancelar_pedido(pedido_id, status_esperado=status_pedido_informado())
     if pedido['origem'] == 'Balcão manual':
         return jsonify(pedido)
     try:
