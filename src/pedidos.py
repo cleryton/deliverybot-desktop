@@ -268,7 +268,7 @@ def registrar_mensagem(telefone: str, direcao: str, conteudo: str):
         )
 
 
-def cancelar_pedido(pedido_id, _conn=None, _estorno_caixa=False):
+def cancelar_pedido(pedido_id, _conn=None, _estorno_caixa=False, *, status_esperado=None):
     with (get_conn() if _conn is None else nullcontext(_conn)) as conn:
         if _conn is None:
             conn.execute("BEGIN IMMEDIATE")
@@ -277,6 +277,8 @@ def cancelar_pedido(pedido_id, _conn=None, _estorno_caixa=False):
         pedido = conn.execute("SELECT status FROM pedidos WHERE id=?", (pedido_id,)).fetchone()
         if pedido is None or pedido["status"] in {"CANCELADO", "ENTREGUE", "RETIRADO"}:
             raise ValueError("Este pedido não pode ser cancelado.")
+        if status_esperado is not None and pedido['status'] != status_esperado:
+            raise ValueError('O pedido mudou. Atualize a lista antes de continuar.')
         # Estorna as vendas registradas, mesmo se o controle foi desligado depois.
         for movimento in conn.execute("SELECT * FROM movimentos_estoque WHERE pedido_id=? AND tipo='VENDA'", (pedido_id,)).fetchall():
             produto = conn.execute("SELECT estoque FROM produtos WHERE id=?", (movimento["produto_id"],)).fetchone()

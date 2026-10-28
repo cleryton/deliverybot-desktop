@@ -16,6 +16,8 @@ Os dados, configurações, backups e sessão do WhatsApp do aplicativo ficam em 
 
 O menu separa tarefas diárias, preparação do atendimento e administração. Use **Encontrar uma tela** para localizar opções pelo nome ou por termos como WhatsApp, estoque e horário. A página inicial destaca o próximo passo e os atalhos do dia a dia. **Configurações** e **Meu comércio** avisam sobre alterações não salvas antes de trocar de tela ou atualizar. No pedido do cliente, as quantidades podem ser ajustadas diretamente no resumo, inclusive pelo celular.
 
+O painel evita sobrepor consultas de publicação e atualização em conexões lentas e descarta respostas anteriores a uma alteração. O catálogo PDF público tem limites de frequência e de geração simultânea para preservar recursos. Alterações concorrentes de pedidos exigem conferir o estado atualizado antes de tentar novamente.
+
 ## O que existe nesta pasta
 
 | Arquivo ou pasta | Finalidade |

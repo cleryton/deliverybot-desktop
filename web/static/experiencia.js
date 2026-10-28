@@ -87,6 +87,25 @@
     } finally {cancelar(timer);}
   }
   const acoesAtivas = new WeakSet();
+  // Compartilha somente a leitura em andamento. Invalidar impede que uma
+  // resposta anterior a uma alteração volte a exibir um estado já superado.
+  function consultaAtual(buscar, aplicar) {
+    let geracao = 0, pendente = null;
+    function invalidar() { geracao++; pendente = null; }
+    function consultar(...args) {
+      if (pendente) return pendente;
+      const atual = geracao;
+      const tarefa = Promise.resolve().then(buscar).then(resultado => {
+        if (atual !== geracao) return;
+        aplicar(resultado, ...args);
+        return resultado;
+      }).catch(erro => { if (atual === geracao) throw erro; })
+        .finally(() => { if (pendente === tarefa) pendente = null; });
+      pendente = tarefa;
+      return tarefa;
+    }
+    return {consultar, invalidar};
+  }
   const disponibilidade = new WeakMap();
   function disponivel(button, podeUsar) {
     if (!button) return;
@@ -106,5 +125,5 @@
         if (aria === null) button.removeAttribute('aria-busy');else button.setAttribute('aria-busy',aria);}
     }
   }
-  return {texto, pedidos, proximoPasso, conexao, fila, solicitar, ocupado, disponivel};
+  return {texto, pedidos, proximoPasso, conexao, fila, solicitar, ocupado, disponivel, consultaAtual};
 });
