@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.46.0
+# DeliveryBot Desktop 2.47.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -56,9 +56,17 @@ Para receber eventos, mantenha o DeliveryBot e a página HTTPS ativos. O callbac
 
 No seletor **Tema** no topo do painel, escolha **Claro**, **Escuro** ou **Seguir o Windows**. A opção do Windows acompanha o tema do sistema e é o padrão inicial. A escolha fica salva na instalação, continua após reabrir o aplicativo e é compartilhada entre os funcionários deste computador. A tela de login usa a mesma preferência e também permite alterá-la. O QR Code mantém o fundo branco para facilitar a leitura pelo celular.
 
+## Encontrar as tarefas e editar com segurança
+
+O menu reúne **No dia a dia**, **Preparar o atendimento** e **Administrar a loja**. Digite em **Encontrar uma tela** para filtrar as opções: por exemplo, “estoque”, “WhatsApp” ou “horário”. Use a seta para baixo para escolher; Escape limpa a busca. No celular, abra **Menu** para ver os mesmos nomes e atalhos. Os funcionários continuam vendo apenas as opções permitidas para sua conta.
+
+Na Visão geral, o próximo passo mostra o que falta configurar e os atalhos levam a pedidos, catálogo e atendimento humano. Os detalhes de conexão e preparação podem ser abertos quando precisar, mantendo as tarefas principais à vista.
+
+Em **Configurações** e **Meu comércio**, um aviso identifica alterações ainda não salvas. Ao trocar de tela ou usar **Atualizar dados**, escolha entre continuar editando e descartar. Não há salvamento automático: clique em **Salvar** para confirmar. Se continuar digitando durante o envio, as mudanças adicionais permanecem na tela para um novo salvamento. Os rascunhos não são recuperados após fechar o aplicativo.
+
 ## Produtos de qualquer categoria
 
-Na Visão geral, **Prepare sua loja, passo a passo** reúne os atalhos das configurações essenciais. Para validar o endereço público, inicie o túnel em **Página de pedidos**, gere o teste e abra o endereço no celular pelos dados móveis. Volte ao app e clique em **Verificar preparação**. O teste expira em 30 minutos; uma abertura recebida só é evidência do aparelho que o abriu, não uma garantia de disponibilidade permanente. O teste não envia mensagens pelo WhatsApp nem cria pedidos.
+Na Visão geral, **Conferir conexão e preparação** reúne os atalhos das configurações essenciais. Para validar o endereço público, inicie o túnel em **Página de pedidos**, gere o teste e abra o endereço no celular pelos dados móveis. Volte ao app e atualize o status da preparação. O teste expira em 30 minutos; uma abertura recebida só é evidência do aparelho que o abriu, não uma garantia de disponibilidade permanente. O teste não envia mensagens pelo WhatsApp nem cria pedidos.
 
 Cadastre roupas, acessórios, alimentos, eletrônicos, materiais, cosméticos ou outros produtos. Cada tamanho, cor ou embalagem pode ter seu próprio código e saldo. As categorias são livres.
 
@@ -166,6 +174,8 @@ A IA é opcional. Perguntas simples sobre catálogo, preços identificados, hor�
 ## Compra pelo celular
 
 A página do cliente oferece busca de produtos, navegação por categorias, quantidades ajustáveis e resumo revisável do carrinho. O total acompanha a escolha de entrega ou retirada; produtos fracionados mantêm sua unidade e precisão. Dados digitados permanecem no formulário quando houver um erro de validação, sem armazenamento local de informações pessoais no navegador. A confirmação apresenta os itens, os totais e o número do pedido, com opção de impressão. Preços, disponibilidade e estoque são conferidos novamente pelo aplicativo na confirmação.
+
+No celular, **Revisar pedido** leva ao resumo. Use **+** e **−** junto ao item para ajustar a quantidade sem voltar ao catálogo; os totais acompanham a alteração. Se faltar um campo obrigatório, o formulário mostra qual precisa de atenção. Produtos ocultos por uma busca voltam a aparecer quando uma quantidade precisa ser corrigida. A seleção e os dados já preenchidos são preservados nessa correção.
 
 ## Dados, backups e atualização
 

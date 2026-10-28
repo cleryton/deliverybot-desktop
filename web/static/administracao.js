@@ -20,8 +20,8 @@ async function atualizacoesStatus(){
   $('#update-auto').checked=!!r.automatica;
   $('#update-status').textContent=r.tarefa?.mensagem||r.release.mensagem||'Consulte as versões publicadas no GitHub.';
   $('#update-latest').textContent=r.release.versao||'—';
-  $('#update-download').disabled=!r.release.nova||r.tarefa?.estado==='EXECUTANDO';
-  $('#update-install').disabled=!r.download.assinatura_confiavel||r.tarefa?.estado==='EXECUTANDO';
+  DeliveryUX.disponivel($('#update-download'), r.release.nova&&r.tarefa?.estado!=='EXECUTANDO');
+  DeliveryUX.disponivel($('#update-install'), r.download.assinatura_confiavel&&r.tarefa?.estado!=='EXECUTANDO');
   $('#update-files').textContent=r.download.caminho?'Instalador: '+r.download.caminho+'\nBackup verificado: '+r.download.backup+'\nAssinatura confiável: '+(r.download.assinatura_confiavel?'Sim':'Não — instalação automática bloqueada.') : '';
   if(r.release.nova)$('#update-notice').textContent='Versão '+r.release.versao+' disponível. Abra Atualizações para conferir.';
 }

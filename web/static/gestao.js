@@ -5,6 +5,7 @@ const money = (v) => Number(v).toLocaleString('pt-BR',{style:'currency',currency
 const date = (v) => v ? new Date(v.replace(' ','T')+'Z').toLocaleString('pt-BR') : '—';
 const isAdmin = document.body.dataset.admin !== 'false';
 const state = {page:'inicio',products:[],orders:[],settings:null,summary:null};
+const edicoes = DeliveryNav.alteracoes();
 let brainNotes=[];
 function showBrainNote(){
   const note=brainNotes[Number($('#brain-note-select').value)];
@@ -30,6 +31,30 @@ async function api(path,method='GET',data){
   return DeliveryUX.solicitar(fetch,'/gestao/api/'+path,{method,headers,body:data===undefined?undefined:multipart?data:JSON.stringify(data)}, {timeout:method==='GET'?30000:120000});
 }
 async function run(button,action){try{return await DeliveryUX.ocupado(button,action);}catch(e){toast(e.message,true);return false;}}
+const formulariosEditaveis = {configuracoes:['#settings-form','#settings-save-status'],comercio:['#commerce-form','#commerce-save-status']};
+function informarEdicao(pagina) {
+  const aviso=$(formulariosEditaveis[pagina][1]);
+  aviso.textContent=edicoes.tem(pagina)?'Alterações não salvas. Salve antes de sair ou atualizar esta tela.':'As mudanças passam a valer ao salvar.';
+  aviso.classList.toggle('pending',edicoes.tem(pagina));
+}
+function limparEdicao(pagina) {edicoes.limpar(pagina);if(formulariosEditaveis[pagina])informarEdicao(pagina);}
+function consultaAtual(pagina,revisao) {
+  if(state.page!==pagina)return false;
+  if(edicoes.revisao(pagina)===revisao)return true;
+  if(edicoes.tem(pagina))toast('Você começou a editar. Mantivemos o que está preenchido.');
+  return false;
+}
+function podeMudarTela(acao='sair') {
+  const formulario=formulariosEditaveis[state.page];
+  if(edicoes.tem(state.page)&&formulario&&$(formulario[0]).querySelector('button[aria-busy="true"]')) {
+    toast('Aguarde a conclusão do salvamento antes de sair ou atualizar a tela.',true);return false;
+  }
+  return edicoes.confirmar(state.page,confirm,acao);
+}
+for(const [pagina,[seletor]] of Object.entries(formulariosEditaveis)) {
+  for(const evento of ['input','change'])$(seletor).addEventListener(evento,()=>{edicoes.registrar(pagina);informarEdicao(pagina);});
+}
+window.addEventListener('beforeunload',evento=>{if(edicoes.tem()||productDirty){evento.preventDefault();evento.returnValue='';}});
 function productChanged(){productDirty=true;$('#product-save-status').textContent='Alterações não salvas. Salve o produto antes de sair.';}
 function closeProduct(){
   if($('#product-form button[type="submit"][aria-busy="true"]')){toast('Aguarde a conclusão do produto antes de fechar.',true);return false;}
@@ -48,7 +73,7 @@ async function summary(){
   const temEstoque=s.produtos_controlados>0||s.comercio.controlar_estoque;
   $('#catalog-heading').textContent=s.comercio.titulo_catalogo;
   $('#catalog-nav-label').textContent=s.comercio.titulo_catalogo;
-  document.querySelectorAll('[data-stock-section],nav [data-page="movimentos"]').forEach(el=>el.hidden=!temEstoque);
+  document.querySelectorAll('[data-stock-section],nav [data-page="movimentos"]').forEach(el=>el.hidden=!temEstoque);navegacaoMenu.atualizar();
   const values=[['Produtos cadastrados',s.produtos,`${s.ativos} ativos no catálogo`],['Pedidos em andamento',s.pendentes,'Aguardando conclusão'],temEstoque?['Estoque baixo',s.baixos,'Itens para repor']:['Itens sem contagem',s.produtos-s.produtos_controlados,'Produção sob pedido ou serviços'],...(isAdmin?[['Vendas acumuladas',money(s.vendas),`${s.pedidos} pedidos não cancelados`]]:[])];
   $('#metrics').innerHTML=values.map(([title,value,help])=>`<article class="metric"><span>${title}</span><strong>${value}</strong><small>${help}</small></article>`).join('');
   $('#daily-note').textContent=s.modo_teste?'Você está em modo de teste. Os dados são salvos normalmente, mas mensagens não são enviadas ao WhatsApp. Configure a conexão quando estiver pronto.':'Mantenha este aplicativo aberto e o computador ligado. Confira o estado do WhatsApp e da página de pedidos antes de atender clientes.';
@@ -72,9 +97,23 @@ const groups=[
   ['Inteligência artificial (opcional)','Sem IA, o bot atende pelo menu. Ollama requer instalação à parte; Anthropic usa uma API paga.',[
     ['IA_PROVIDER','Tipo de atendimento',['','OLLAMA','ANTHROPIC']],['OLLAMA_URL','Endereço Ollama'],['OLLAMA_MODEL','Modelo Ollama'],['ANTHROPIC_API_KEY','Chave Anthropic','password'],['ANTHROPIC_MODEL','Modelo Anthropic']]]
 ];
-async function settings(){const cfg=state.settings=await api('configuracoes');$('#settings-fields').innerHTML=groups.map(([title,help,fields])=>`<article class="card"><h2>${title}</h2><p>${help}</p><div class="settings-grid">${fields.map(([key,label,type])=>`<label>${label}${Array.isArray(type)?`<select name="${key}">${type.map(v=>`<option value="${v}" ${cfg[key]===v?'selected':''}>${v||'Menu sem IA'}</option>`).join('')}</select>`:`<input name="${key}" type="${type||'text'}" value="${type==='password'?'':escapeHTML(cfg[key])}" ${type==='number'?`min="${key==='TEMPO_PREPARO_MIN'?1:0}" step="${key==='TAXA_ENTREGA'?'0.01':'1'}" required`:''} ${type==='password'?`autocomplete="new-password" placeholder="${cfg.segredos_configurados[key]?'Configurado · vazio mantém a chave':'Não configurado'}"`:''}>`}</label>`).join('')}</div></article>`).join('');}
-async function navigate(page){if(!isAdmin&&!['inicio','produtos','pedidos','humano'].includes(page))return;const anterior=state.page;if(anterior==='remoto'&&page!==anterior)clearRemoteInvite();state.page=page;document.querySelectorAll('.page').forEach(el=>el.hidden=el.id!=='page-'+page);document.querySelectorAll('nav [data-page]').forEach(el=>el.classList.toggle('selected',el.dataset.page===page));$('#breadcrumb').textContent=({inicio:'Sua operação, em um só lugar',tutorial:'Ajuda / Guia de configuração',comercio:'Seu negócio / Meu comércio',caixas:'Vendas / Caixas dos funcionários',publicacao:'Vendas / Página de pedidos',produtos:'Catálogo / Produtos e estoque',pedidos:'Vendas / Pedidos',movimentos:'Estoque / Histórico',bot:'Atendimento / Simulação',conexoes:'Atendimento / WhatsApp e inteligência artificial',privacidade:'Sua loja / Privacidade e LGPD',relatorios:'Vendas / Relatórios',humano:'Atendimento / Equipe da loja',relatorios:'Vendas / Relatórios',humano:'Atendimento / Equipe da loja',atualizacoes:'Aplicativo / Atualizações',operadores:'Sua loja / Funcionários',meta:'Atendimento / Meta oficial e custos',remoto:'Sua loja / Acesso remoto',configuracoes:'Sua loja / Configurações'})[page];if(anterior!==page){window.scrollTo(0,0);const titulo=$('#page-'+page+' h1');if(titulo){titulo.tabIndex=-1;titulo.focus({preventScroll:true});}}await reload();}
-async function reload(){const page=state.page;await summary();if(state.page!==page)return;if(['inicio','produtos'].includes(page))await products();if(page==='inicio'&&isAdmin)await preparacao();if(page==='pedidos')await orders();if(page==='movimentos')await movements();if(page==='configuracoes')await settings();if(page==='comercio')await commerce();if(page==='tutorial')await tutorialLoad();if(page==='conexoes')await refreshConnections();if(page==='privacidade')await privacy();if(page==='meta'&&isAdmin)await metaLoad();if(page==='remoto'&&isAdmin)await remoteAdminLoad();$('#sync-status').textContent='';}
+async function settings(){const revisao=edicoes.revisao('configuracoes'),cfg=await api('configuracoes');if(!consultaAtual('configuracoes',revisao))return false;state.settings=cfg;$('#settings-fields').innerHTML=groups.map(([title,help,fields])=>`<article class="card"><h2>${title}</h2><p>${help}</p><div class="settings-grid">${fields.map(([key,label,type])=>`<label>${label}${Array.isArray(type)?`<select name="${key}">${type.map(v=>`<option value="${v}" ${cfg[key]===v?'selected':''}>${v||'Menu sem IA'}</option>`).join('')}</select>`:`<input name="${key}" type="${type||'text'}" value="${type==='password'?'':escapeHTML(cfg[key])}" ${type==='number'?`min="${key==='TEMPO_PREPARO_MIN'?1:0}" step="${key==='TAXA_ENTREGA'?'0.01':'1'}" required`:''} ${type==='password'?`autocomplete="new-password" placeholder="${cfg.segredos_configurados[key]?'Configurado · vazio mantém a chave':'Não configurado'}"`:''}>`}</label>`).join('')}</div></article>`).join('');limparEdicao('configuracoes');return true;}
+async function navigate(page){
+  if(!$('#page-'+page)||!isAdmin&&!['inicio','produtos','pedidos','humano'].includes(page))return false;
+  if(!podeMudarTela())return false;
+  if(telaCompacta.matches&&document.body.classList.contains('menu-open'))menuAberto(false,false);
+  const anterior=state.page;
+  if(anterior!==page&&formulariosEditaveis[anterior])limparEdicao(anterior);
+  if(anterior==='remoto'&&page!==anterior)clearRemoteInvite();
+  state.page=page;
+  document.querySelectorAll('.page').forEach(el=>el.hidden=el.id!=='page-'+page);
+  document.querySelectorAll('#app-menu nav [data-page]').forEach(el=>{const atual=el.dataset.page===page;el.classList.toggle('selected',atual);if(atual)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
+  navegacaoMenu.limparBusca(false);
+  $('#breadcrumb').textContent=({inicio:'Sua operação, em um só lugar',tutorial:'Ajuda / Guia de configuração',comercio:'Seu negócio / Meu comércio',caixas:'Vendas / Caixas dos funcionários',publicacao:'Vendas / Página de pedidos',produtos:'Catálogo / Produtos e estoque',pedidos:'Vendas / Pedidos',movimentos:'Estoque / Histórico',bot:'Atendimento / Simulação',conexoes:'Atendimento / WhatsApp e inteligência artificial',privacidade:'Sua loja / Privacidade e LGPD',relatorios:'Vendas / Relatórios',humano:'Atendimento / Equipe da loja',atualizacoes:'Aplicativo / Atualizações',operadores:'Sua loja / Funcionários',meta:'Atendimento / Meta oficial e custos',remoto:'Sua loja / Acesso remoto',configuracoes:'Sua loja / Configurações'})[page];
+  if(anterior!==page){window.scrollTo(0,0);const titulo=$('#page-'+page+' h1');if(titulo){titulo.tabIndex=-1;titulo.focus({preventScroll:true});}}
+  return reload({confirmarEdicoes:false});
+}
+async function reload({confirmarEdicoes=true}={}){if(confirmarEdicoes&&!podeMudarTela('atualizar a tela'))return false;const page=state.page,revisao=edicoes.revisao(page);await summary();if(state.page!==page)return false;if(formulariosEditaveis[page]&&!consultaAtual(page,revisao))return false;if(['inicio','produtos'].includes(page))await products();if(page==='inicio'&&isAdmin)await preparacao();if(page==='pedidos')await orders();if(page==='movimentos')await movements();if(page==='configuracoes')await settings();if(page==='comercio')await commerce();if(page==='tutorial')await tutorialLoad();if(page==='conexoes')await refreshConnections();if(page==='privacidade')await privacy();if(page==='meta'&&isAdmin)await metaLoad();if(page==='remoto'&&isAdmin)await remoteAdminLoad();$('#sync-status').textContent='';}
 function openProduct(id){const form=$('#product-form');form.reset();const p=state.products.find(p=>p.id===id);form.elements.id.value=p?.id||'';$('#product-title').textContent=p?'Editar produto':'Cadastrar produto';if(!p){form.elements.controlar_estoque.checked=state.summary?.comercio.controlar_estoque!==false;if(state.summary?.comercio.modelo==='SERVICOS')form.elements.unidade.value='serv';}if(p){for(const key of ['nome','sku','categoria','preco','unidade','descricao','estoque_minimo','familia','variacao','custo']){form.elements[key].value=p[key]??'';}if(![...form.elements.unidade.options].some(o=>o.value===p.unidade))form.elements.unidade.add(new Option(p.unidade,p.unidade,true,true));form.elements.estoque.value=p.estoque??0;form.elements.fracionado.checked=!!p.fracionado;form.elements.ativo.checked=!!p.ativo;form.elements.controlar_estoque.checked=p.estoque!==null;}photoRemoved=false;productDirty=false;$('#product-save-status').textContent='';showProductPhoto(p?.foto_url);stockInputs();$('#product-dialog').showModal();}
 function stockInputs(){const f=$('#product-form'),p=state.products.find(p=>String(p.id)===f.elements.id.value),control=f.elements.controlar_estoque.checked;f.elements.estoque.disabled=!control||p?.estoque!==null&&!!p;f.elements.estoque_minimo.disabled=!control;f.elements.estoque.closest('label').hidden=!control;f.elements.estoque_minimo.closest('label').hidden=!control;$('#stock-help').textContent=p?.estoque!==null&&p?'Use Movimentar para registrar entradas e saídas. A edição do produto preserva o saldo atual.':'Habilite Fracionado para vender por peso ou volume. Use família e variação para organizar tamanhos e cores.';}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||(!['action','connectionAction','messageAction','page','close','edit','stock','advance','cancel'].some(k=>b.dataset[k])&&!['refresh','diagnostic-export'].includes(b.id)))return;run(b,async()=>{
@@ -88,7 +127,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
   if(b.dataset.action==='conexoes-atualizar')await refreshConnections();
   if(b.dataset.action==='qr-atualizar')await refreshQR();
   if(b.dataset.messageAction&&confirm(b.dataset.messageAction==='reenviar'?'Confira no celular se a resposta já chegou. Reenviar esta resposta?':'Marcar esta mensagem como resolvida e liberar o atendimento deste cliente?')){await api(`conexoes/mensagens/${b.dataset.messageId}/${b.dataset.messageAction}`,'POST',{});await refreshConnections();}
-  if(b.dataset.page){await navigate(b.dataset.page);if(b.id==='next-step-action'&&b.dataset.page==='inicio'){$('#preparation-test').scrollIntoView({block:'center'});$('#preparation-test').focus();}}
+  if(b.dataset.page){await navigate(b.dataset.page);if(b.id==='next-step-action'&&b.dataset.page==='inicio'){$('#home-preparation').open=true;$('#preparation-test').scrollIntoView({block:'center'});$('#preparation-test').focus();}}
   if(b.dataset.action==='estoque-baixo'){$('#filter').value='baixo';await navigate('produtos');renderProducts();}
   if(b.dataset.close){if(b.dataset.close==='product-dialog')closeProduct();else $('#'+b.dataset.close).close();}
   if(b.dataset.edit)openProduct(Number(b.dataset.edit));
@@ -107,7 +146,15 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
 $('#search').addEventListener('input',renderProducts);$('#filter').addEventListener('change',renderProducts);$('#order-filter').addEventListener('change',renderOrders);$('#order-search').addEventListener('input',renderOrders);$('#product-form').elements.controlar_estoque.addEventListener('change',stockInputs);
 $('#product-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const f=e.target,d=Object.fromEntries(new FormData(f)),id=d.id;d.fracionado=f.elements.fracionado.checked;d.ativo=f.elements.ativo.checked;d.controlar_estoque=f.elements.controlar_estoque.checked;d.estoque=f.elements.estoque.value;d.estoque_minimo=f.elements.estoque_minimo.value;delete d.id;d.remover_foto=photoRemoved;const foto=$('#product-photo').files[0];let body=d;if(foto){body=new FormData();body.append('dados',JSON.stringify(d));body.append('foto',foto);}await api('produtos'+(id?'/'+id:''),id?'PUT':'POST',body);productDirty=false;$('#product-save-status').textContent='';$('#product-dialog').close();toast('Produto salvo no catálogo.');await reload();});});
 $('#stock-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const d=Object.fromEntries(new FormData(e.target));await api(`produtos/${d.id}/estoque`,'POST',{quantidade:Number(d.quantidade)*Number(d.tipo),motivo:d.motivo});$('#stock-dialog').close();toast('Movimentação registrada.');await reload();});});
-$('#settings-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const r=await api('configuracoes','PUT',Object.fromEntries(new FormData(e.target)));toast(r.preparacao_whatsapp?'Configurações salvas. Preparando HTTPS e WhatsApp automaticamente…':'Configurações salvas.');await reload();if(r.preparacao_whatsapp)await navigate('conexoes');});});
+$('#settings-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{
+  const form=e.target,enviados=Object.fromEntries(new FormData(form)),revisao=edicoes.revisao('configuracoes');
+  const r=await api('configuracoes','PUT',enviados);
+  for(const campo of form.querySelectorAll('input[type="password"]'))if(campo.value===enviados[campo.name])campo.value='';
+  if(state.page!=='configuracoes'){limparEdicao('configuracoes');toast('Configurações salvas.');return;}
+  if(edicoes.revisao('configuracoes')!==revisao){toast('Os dados enviados foram salvos. Há novas alterações na tela; salve-as para concluir.');return;}
+  limparEdicao('configuracoes');toast(r.preparacao_whatsapp?'Configurações salvas. Preparando HTTPS e WhatsApp automaticamente…':'Configurações salvas.');
+  await reload({confirmarEdicoes:false});if(r.preparacao_whatsapp&&!edicoes.tem('configuracoes'))await navigate('conexoes');
+});});
 $('#bot-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const d=Object.fromEntries(new FormData(e.target));$('#chat').insertAdjacentHTML('beforeend',`<div class="bubble customer">${escapeHTML(d.texto)}</div>`);const result=await api('simular','POST',d);$('#chat').insertAdjacentHTML('beforeend',`<div class="bubble assistant">${escapeHTML(result.resposta)}${result.caminho?`<br><a href="${escapeHTML(result.caminho)}" target="_blank" rel="noopener">Abrir pedido de teste →</a>`:''}</div>`);e.target.elements.texto.value='';$('#chat').scrollTop=$('#chat').scrollHeight;});});
 function openBackup(acao){$('#backup-form').reset();$('#backup-form').dataset.acao=acao;$('#backup-title').textContent=acao==='criar'?'Criar backup criptografado':'Restaurar backup';$('#backup-dialog').showModal();}
 $('#backup-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const f=e.target,senha=f.elements.senha.value;if(senha!==f.elements.confirmacao.value)throw new Error('As senhas devem ser iguais.');if(f.dataset.acao==='criar'){const r=await api('backup','POST',{senha});$('#backup-result').textContent=r.caminho;toast('Backup criptografado criado. Guarde a senha em local separado.');}else{if(!confirm('Substituir os dados atuais pelo backup? Uma cópia protegida será criada antes. O aplicativo fechará; abra-o novamente para concluir.'))return;const r=await window.pywebview.api.restaurar_backup(senha);if(r?.erro)throw new Error(r.erro);}f.reset();$('#backup-dialog').close();});});
@@ -208,16 +255,16 @@ const paginaInicial=isAdmin&&['LOCAL','WAHA'].includes(document.body.dataset.wha
 document.addEventListener('DOMContentLoaded',()=>run(null,()=>navigate(isAdmin&&document.body.dataset.perfilPendente==='true'?'comercio':paginaInicial)),{once:true});
 
 const telaCompacta=matchMedia('(max-width:760px)');
+const navegacaoMenu=DeliveryNav.criar({nav:$('#navigation-pages'),busca:$('#navigation-search'),limpar:$('#navigation-clear'),resultado:$('#navigation-result'),administrador:isAdmin});
 function menuAberto(aberto,voltar=true){
   document.body.classList.toggle('menu-open',aberto);$('#menu-toggle').setAttribute('aria-expanded',String(aberto));
   $('#menu-toggle').setAttribute('aria-label',aberto?'Fechar menu':'Abrir menu');$('#menu-overlay').hidden=!aberto;
   $('#app-menu').inert=telaCompacta.matches&&!aberto;$('#main-content').inert=telaCompacta.matches&&aberto;
-  if(aberto)[...document.querySelectorAll('#app-menu nav button')].find(b=>b.offsetParent)?.focus();else if(voltar)$('#menu-toggle').focus();
+  if(aberto)$('#navigation-search').focus({preventScroll:true});else if(voltar)$('#menu-toggle').focus();
 }
 $('#menu-toggle').addEventListener('click',()=>menuAberto(!document.body.classList.contains('menu-open')));
 $('#menu-overlay').addEventListener('click',()=>menuAberto(false));
-$('#app-menu nav').addEventListener('click',e=>{if(e.target.closest('[data-page]'))menuAberto(false,false);});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('menu-open')){e.preventDefault();menuAberto(false);}});
+document.addEventListener('keydown',e=>{if(!e.defaultPrevented&&e.key==='Escape'&&document.body.classList.contains('menu-open')){e.preventDefault();menuAberto(false);}});
 telaCompacta.addEventListener('change',()=>menuAberto(false,false));
 menuAberto(false,false);
 
@@ -226,10 +273,17 @@ function commerceHelp(){
   $('#commerce-help').textContent=f.elements.controlar_estoque.checked?'Novos itens terão uma quantidade disponível. Você pode desmarcar a contagem para serviços ou itens preparados sob pedido.':'Novos itens serão oferecidos sem saldo obrigatório. Ative a contagem apenas nos itens que precisam dela, como bebidas prontas ou peças de reposição.';
 }
 async function commerce(){
-  const c=await api('comercio'),f=$('#commerce-form');
+  const revisao=edicoes.revisao('comercio'),c=await api('comercio'),f=$('#commerce-form');
+  if(!consultaAtual('comercio',revisao))return false;
   for(const k of ['nome','segmento','descricao','modelo'])f.elements[k].value=c[k];
-  f.elements.controlar_estoque.checked=c.controlar_estoque;commerceHelp();
+  f.elements.controlar_estoque.checked=c.controlar_estoque;commerceHelp();limparEdicao('comercio');return true;
 }
 $('#commerce-form').elements.modelo.addEventListener('change',()=>{const f=$('#commerce-form');f.elements.controlar_estoque.checked=['REVENDA','MISTO'].includes(f.elements.modelo.value);commerceHelp();});
 $('#commerce-form').elements.controlar_estoque.addEventListener('change',commerceHelp);
-$('#commerce-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const f=e.target,d=Object.fromEntries(new FormData(f));d.controlar_estoque=f.elements.controlar_estoque.checked;await api('comercio','PUT',d);document.body.dataset.perfilPendente='false';toast('Perfil salvo. Os cadastros existentes foram preservados.');await navigate('inicio');});});
+$('#commerce-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{
+  const f=e.target,d=Object.fromEntries(new FormData(f)),revisao=edicoes.revisao('comercio');d.controlar_estoque=f.elements.controlar_estoque.checked;
+  await api('comercio','PUT',d);document.body.dataset.perfilPendente='false';
+  if(state.page!=='comercio'){limparEdicao('comercio');toast('Perfil salvo. Os cadastros existentes foram preservados.');return;}
+  if(edicoes.revisao('comercio')!==revisao){toast('O perfil enviado foi salvo. Há novas alterações na tela; salve-as para concluir.');return;}
+  limparEdicao('comercio');toast('Perfil salvo. Os cadastros existentes foram preservados.');await navigate('inicio');
+});});

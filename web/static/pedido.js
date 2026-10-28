@@ -12,6 +12,7 @@
   const feedback = document.getElementById('feedback-pedido');
   const busca = document.getElementById('busca-produtos');
   const limpar = document.getElementById('limpar-busca');
+  const validacao = document.getElementById('validacao-pedido');
   const filtros = Array.from(form.querySelectorAll('.categoria-filtro'));
   const reais = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const medida = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 });
@@ -19,6 +20,7 @@
   let categoriaAtiva = '';
   let enviando = false;
   let feedbackTimer;
+  const camposInvalidos = new Set();
 
   function avisar(texto) {
     clearTimeout(feedbackTimer);
@@ -52,6 +54,27 @@
     atualizarResumo();
     avisar(produto.dataset.nome + ': ' + medida.format(quantidade(produto)) + ' ' + produto.dataset.unidade + '.');
   }
+  function controleCarrinho(produto, sentido) {
+    const botao = document.createElement('button');
+    const acao = sentido > 0 ? 'mais' : 'menos';
+    const input = produto.querySelector('input[type=number]');
+    botao.type = 'button';
+    botao.id = 'carrinho-' + produto.dataset.produtoId + '-' + acao;
+    botao.textContent = sentido > 0 ? '+' : '−';
+    botao.setAttribute('aria-label', (sentido > 0 ? 'Aumentar' : 'Diminuir') + ' quantidade de ' + produto.dataset.nome + ' no pedido');
+    botao.disabled = enviando || (sentido > 0 ? quantidade(produto) >= Number(input.max) : quantidade(produto) <= 0);
+    botao.addEventListener('click', function () {
+      if (enviando) return;
+      alterarQuantidade(produto, sentido);
+      // O resumo é reconstruído. Devolve o foco ao controle equivalente, ou
+      // ao controle oposto quando atingir o limite, sem pular a página.
+      const equivalente = document.getElementById(botao.id);
+      const oposto = document.getElementById('carrinho-' + produto.dataset.produtoId + '-' + (sentido > 0 ? 'menos' : 'mais'));
+      const destino = equivalente && !equivalente.disabled ? equivalente : oposto && !oposto.disabled ? oposto : document.getElementById('titulo-checkout');
+      destino.focus({ preventScroll: true });
+    });
+    return botao;
+  }
   function atualizarResumo() {
     let selecionados = 0;
     let subtotal = 0;
@@ -71,6 +94,11 @@
       const qtdTexto = document.createElement('span');
       qtdTexto.className = 'carrinho-quantidade';
       qtdTexto.textContent = medida.format(qtd) + ' ' + produto.dataset.unidade;
+      const ajuste = document.createElement('div');
+      ajuste.className = 'ajuste-carrinho';
+      ajuste.setAttribute('role', 'group');
+      ajuste.setAttribute('aria-label', 'Quantidade de ' + produto.dataset.nome + ' no pedido');
+      ajuste.append(controleCarrinho(produto, -1), qtdTexto, controleCarrinho(produto, 1));
       const remover = document.createElement('button');
       remover.type = 'button';
       remover.className = 'remover-item';
@@ -81,10 +109,10 @@
         produto.querySelector('input[type=number]').value = '0';
         atualizarResumo();
         // A linha sai da lista; direciona o foco para um controle estável.
-        document.getElementById('titulo-checkout').focus();
+        document.getElementById('titulo-checkout').focus({ preventScroll: true });
         avisar(produto.dataset.nome + ' removido do pedido.');
       });
-      info.append(nome, qtdTexto, remover);
+      info.append(nome, ajuste, remover);
       const preco = document.createElement('span');
       preco.className = 'carrinho-linha-preco';
       preco.textContent = reais.format(linhaCentavos / 100);
@@ -101,8 +129,10 @@
     document.getElementById('resumo-total').textContent = total;
     document.getElementById('resumo-itens').textContent = selecionados ? selecionados + (selecionados === 1 ? ' produto selecionado' : ' produtos selecionados') : 'Nenhum produto selecionado';
     document.getElementById('carrinho-vazio').hidden = selecionados > 0;
+    document.getElementById('dica-carrinho').hidden = selecionados === 0;
     confirmar.disabled = !selecionados || enviando;
     revisar.disabled = !selecionados || enviando;
+    atualizarValidacao();
   }
   function atualizarEntrega() {
     const exigeEndereco = entrega.value === 'ENTREGA';
@@ -135,12 +165,25 @@
     resultado.hidden = !termos.length && !categoriaAtiva;
     resultado.textContent = encontrados + (encontrados === 1 ? ' produto encontrado' : ' produtos encontrados');
   }
-  function resetarFiltros() {
+  function resetarFiltros(focarBusca = true) {
     categoriaAtiva = '';
     busca.value = '';
     filtros.forEach(function (botao, indice) { botao.classList.toggle('ativa', indice === 0); botao.setAttribute('aria-pressed', String(indice === 0)); });
     filtrar();
-    busca.focus();
+    if (focarBusca) busca.focus();
+  }
+  function atualizarValidacao() {
+    for (const campo of camposInvalidos) {
+      if (campo.validity.valid || campo.disabled) {
+        campo.removeAttribute('aria-invalid');
+        camposInvalidos.delete(campo);
+      }
+    }
+    validacao.hidden = camposInvalidos.size === 0;
+    if (!camposInvalidos.size) { validacao.textContent = ''; return; }
+    const campo = camposInvalidos.values().next().value;
+    const nome = campo.labels?.[0]?.textContent.trim() || 'Campo do pedido';
+    validacao.textContent = nome + ': ' + campo.validationMessage + (camposInvalidos.size > 1 ? ' Confira também os outros campos destacados.' : '');
   }
 
   produtos.forEach(function (produto) {
@@ -162,7 +205,7 @@
     form.querySelector('.ferramentas-catalogo').hidden = false;
     busca.addEventListener('input', filtrar);
     limpar.addEventListener('click', function () { busca.value = ''; filtrar(); busca.focus(); });
-    document.getElementById('resetar-filtros').addEventListener('click', resetarFiltros);
+    document.getElementById('resetar-filtros').addEventListener('click', function () { resetarFiltros(); });
     filtros.forEach(function (botao) {
       botao.addEventListener('click', function () {
         categoriaAtiva = botao.dataset.categoria;
@@ -183,6 +226,17 @@
     document.getElementById('checkout').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     tituloCheckout.focus({ preventScroll: true });
   });
+  form.addEventListener('invalid', function (evento) {
+    const campo = evento.target;
+    // Um produto com quantidade inválida pode estar escondido pela busca.
+    // Revela o campo antes de o navegador tentar focá-lo, sem perder os itens.
+    if (campo.closest('.produto')) resetarFiltros(false);
+    campo.setAttribute('aria-invalid', 'true');
+    camposInvalidos.add(campo);
+    atualizarValidacao();
+  }, true);
+  form.addEventListener('input', atualizarValidacao);
+  entrega.addEventListener('change', atualizarValidacao);
   form.addEventListener('submit', function (evento) {
     if (enviando || !produtos.some(function (produto) { return quantidade(produto) > 0; })) { evento.preventDefault(); return; }
     // Campos permanecem habilitados para que o navegador envie todas as quantidades.

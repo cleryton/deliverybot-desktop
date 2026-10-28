@@ -7,6 +7,7 @@
   <script src="{{ url_for('static', filename='tema.js') }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='gestao.css') }}">
   <script defer src="{{ url_for('static', filename='experiencia.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='navegacao.js') }}"></script>
   <script defer src="{{ url_for('static', filename='gestao.js') }}"></script>
   <script defer src="{{ url_for('static', filename='primeiros_passos.js') }}"></script>
   <script defer src="{{ url_for('static', filename='tutorial.js') }}"></script>
@@ -22,24 +23,38 @@
   <aside class="sidebar" id="app-menu" aria-label="Menu do aplicativo">
     <div class="brand"><span class="brand-icon"><img src="{{ url_for('static', filename='marca.svg') }}" width="44" height="44" alt=""></span><div>DeliveryBot<small>SEU NEGÓCIO, ORGANIZADO</small></div></div>
     <div class="store-label">ESPAÇO DE TRABALHO</div><div id="loja-nome" class="store-name">Minha loja</div>
-    <nav aria-label="Navegação principal">
-      <button data-admin-only data-page="publicacao"><span>↗</span> Página de pedidos</button>
-      <button data-page="inicio" class="selected"><span>◈</span> Visão geral</button>
-      <button data-admin-only data-page="tutorial"><span>?</span> Guia de configuração</button>
-      <button data-admin-only data-page="comercio"><span>◇</span> Meu comércio</button>
-      <button data-page="produtos"><span>▦</span> <b id="catalog-nav-label" style="font-weight:inherit">Produtos e estoque</b></button>
-      <button data-page="pedidos"><span>▤</span> Pedidos</button>
-      <button data-admin-only data-page="relatorios"><span>▤</span> Relatórios</button>
-      <button data-admin-only data-page="movimentos"><span>⇄</span> Movimentações</button>
-      <button data-admin-only data-page="conexoes"><span>⌁</span> WhatsApp e IA</button>
-      <button data-admin-only data-page="meta"><span>◎</span> Meta oficial e custos</button>
-      <button data-admin-only data-page="remoto"><span>↗</span> Acesso remoto</button>
-      <button data-admin-only data-page="privacidade"><span>🔒</span> Privacidade e LGPD</button>
-      <button data-admin-only data-page="bot"><span>☏</span> Testar atendimento</button>
-      <button data-page="humano"><span>☏</span> Atendimento humano</button>
-      <button data-admin-only data-page="configuracoes"><span>⚙</span> Configurações</button>
-    <button data-admin-only data-page="caixas">▣ Caixas dos funcionários</button><button data-admin-only data-page="operadores">♙ Funcionários e auditoria</button><button data-admin-only data-page="atualizacoes">↻ Atualizações</button></nav>
-    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.46.0</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
+    <div class="navigation-search"><label for="navigation-search">Encontrar uma tela</label><div><input id="navigation-search" type="search" placeholder="Ex.: pedidos, WhatsApp…" autocomplete="off" aria-controls="navigation-pages" aria-describedby="navigation-help"><button id="navigation-clear" type="button" aria-label="Limpar busca de telas" hidden>×</button></div><small id="navigation-help">Digite para filtrar · ↓ para escolher</small></div>
+    <p id="navigation-result" class="navigation-result" role="status" aria-live="polite" hidden></p>
+    <nav id="navigation-pages" aria-label="Navegação principal">
+      <div class="nav-group" role="group" aria-labelledby="nav-daily">
+        <p id="nav-daily" class="nav-group-title">No dia a dia</p>
+        <button data-page="inicio" class="selected" aria-current="page"><span aria-hidden="true">◈</span> Visão geral</button>
+        <button data-page="pedidos"><span aria-hidden="true">▤</span> Pedidos</button>
+        <button data-page="produtos" data-search-terms="catalogo cardapio estoque"><span aria-hidden="true">▦</span> <b id="catalog-nav-label" style="font-weight:inherit">Produtos e estoque</b></button>
+        <button data-page="humano" data-search-terms="conversas clientes equipe"><span aria-hidden="true">☏</span> Atendimento humano</button>
+        <button data-admin-only data-page="relatorios" data-search-terms="vendas resultados"><span aria-hidden="true">▤</span> Relatórios</button>
+        <button data-admin-only data-page="caixas"><span aria-hidden="true">▣</span> Caixas dos funcionários</button>
+      </div>
+      <div class="nav-group" role="group" aria-labelledby="nav-service" data-admin-only>
+        <p id="nav-service" class="nav-group-title">Preparar o atendimento</p>
+        <button data-admin-only data-page="tutorial" data-search-terms="ajuda primeiros passos"><span aria-hidden="true">?</span> Guia de configuração</button>
+        <button data-admin-only data-page="publicacao" data-search-terms="https tunel dns link site"><span aria-hidden="true">↗</span> Página de pedidos</button>
+        <button data-admin-only data-page="conexoes" data-search-terms="ollama obsidian cerebro qr code"><span aria-hidden="true">⌁</span> WhatsApp e IA</button>
+        <button data-admin-only data-page="meta" data-search-terms="api oficial webhook token"><span aria-hidden="true">◎</span> Meta oficial e custos</button>
+        <button data-admin-only data-page="bot" data-search-terms="simulacao experimentar"><span aria-hidden="true">☏</span> Testar atendimento</button>
+      </div>
+      <div class="nav-group" role="group" aria-labelledby="nav-store" data-admin-only>
+        <p id="nav-store" class="nav-group-title">Administrar a loja</p>
+        <button data-admin-only data-page="comercio" data-search-terms="perfil segmento restaurante oficina"><span aria-hidden="true">◇</span> Meu comércio</button>
+        <button data-admin-only data-page="movimentos"><span aria-hidden="true">⇄</span> Movimentações</button>
+        <button data-admin-only data-page="operadores" data-search-terms="contas permissoes"><span aria-hidden="true">♙</span> Funcionários e auditoria</button>
+        <button data-admin-only data-page="remoto"><span aria-hidden="true">↗</span> Acesso remoto</button>
+        <button data-admin-only data-page="privacidade" data-search-terms="seguranca dados pessoais"><span aria-hidden="true">🔒</span> Privacidade e LGPD</button>
+        <button data-admin-only data-page="configuracoes" data-search-terms="horario pagamento endereco nome"><span aria-hidden="true">⚙</span> Configurações</button>
+        <button data-admin-only data-page="atualizacoes" data-search-terms="versao instalar"><span aria-hidden="true">↻</span> Atualizações</button>
+      </div>
+    </nav>
+    <div class="sidebar-bottom"><span class="dot"></span> Dados salvos neste computador<small>DeliveryBot Desktop · 2.47.0</small><button id="operator-logout">Trocar funcionário</button><button id="app-exit">Sair do aplicativo</button></div>
   </aside>
   <button id="menu-overlay" class="menu-overlay" type="button" aria-label="Fechar menu" hidden></button>
   <main id="main-content" tabindex="-1">
@@ -60,17 +75,16 @@
           <label class="wide">O que você oferece e como atende?<textarea name="descricao" rows="4" maxlength="1200" required placeholder="Ex.: preparo refeições após receber o pedido, faço entregas e vendo bebidas prontas."></textarea></label>
           <label class="wide">Como seu comércio funciona?<select name="modelo"><option value="REVENDA">Revenda — vendo produtos prontos</option><option value="PRODUCAO">Produção sob pedido — preparo ou fabrico o que foi pedido</option><option value="SERVICOS">Serviços — realizo trabalhos para os clientes</option><option value="MISTO">Misto — combino produtos, produção e serviços</option></select></label>
           <label class="check wide"><input name="controlar_estoque" type="checkbox" checked> Controlar quantidade nos novos itens do catálogo</label>
-        </div><p id="commerce-help" class="notice" aria-live="polite"></p><p>Este é o padrão para novos cadastros. Você pode escolher o controle de quantidade em cada item. Alterar o perfil preserva produtos, saldos e pedidos existentes.</p><p class="muted">O perfil fica neste computador e acompanha os backups. O Ollama usa a descrição para entender seu comércio. Escreva sobre a operação; evite incluir dados de clientes. Serviços que precisam de orçamento ou agendamento devem ser combinados com a equipe.</p><div class="button-row"><button class="primary" type="submit">Salvar e organizar meu comércio</button></div></form>
+        </div><p id="commerce-help" class="notice" aria-live="polite"></p><p>Este é o padrão para novos cadastros. Você pode escolher o controle de quantidade em cada item. Alterar o perfil preserva produtos, saldos e pedidos existentes.</p><p class="muted">O perfil fica neste computador e acompanha os backups. O Ollama usa a descrição para entender seu comércio. Escreva sobre a operação; evite incluir dados de clientes. Serviços que precisam de orçamento ou agendamento devem ser combinados com a equipe.</p><p id="commerce-save-status" class="edit-status" role="status" aria-live="polite"></p><div class="button-row"><button class="primary" type="submit">Salvar e organizar meu comércio</button></div></form>
       </section>
       <section id="page-inicio" class="page">
         <div class="page-heading"><div><p class="eyebrow">PAINEL DA LOJA</p><h1>Seu dia começa aqui.</h1><p>Acompanhe seus produtos, vendas e atendimento.</p></div><button data-admin-only class="primary" data-action="novo">+ Cadastrar produto</button></div>
         <div id="metrics" class="metrics"></div>
         <article data-admin-only class="card next-step"><div><p class="eyebrow" id="next-step-label">PRÓXIMO PASSO</p><h2 id="next-step-title">Verificando sua configuração…</h2><p id="next-step-help">Confira o que falta e continue de onde parou.</p></div><button id="next-step-action" class="primary" data-page="tutorial">Abrir guia</button></article>
-        <article data-admin-only class="card"><div class="card-heading"><div><h2>Precisa de ajuda para começar?</h2><p>Seus guias explicam o cadastro, a conexão e o teste do endereço de pedidos.</p></div><button class="primary" data-page="tutorial">Começar tutorial</button></div></article>
         <div id="backup-warning" class="notice" role="status" hidden></div>
-        <article data-admin-only class="card"><h2>Prepare sua loja, passo a passo</h2><div id="preparation-steps"></div><h3>Estado dos serviços</h3><div id="preparation-live" aria-live="polite"></div><p id="preparation-status"></p><div class="button-row"><button id="preparation-test">Gerar teste para abrir no celular</button><button id="preparation-check">Atualizar status</button></div><input id="preparation-link" readonly hidden aria-label="Endereço de teste para copiar no celular"></article>
+        <details data-admin-only class="card home-details" id="home-preparation"><summary><span>Conferir conexão e preparação</span><small>Etapas, serviços e teste no celular</small></summary><div id="preparation-steps"></div><h3>Estado dos serviços</h3><div id="preparation-live" aria-live="polite"></div><p id="preparation-status"></p><div class="button-row"><button id="preparation-test">Gerar teste para abrir no celular</button><button id="preparation-check">Atualizar status</button></div><input id="preparation-link" readonly hidden aria-label="Endereço de teste para copiar no celular"></details>
         <div class="home-grid">
-          <article data-admin-only class="card welcome"><span class="pill">PRIMEIROS PASSOS</span><h2>Pronto para vender<br>do seu jeito.</h2><p>Roupas, acessórios, alimentos, eletrônicos ou outros produtos: monte o catálogo da sua loja e deixe o bot apresentar o que você tem disponível.</p><div class="steps"><button data-admin-only data-page="configuracoes"><b>01</b><span>Personalize a loja<small>Nome, horários e pagamento</small></span><span>→</span></button><button data-page="produtos"><b>02</b><span>Cadastre seus produtos<small>Preços, categorias e estoque</small></span><span>→</span></button><button data-admin-only data-page="bot"><b>03</b><span>Experimente o atendimento<small>Simule uma compra antes de conectar</small></span><span>→</span></button></div></article>
+          <article class="card daily-shortcuts"><h2>O que você precisa fazer?</h2><p>Acesse suas tarefas mais frequentes.</p><div class="steps"><button data-page="pedidos"><b aria-hidden="true">▤</b><span>Acompanhar pedidos<small>Veja o que chegou e avance o preparo</small></span><span aria-hidden="true">→</span></button><button data-page="produtos"><b aria-hidden="true">▦</b><span>Consultar o catálogo<small>Encontre produtos, preços e disponibilidade</small></span><span aria-hidden="true">→</span></button><button data-page="humano"><b aria-hidden="true">☏</b><span>Atender uma conversa<small>Acompanhe os clientes que precisam da equipe</small></span><span aria-hidden="true">→</span></button></div></article>
           <article class="card" data-stock-section><div class="card-heading"><h2>Atenção ao estoque</h2><span id="low-stock-count" class="badge warning">Reposição</span></div><div id="low-stock" aria-live="polite"></div></article>
         </div>
         <article data-admin-only class="card backup-row"><div><h2>Uma cópia protegida dos seus dados</h2><p>O backup é criptografado com sua senha. Guarde a senha separadamente; ela será necessária para restaurar. Credenciais dos serviços devem ser configuradas novamente.</p><small id="backup-result"></small></div><div class="button-row"><button data-action="backup">Criar backup</button><button data-action="pasta">Abrir pasta de dados</button><button data-action="restaurar">Restaurar backup</button></div></article>
@@ -145,7 +159,7 @@
         <article class="card"><h2>Mantenha sua loja disponível</h2><p>O conector tenta se reconectar automaticamente quando a conexão cai. Mantenha o computador ligado, com internet e o aplicativo aberto ou na bandeja. Fechar completamente ou suspender o computador interrompe a página. O túnel não substitui hospedagem que funcione 24 horas com o computador desligado.</p><p>Se você já usa ngrok ou outro serviço externo, pode continuar salvando seu endereço em Configurações com o túnel integrado desligado. Use domínio fixo para webhooks de serviços externos.</p></article>
       </section><section id="page-configuracoes" class="page" hidden>
         <div class="page-heading"><div><p class="eyebrow">PREFERÊNCIAS</p><h1>Uma loja com a sua cara</h1><p>Salve as informações que o bot usará no atendimento.</p></div></div>
-        <form id="settings-form"><div id="settings-fields"></div><div class="save-bar"><span>As mudanças passam a valer ao salvar.</span><button class="primary" type="submit">Salvar configurações</button></div></form>
+        <form id="settings-form"><div id="settings-fields"></div><div class="save-bar"><span id="settings-save-status" class="edit-status" role="status" aria-live="polite">As mudanças passam a valer ao salvar.</span><button class="primary" type="submit">Salvar configurações</button></div></form>
         <article class="card"><h2>Usar o WhatsApp com clientes</h2><p><b>Modo de teste:</b> não envia mensagens reais. Você pode usar cadastro, estoque e a simulação local.</p><p><b>WAHA:</b> conecte pelo QR Code em <b>WhatsApp e IA</b>. O recebimento das mensagens é configurado automaticamente. Para um serviço existente, salve o endereço e a chave acima.</p><p><b>Meta:</b> preencha as credenciais da WhatsApp Cloud API e configure o webhook <code>/webhook</code> com o token de verificação.</p><p>O endereço público da loja precisa apontar para este computador para que clientes abram os links de pedido. Um endereço localhost só funciona nesta máquina.</p><button data-admin-only data-page="conexoes">Abrir WhatsApp e IA →</button><label>Webhook WAHA<input id="waha-hook" readonly aria-label="URL do webhook WAHA"></label><p class="muted">A chave deste endereço é privada. Compartilhe apenas na configuração do seu serviço WAHA.</p></article>
       </section>
     </div>

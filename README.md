@@ -14,6 +14,8 @@ Use o [guia do aplicativo](GUIA%20DO%20APLICATIVO.md) para configurar a loja, ca
 
 Os dados, configurações, backups e sessão do WhatsApp do aplicativo ficam em `%LOCALAPPDATA%\DeliveryBot`, separados do código e da distribuição. Não apague essa pasta para atualizar o aplicativo. Para encerrar o atendimento, use **Sair do aplicativo** no painel ou **Sair e interromper atendimento** no ícone perto do relógio.
 
+O menu separa tarefas diárias, preparação do atendimento e administração. Use **Encontrar uma tela** para localizar opções pelo nome ou por termos como WhatsApp, estoque e horário. A página inicial destaca o próximo passo e os atalhos do dia a dia. **Configurações** e **Meu comércio** avisam sobre alterações não salvas antes de trocar de tela ou atualizar. No pedido do cliente, as quantidades podem ser ajustadas diretamente no resumo, inclusive pelo celular.
+
 ## O que existe nesta pasta
 
 | Arquivo ou pasta | Finalidade |
