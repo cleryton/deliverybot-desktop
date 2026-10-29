@@ -20,6 +20,8 @@ O painel evita sobrepor consultas de publicação e atualização em conexões l
 
 O atendimento da IA usa o segmento definido em **Meu comércio**. Uma lanchonete não passa a atender mecânica por conter uma peça antiga no catálogo. A operação mista permite as atividades cadastradas; notas do Obsidian não ampliam essa autorização. Perguntas vagas recebem orientação local. Consulte o [relatório do projeto](docs/tcc/RELATORIO_DO_PROJETO.md) para entender arquitetura, melhorias, módulos e limites.
 
+No atendimento Ollama, o modelo escolhe somente ação, fontes e tom; o aplicativo valida a proposta e monta a resposta com informações autorizadas. Conhecimento factual do Obsidian exige aprovação e categoria explícita do perfil ativo. Notas alteradas durante a geração invalidam a resposta em andamento. Arquivos antigos são preservados para revisão, com orientação no leitor e no guia **Circuito comercial** do cofre. As notas não substituem preços, estoque, pagamentos ou funcionamento do cadastro. Esses controles não dispensam a revisão dos fatos pela equipe.
+
 ## O que existe nesta pasta
 
 | Arquivo ou pasta | Finalidade |
