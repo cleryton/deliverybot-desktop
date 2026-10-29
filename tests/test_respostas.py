@@ -1,4 +1,5 @@
 """Atendimento com dados fictícios, sem Ollama, túnel ou WhatsApp reais."""
+import json
 from unittest.mock import Mock
 
 import pytest
@@ -152,7 +153,7 @@ def test_contexto_grande_prioriza_entrada_atual(monkeypatch):
 
 
 def test_ferramenta_ollama_nao_repete_inferencia_nem_transmite_token(monkeypatch):
-    chamada = Mock(return_value={"message": {"role": "assistant", "tool_calls": [{"function": {"name": "gerar_link_pedido"}}, {"function": {"name": "gerar_link_pedido"}}]}})
+    chamada = Mock(return_value={"message": {"content": json.dumps({"acao": "pedido", "fontes": [], "tom": "cordial"})}})
     gerar = Mock(return_value="https://loja.example/m/tokenprivado")
     monkeypatch.setattr(ia, "_chamar_ollama", chamada)
     monkeypatch.setattr(ia, "gerar_link_pedido", gerar)
@@ -160,11 +161,13 @@ def test_ferramenta_ollama_nao_repete_inferencia_nem_transmite_token(monkeypatch
     assert "tokenprivado" in resposta and "confirm" in resposta
     assert "tokenprivado" not in str(chamada.call_args_list)
     chamada.assert_called_once()
+    assert chamada.call_args.kwargs['permitir_ferramentas'] is False
+    assert chamada.call_args.kwargs['formato']['additionalProperties'] is False
     gerar.assert_called_once()
 
 
 def test_ferramenta_sem_intencao_nao_executa(monkeypatch):
-    chamada = Mock(return_value={"message": {"tool_calls": [{"function": {"name": "gerar_link_pedido"}}]}})
+    chamada = Mock(return_value={"message": {"content": json.dumps({"acao": "pedido", "fontes": [], "tom": "cordial"})}})
     gerar = Mock(side_effect=AssertionError("Não há intenção de compra"))
     monkeypatch.setattr(ia, "_chamar_ollama", chamada)
     monkeypatch.setattr(ia, "gerar_link_pedido", gerar)
@@ -175,18 +178,19 @@ def test_ferramenta_sem_intencao_nao_executa(monkeypatch):
 
 
 def test_link_offline_nao_anuncia_pedido(monkeypatch):
-    monkeypatch.setattr(ia, "_chamar_ollama", Mock(return_value={"message": {"tool_calls": [{"function": {"name": "gerar_link_pedido"}}]}}))
+    monkeypatch.setattr(ia, "_chamar_ollama", Mock(return_value={"message": {"content": json.dumps({"acao": "pedido", "fontes": [], "tom": "cordial"})}}))
     monkeypatch.setattr(ia, "gerar_link_pedido", Mock(side_effect=ValueError("túnel offline")))
     resposta = ia._responder_ollama(TELEFONE, "quero comprar")
     assert resposta == ia.PEDIDO_INDISPONIVEL
     assert "http" not in resposta and "confirmado" not in resposta
 
 
-def test_pedido_composto_preserva_explicacao_valida_do_modelo(monkeypatch):
+def test_pedido_composto_nao_publica_complemento_livre_do_modelo(monkeypatch):
     monkeypatch.setattr(ia, "_chamar_ollama", Mock(return_value={"message": {"content": "A equipe precisa confirmar a cobertura desse bairro.", "tool_calls": [{"function": {"name": "gerar_link_pedido"}}]}}))
     monkeypatch.setattr(ia, "gerar_link_pedido", Mock(return_value="https://loja.example/m/tokenprivado"))
-    resposta = ia._responder_ollama(TELEFONE, "quero comprar, entregam no meu bairro?")
-    assert "confirmar a cobertura" in resposta and "tokenprivado" in resposta
+    with pytest.raises(ia.IAIndisponivel, match="ferramenta inválida"):
+        ia._responder_ollama(TELEFONE, "quero comprar, entregam no meu bairro?")
+    ia.gerar_link_pedido.assert_not_called()
 
 
 def test_registro_de_rate_limit_e_limitado_e_atomico(monkeypatch):

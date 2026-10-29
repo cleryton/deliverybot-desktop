@@ -141,9 +141,15 @@ Pontos de leitura: [_fontes](../../src/catalogo_pdf.py#L25), [_texto](../../src/
 
 ### src/cerebro.py
 
-Prepara o cofre Obsidian, valida leituras, seleciona notas aprovadas e monta contexto limitado por assunto. Também mantém mapa, visualização e snapshots; guias operacionais não executam ações comerciais.
+Prepara o cofre Obsidian, valida leituras e seleciona notas aprovadas. `contexto_revisado()` registra fontes, trechos e assinaturas; `contexto_valido()` confere as referências antes da publicação. Conhecimento factual exige categoria explícita. Também mantém mapa, visualização e snapshots; guias operacionais não executam ações comerciais.
 
-Pontos de leitura: [diretorio](../../src/cerebro.py#L197), [arquivo_inicio](../../src/cerebro.py#L235), [_criar_se_ausente](../../src/cerebro.py#L239).
+Pontos de leitura: [diretorio](../../src/cerebro.py#L258), [arquivo_inicio](../../src/cerebro.py#L296), [_criar_se_ausente](../../src/cerebro.py#L300).
+
+### src/circuito_comercial.py
+
+Limita o atendimento Ollama a uma proposta com ação, referências e tom. `preparar()` congela fontes públicas do cadastro e conhecimento revisado, com limite de contexto. `CircuitoPreparado.renderizar()` valida JSON, campos, tipos e IDs, e monta a mensagem usando somente as fontes disponíveis. Texto livre, referências desconhecidas, valores de notas que substituam o cadastro e respostas acima do limite são recusados. O módulo não acessa banco, arquivos, rede ou pedidos; a execução da ação continua em `ia.py`.
+
+Pontos de leitura: [contrato e renderização](../../src/circuito_comercial.py), [testes do circuito](../../tests/test_circuito_comercial.py) e [integração do Ollama](../../tests/test_ia_circuito.py).
 
 ### src/cliente_terminal.py
 
@@ -467,7 +473,7 @@ A entrada passa por Decimal e verificação de finitude, intervalo e duas casas 
 
 ### Aprovação e validade editorial
 
-Fonte: [src/cerebro.py — _aprovada](../../src/cerebro.py#L619).
+Fonte: [src/cerebro.py — _aprovada](../../src/cerebro.py#L688).
 
 ```python
 def _aprovada(metadados: str) -> bool:

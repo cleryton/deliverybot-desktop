@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.48.0 — 2026-10-28
+
+Circuito comercial fechado no Ollama: propostas estruturadas por fontes, respostas montadas pelo aplicativo, conhecimento aprovado com categoria explícita, revisão das notas antes de publicar e recusa de assuntos misturados. Preserva o cofre existente, os pedidos e as configurações; inclui testes de regressão com dados fictícios.
+
 ## 2.47.2 — 2026-10-28
 
 Restringe o atendimento ao segmento e ao catálogo da loja, reforça a revisão de contexto e respostas e acrescenta relatório técnico editável sobre arquitetura, melhorias, testes e limites do projeto.

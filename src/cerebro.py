@@ -1,9 +1,11 @@
 """Cofre local e curado de estilo e conhecimento, compatível com Obsidian."""
+import hashlib
 import json
 import os
 import re
 import tempfile
 import unicodedata
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from pathlib import PurePosixPath
@@ -20,6 +22,26 @@ _MAX_ARQUIVOS_BACKUP = 256
 _MAX_BACKUP_BYTES = 16 * 1024 * 1024
 _MAX_LEITURA_NOTA = 64 * 1024
 _MAX_NOTAS_POR_PERGUNTA = 6
+
+
+@dataclass(frozen=True)
+class FonteRevisada:
+    caminho: str
+    tipo: str
+    trecho: str
+    assinatura: str
+    etapa: str = ''
+
+
+@dataclass(frozen=True)
+class ContextoRevisado:
+    texto: str
+    fontes: tuple[FonteRevisada, ...]
+    _pasta: str = field(default='', repr=False)
+    _perfil: tuple[str, ...] = field(default=(), repr=False)
+    _exigir_categoria: bool = field(default=True, repr=False)
+
+
 _ARQUIVO_MAPA = 'Mapa do atendimento.md'
 _MARCA_MAPA = '<!-- DeliveryBot: mapa automático v1 -->'
 _ARQUIVO_FUNCIONAMENTO = 'Estado do funcionamento.md'
@@ -72,7 +94,31 @@ As edições entram na próxima resposta, sem treinar pesos da rede neural. Mude
 
 Se o perfil da loja mudar, outra pasta será preparada. As edições antigas são preservadas e ficam fora do atendimento da nova categoria. O painel WhatsApp e IA mostra a categoria ativa e permite ler suas notas. O [[Mapa do atendimento]] conecta os padrões ativos no Obsidian Graph.
 
-Não copie conversas, nomes, telefones, endereços ou pedidos de clientes. Não invente preços, descontos, disponibilidade, ingredientes, compatibilidade, prazos ou reservas. Notas orientam a escrita; [[Pedidos pelo WhatsApp]] e [[Conexão e página de pedidos]] explicam ações executadas pelo aplicativo.
+Não copie conversas, nomes, telefones, endereços ou pedidos de clientes. Não invente preços, descontos, disponibilidade, ingredientes, compatibilidade, prazos ou reservas. Notas orientam a escrita; [[Pedidos pelo WhatsApp]] e [[Conexão e página de pedidos]] explicam ações executadas pelo aplicativo. Consulte [[Circuito comercial]] para revisar as fontes factuais usadas nas respostas.
+'''
+
+_GUIA_CIRCUITO_COMERCIAL = '''---
+tipo: guia-operacional
+atendimento: false
+---
+# Circuito comercial
+
+O atendimento automático permanece voltado ao segmento configurado em Meu comércio. Uma pergunta ou nota não permite ampliar os assuntos, executar comandos, consultar dados internos ou alterar as permissões do aplicativo.
+
+## Fontes e ações
+O aplicativo oferece ações e referências limitadas ao negócio. O Ollama ajuda na escolha; o código valida a ação e as fontes antes de publicar a resposta. Pedidos, links, pagamentos, preços e disponibilidade dependem dos fluxos e do cadastro oficial do aplicativo. Uma frase do modelo não confirma uma operação nem um pagamento.
+
+## Conhecimento aprovado para o Ollama
+Use [[Modelos/Conhecimento aprovado]] para uma nota em Conhecimento. Após revisão, mantenha `atendimento: true` e `categoria_atendimento` explícita, igual à categoria ativa da loja. Valores aceitos: ALIMENTACAO, MODA, ELETRONICOS, OFICINA, REVENDA, PRODUCAO, SERVICOS, MISTO e GERAL. GERAL atende somente o perfil GERAL; não libera os outros segmentos.
+
+Notas sem categoria, com categoria diferente, revisão suspensa, metadados ambíguos ou validade vencida não fornecem fatos ao circuito do Ollama. Categoria e aprovação não tornam um conteúdo correto: a equipe precisa conferir o assunto, a fonte e a revisão. Não duplique produtos, preços ou estoque nas notas.
+
+Opcionalmente, adicione `valido_ate: AAAA-MM-DD` no frontmatter. A validade inclui a data indicada. O aplicativo relê somente as referências efetivamente usadas antes de publicar. Alteração, exclusão, revogação, vencimento ou troca do perfil durante a geração invalida a resposta em andamento, permitindo orientação local segura.
+
+## Tom e revisão
+[[Estilo de atendimento]] e [[Atendimentos/Como personalizar]] são referências editoriais separadas das fontes factuais. Um exemplo de conversa não comprova um ingrediente, prazo ou política. Revise uma condição por nota e mantenha respostas curtas, objetivas e sem dados pessoais.
+
+Arquivos existentes e edições da equipe são preservados nas atualizações. Para adequar notas antigas, adicione a categoria e revise o conteúdo no próprio arquivo. O aplicativo não aprova nem reescreve essas notas automaticamente. Este guia explica as regras; texto no cofre não altera o código nem executa ações.
 '''
 
 _NOTAS_INICIAIS = {
@@ -90,7 +136,8 @@ Este cofre guarda orientações editoriais e informações aprovadas para o Deli
 ## Conhecimento aprovado
 - [[Informações da loja]] — horários, entrega e políticas confirmadas.
 - [[Perguntas frequentes]] — respostas curtas revisadas pela equipe.
-- Para adicionar outros assuntos, crie uma nota em `Conhecimento` usando `Modelos/Conhecimento aprovado.md` e marque `atendimento: true` no frontmatter.
+- Para adicionar assuntos do negócio, use `Modelos/Conhecimento aprovado.md` em `Conhecimento`. Após revisão, marque `atendimento: true` e mantenha `categoria_atendimento` explícita e igual à categoria ativa da loja.
+- [[Circuito comercial]] — fontes, escopo e validação antes de responder.
 
 ## Pedidos na conversa
 - [[Pedidos pelo WhatsApp]] — como montar, revisar e confirmar uma compra sem abrir o link.
@@ -143,19 +190,20 @@ Este arquivo ajusta somente a voz da loja. Edite no Obsidian ou em outro editor 
     _ARQUIVO_LOJA: """---
 tipo: informacoes-da-loja
 atendimento: true
+categoria_atendimento: PREENCHA
 ---
 # Informações da loja
 
-<!-- Use apenas fatos aprovados pela equipe. Preencha e revise antes do uso. Não duplique produtos, preços ou estoque: o catálogo do aplicativo é a fonte oficial. -->
+<!-- Use apenas informações comerciais aprovadas pela equipe. Horário, endereço, telefone, pagamento e taxa devem ser configurados no aplicativo; produtos, preços e estoque vêm do catálogo. Não duplique esses dados aqui. -->
 
 ## Horários e canais
-<!-- Informe dias, horários e canais oficiais. -->
+<!-- Configure horário e contato no aplicativo. Esta seção é apenas uma orientação à equipe. -->
 
 ## Entrega e retirada
-<!-- Informe regiões, taxas, prazos e condições confirmadas. -->
+<!-- A taxa vem do aplicativo; cobertura e prazos que precisam de avaliação devem ser confirmados pela equipe. Não prometa entrega por uma nota. -->
 
 ## Pagamentos e políticas
-<!-- Informe formas de pagamento, trocas ou outras políticas confirmadas. -->
+<!-- Configure os meios de pagamento no aplicativo. Para uma política de troca, prefira uma nota curta e separada em Conhecimento. -->
 
 ## Fonte e revisão
 <!-- Responsável pela revisão: | Revisado em (AAAA-MM-DD): -->
@@ -163,6 +211,7 @@ atendimento: true
     _ARQUIVO_FAQ: """---
 tipo: perguntas-frequentes
 atendimento: true
+categoria_atendimento: PREENCHA
 ---
 # Perguntas frequentes
 
@@ -183,23 +232,24 @@ Fonte: política de entrega. Revisado em: AAAA-MM-DD.
 _MODELO_CONHECIMENTO = """---
 tipo: conhecimento-aprovado
 atendimento: false
+categoria_atendimento: PREENCHA
 prioridade: 3
 tags: [assunto, palavras-chave]
+fonte:
+responsavel:
+revisado_em:
 ---
 # Título do assunto
 
-<!-- Comece com atendimento: true no frontmatter quando a equipe revisar este conteúdo e aprovar seu uso pelo bot. -->
+Escreva uma informação comercial por nota. Substitua este texto depois de revisar a regra.
 
-## Informação aprovada
+<!-- Marque atendimento: true somente após a equipe revisar o conteúdo. Confira categoria_atendimento: ela deve corresponder ao perfil ativo do comércio para entrar no circuito do Ollama. -->
 
-## Fonte e revisão
-- Fonte:
-- Responsável:
-- Revisado em (AAAA-MM-DD):
+<!-- Substitua o título pelo assunto comercial e escreva uma regra curta. Em fatos de composição ou características, identifique o nome do produto cadastrado em cada frase. Preencha fonte, responsavel e revisado_em nas propriedades acima; esses dados de revisão não pertencem à resposta ao cliente. -->
 
 <!-- Opcional: adicione valido_ate: AAAA-MM-DD no frontmatter para suspender automaticamente o uso após essa data. Prioridade aceita 1 a 5; 5 é a maior. Tags ajudam a encontrar esta nota pela dúvida do cliente. -->
 
-<!-- Para limitar uma nota a um perfil, adicione categoria_atendimento: ALIMENTACAO, MODA, ELETRONICOS, OFICINA, REVENDA, PRODUCAO, SERVICOS, MISTO ou GERAL no frontmatter. A nota só será consultada quando o perfil ativo corresponder. Sem esse campo, ela permanece uma referência geral aprovada, sem ampliar os assuntos permitidos para a loja. -->
+<!-- categoria_atendimento é obrigatória para fontes factuais no circuito do Ollama. Use ALIMENTACAO, MODA, ELETRONICOS, OFICINA, REVENDA, PRODUCAO, SERVICOS, MISTO ou GERAL, conforme o perfil ativo. Notas antigas sem o campo são preservadas, mas precisam de revisão e categoria explícita para esse circuito. Consulte [[Circuito comercial]]. -->
 
 <!-- Não inclua dados ou conversas de clientes. Produtos, preços e estoque devem ser consultados no cadastro do aplicativo. -->
 """
@@ -270,8 +320,9 @@ def _preparar(*, sincronizar_mapa=True) -> Path:
     modelos.mkdir(exist_ok=True)
     (pasta / ".obsidian").mkdir(exist_ok=True)
     for nome, conteudo in _NOTAS_INICIAIS.items():
-        _criar_se_ausente(pasta / nome, conteudo)
+        _criar_se_ausente(pasta / nome, conteudo.replace('categoria_atendimento: PREENCHA', 'categoria_atendimento: ' + categoria))
     _criar_se_ausente(pasta / 'Atendimentos/Como personalizar.md', _GUIA_PADROES)
+    _criar_se_ausente(pasta / 'Circuito comercial.md', _GUIA_CIRCUITO_COMERCIAL)
     _criar_se_ausente(pasta / 'Verificação e recuperação do atendimento.md', _GUIA_FUNCIONAMENTO)
     _criar_se_ausente(pasta / _ARQUIVO_FUNCIONAMENTO, '---\ntipo: estado-operacional\natendimento: false\n---\n' + _MARCA_FUNCIONAMENTO + '\n# Estado do funcionamento\n\nAguardando a verificação pelo aplicativo Desktop. Consulte [[Verificação e recuperação do atendimento]].\n')
     for nome, conteudo in padroes_atendimento.arquivos(categoria).items():
@@ -380,7 +431,7 @@ Se houver falha, acompanhe o aviso em WhatsApp e IA e tente Conectar novamente. 
 
 Veja [[Mapa do atendimento]], [[Informações da loja]] e [[Estilo de atendimento]]. Estas notas explicam o funcionamento; a conexão e os pedidos são executados pelo aplicativo.
 ''')
-    _criar_se_ausente(modelos / "Conhecimento aprovado.md", _MODELO_CONHECIMENTO)
+    _criar_se_ausente(modelos / "Conhecimento aprovado.md", _MODELO_CONHECIMENTO.replace('categoria_atendimento: PREENCHA', 'categoria_atendimento: ' + categoria))
     _criar_se_ausente(modelos / 'Lista de estoque.md', '''---
 tipo: lista-de-estoque
 atendimento: false
@@ -418,7 +469,7 @@ def _sincronizar_mapa(pasta: Path) -> None:
             return  # A equipe assumiu a edição deste mapa.
         grupos = {
             'Voz e informações da loja': [pasta / n for n in _NOTAS_INICIAIS],
-            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Segurança dos funcionários.md', pasta / 'Continuidade do atendimento humano.md', pasta / 'Proteção das conversas com IA.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / _ARQUIVO_FUNCIONAMENTO],
+            'Operação no aplicativo': [pasta / 'Pedidos pelo WhatsApp.md', pasta / 'Pedidos manuais e caixa.md', pasta / 'Computadores dos funcionários.md', pasta / 'Segurança dos funcionários.md', pasta / 'Continuidade do atendimento humano.md', pasta / 'Proteção das conversas com IA.md', pasta / 'Conexão e página de pedidos.md', pasta / 'Verificação e recuperação do atendimento.md', pasta / 'Circuito comercial.md', pasta / _ARQUIVO_FUNCIONAMENTO],
             'Modelos para revisão': [pasta / 'Modelos/Conhecimento aprovado.md', pasta / 'Modelos/Lista de estoque.md'],
             'Conhecimento revisado': _notas_aprovadas(pasta),
             'Padrões de atendimento ativos': [pasta / 'Atendimentos/Como personalizar.md', *_padroes_aprovados(pasta)],
@@ -460,7 +511,6 @@ def arquivo_funcionamento() -> Path:
 
 def registrar_documento_estoque(token: str, linhas: str) -> Path:
     """Registro operacional separado das notas consultadas pelo atendimento."""
-    import hashlib
     raiz = diretorio()
     pasta = raiz / 'Documentos de estoque'
     for caminho in (raiz, pasta):
@@ -560,7 +610,7 @@ def registrar_funcionamento(dados: dict) -> None:
 def visualizacao() -> dict:
     """Mostra notas editoriais ao administrador; nunca documentos de estoque."""
     pasta = _preparar()
-    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Pedidos manuais e caixa.md', 'Computadores dos funcionários.md', 'Segurança dos funcionários.md', 'Continuidade do atendimento humano.md', 'Proteção das conversas com IA.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
+    caminhos = [pasta/n for n in (*_NOTAS_INICIAIS, 'Pedidos pelo WhatsApp.md', 'Pedidos manuais e caixa.md', 'Computadores dos funcionários.md', 'Segurança dos funcionários.md', 'Continuidade do atendimento humano.md', 'Proteção das conversas com IA.md', 'Conexão e página de pedidos.md', 'Verificação e recuperação do atendimento.md', 'Circuito comercial.md', _ARQUIVO_FUNCIONAMENTO, _ARQUIVO_MAPA)]
     # Mostra os padrões antes do conhecimento extra para não ocultá-los no limite.
     padroes = _padroes_aprovados(pasta)
     caminhos.extend([pasta / 'Atendimentos/Como personalizar.md', *padroes, *_notas_aprovadas(pasta)])
@@ -574,7 +624,13 @@ def visualizacao() -> dict:
         if caminho in padroes and not _aprovada(metadados):
             continue
         if corpo:
-            notas.append({'nome':nome,'conteudo':corpo,'uso': 'Estilo' if caminho.name==_ARQUIVO_ESTILO else 'Contexto aprovado' if _aprovada(metadados) else 'Guia; não enviado ao modelo'})
+            uso = 'Guia; não enviado ao modelo'
+            if caminho.name == _ARQUIVO_ESTILO:
+                uso = 'Estilo'
+            elif _aprovada(metadados):
+                uso = ('Contexto aprovado' if caminho in padroes or _conhecimento_disponivel(metadados, True)
+                       else 'Revisar categoria; fora do circuito Ollama')
+            notas.append({'nome': nome, 'conteudo': corpo, 'uso': uso})
         if len(notas)>=32:
             break
     return {'pasta':str(pasta),'notas':notas}
@@ -599,7 +655,7 @@ def _limpar(conteudo: str) -> str:
     return "\n".join(resultado).strip()
 
 
-def _ler(caminho: Path) -> tuple[str, str]:
+def _ler(caminho: Path, *, completo: bool = False) -> tuple[str, str]:
     try:
         raiz = diretorio()
         if raiz.is_symlink() or (hasattr(raiz, 'is_junction') and raiz.is_junction()):
@@ -619,6 +675,8 @@ def _ler(caminho: Path) -> tuple[str, str]:
     except (OSError, UnicodeError, ValueError):
         return "", ""
     metadados, corpo = _remover_frontmatter(conteudo)
+    if completo:
+        return metadados, corpo
     return metadados, _limpar(corpo)[:_LIMITE_NOTA]
 
 
@@ -722,54 +780,171 @@ def instrucoes_estilo() -> str:
     return conteudo
 
 
-def instrucoes_contexto(pergunta: str = '') -> str:
-    """Seleciona conhecimento aprovado pelo assunto; nunca grava a pergunta no cofre."""
+def _perfil_contexto() -> tuple[str, ...]:
+    return (padroes_atendimento.categoria(), *(str(getattr(config, chave, '')) for chave in (
+        'COMERCIO_CONFIGURADO', 'COMERCIO_SEGMENTO', 'COMERCIO_DESCRICAO',
+        'COMERCIO_MODELO', 'NOME_RESTAURANTE',
+    )))
+
+
+def _assinatura_fonte(metadados: str, corpo: str) -> str:
+    # Detecta alterações na referência relida; não substitui revisão nem autentica o autor.
+    conteudo = json.dumps([metadados, corpo], ensure_ascii=False, separators=(',', ':'))
+    return hashlib.sha256(conteudo.encode('utf-8')).hexdigest()
+
+
+def _ler_referencia(caminho: Path, integral: bool) -> tuple[str, str, str]:
+    if integral:
+        metadados, original = _ler(caminho, completo=True)
+        return metadados, _limpar(original), original
+    metadados, corpo = _ler(caminho)
+    return metadados, corpo, corpo
+
+
+def _estilo_disponivel(metadados: str) -> bool:
+    # Estilos antigos sem frontmatter continuam editoriais. Restrições explícitas prevalecem.
+    revisao = metadados
+    if not re.search(r'^atendimento[ \t]*:', revisao, re.M | re.I):
+        revisao += '\natendimento: true'
+    return _aprovada(revisao) and _do_perfil_ativo(metadados)
+
+
+def _conhecimento_disponivel(metadados: str, exigir_categoria: bool) -> bool:
+    if not (_aprovada(metadados) and _do_perfil_ativo(metadados)):
+        return False
+    return not exigir_categoria or _metadado(metadados, 'categoria_atendimento') == padroes_atendimento.categoria()
+
+
+def contexto_revisado(pergunta: str = '', *, aceitar_conhecimento=None,
+                      exigir_categoria: bool = True) -> ContextoRevisado:
+    """Seleciona referências e registra sua origem sem persistir a pergunta."""
+    # Somente conhecimento categorizado e aprovado pode fornecer fatos ao circuito de IA.
+    # Estilo e padrões permanecem referências editoriais, identificados separadamente.
+    pasta_inicial = diretorio()
+    perfil_inicial = _perfil_contexto()
     # O Graph é uma visão derivada, atualizada ao abrir o cofre/leitor/estado.
     # As notas continuam sendo relidas e revalidadas em cada resposta.
     pasta = _preparar(sincronizar_mapa=False)
     secoes = []
-    _, estilo = _ler(pasta / _ARQUIVO_ESTILO)
-    if estilo:
-        secoes.append(("Estilo de atendimento", estilo))
+    metadados, estilo, original = _ler_referencia(pasta / _ARQUIVO_ESTILO, exigir_categoria)
+    estilo = estilo[:_LIMITE_NOTA]
+    if estilo and (not exigir_categoria or _estilo_disponivel(metadados)):
+        secoes.append(('Estilo de atendimento', _ARQUIVO_ESTILO, 'estilo', metadados, estilo, original, ''))
     selecionada = padroes_atendimento.etapa(pergunta)
     for caminho in _padroes_aprovados(pasta, selecionada):
         # Revalida após a seleção: uma edição/revogação pode ocorrer entre leituras.
-        metadados, corpo = _ler(caminho)
+        metadados, corpo, original = _ler_referencia(caminho, exigir_categoria)
+        corpo = corpo[:_LIMITE_NOTA]
         categoria = padroes_atendimento.categoria()
         esperado = 'perfil' if caminho.name == 'Perfil.md' else selecionada
         if (corpo and _aprovada(metadados)
                 and _metadado(metadados, 'categoria_atendimento') == categoria
                 and _metadado(metadados, 'etapa_atendimento') == esperado):
-            secoes.append((caminho.relative_to(pasta).as_posix(), corpo))
+            relativo = caminho.relative_to(pasta).as_posix()
+            secoes.append((relativo, relativo, 'padrao', metadados, corpo, original, esperado))
     termos = _termos(pergunta)
     candidatas = []
     for caminho in _notas_aprovadas(pasta):
-        metadados, corpo = _ler(caminho)
-        if corpo and _aprovada(metadados) and _do_perfil_ativo(metadados):
-            rotulo = caminho.relative_to(pasta).as_posix()[:120]
+        metadados, corpo, original = _ler_referencia(caminho, exigir_categoria)
+        if corpo and _conhecimento_disponivel(metadados, exigir_categoria):
+            # Uma condição no final da nota não pode desaparecer por truncamento factual.
+            if exigir_categoria and len(corpo) > _LIMITE_NOTA:
+                continue
+            # O filtro de escopo é do chamador e nunca é aplicado à voz nem às etapas editoriais.
+            if aceitar_conhecimento is not None and not aceitar_conhecimento(corpo):
+                continue
+            relativo = caminho.relative_to(pasta).as_posix()
+            rotulo = relativo[:120]
             titulo = _termos(caminho.stem + ' ' + _tags(metadados))
             afinidade = 4 * len(termos & titulo) + len(termos & _termos(corpo))
             if termos and not afinidade and caminho.name not in {_ARQUIVO_LOJA, _ARQUIVO_FAQ}:
                 continue
-            candidatas.append((afinidade, _prioridade(metadados), rotulo, corpo))
+            candidatas.append((afinidade, _prioridade(metadados), rotulo, relativo, metadados, corpo, original))
     candidatas.sort(key=lambda nota: (-nota[0], -nota[1], nota[2].casefold()))
     if termos:
         candidatas = candidatas[:_MAX_NOTAS_POR_PERGUNTA]
     else:
         candidatas = candidatas[:_MAX_NOTAS_EXTRAS + 2]
-    secoes.extend((rotulo, corpo) for _, _, rotulo, corpo in candidatas)
+    secoes.extend((rotulo, relativo, 'conhecimento', metadados, corpo, original, '')
+                  for _, _, rotulo, relativo, metadados, corpo, original in candidatas)
     partes = []
+    fontes = []
     restante = _LIMITE_TOTAL
-    for rotulo, conteudo in secoes:
+    for rotulo, relativo, tipo, metadados, conteudo, original, etapa in secoes:
         cabecalho = ('\n\n' if partes else '') + f'### {rotulo}\n'
+        if exigir_categoria and tipo == 'conhecimento' and len(cabecalho) + len(conteudo) > restante:
+            continue
         trecho = conteudo[:max(0, restante - len(cabecalho))]
         if not trecho:
             break
         partes.append(cabecalho + trecho)
+        fontes.append(FonteRevisada(relativo, tipo, trecho, _assinatura_fonte(metadados, original), etapa))
         restante -= len(cabecalho) + len(trecho)
         if restante <= 0:
             break
-    return ''.join(partes)
+    return ContextoRevisado(''.join(partes), tuple(fontes), str(pasta_inicial), perfil_inicial, exigir_categoria)
+
+
+def contexto_valido(contexto: ContextoRevisado) -> bool:
+    """Relê apenas as fontes enviadas, antes da publicação, sem preparar/gravar o cofre."""
+    if not isinstance(contexto, ContextoRevisado) or not contexto._pasta or not contexto._perfil:
+        return False
+    try:
+        pasta = diretorio()
+        if (str(pasta) != contexto._pasta or _perfil_contexto() != contexto._perfil
+                or pasta.is_symlink() or (hasattr(pasta, 'is_junction') and pasta.is_junction())):
+            return False
+        partes = []
+        caminhos = set()
+        for fonte in contexto.fontes:
+            if (not isinstance(fonte, FonteRevisada) or not fonte.trecho
+                    or '\\' in fonte.caminho or '\x00' in fonte.caminho):
+                return False
+            relativo = PurePosixPath(fonte.caminho)
+            if (relativo.is_absolute() or relativo.as_posix() != fonte.caminho
+                    or any(parte in {'.', '..'} or ':' in parte for parte in relativo.parts)
+                    or fonte.caminho in caminhos):
+                return False
+            caminhos.add(fonte.caminho)
+            caminho = pasta.joinpath(*relativo.parts)
+            metadados, corpo, original = _ler_referencia(caminho, contexto._exigir_categoria)
+            if not corpo or _assinatura_fonte(metadados, original) != fonte.assinatura or not corpo.startswith(fonte.trecho):
+                return False
+            if fonte.tipo == 'estilo':
+                if fonte.caminho != _ARQUIVO_ESTILO or fonte.etapa:
+                    return False
+                if contexto._exigir_categoria and not _estilo_disponivel(metadados):
+                    return False
+                rotulo = 'Estilo de atendimento'
+            elif fonte.tipo == 'padrao':
+                categoria = contexto._perfil[0]
+                esperados = {'Perfil.md': 'perfil', **{dados[0]: slug for slug, dados in padroes_atendimento.ETAPAS.items()}}
+                base = PurePosixPath('Atendimentos', padroes_atendimento.PERFIS[categoria][0])
+                if (relativo.parent != base or esperados.get(relativo.name) != fonte.etapa
+                        or not _aprovada(metadados)
+                        or _metadado(metadados, 'categoria_atendimento') != categoria
+                        or _metadado(metadados, 'etapa_atendimento') != fonte.etapa):
+                    return False
+                rotulo = fonte.caminho
+            elif fonte.tipo == 'conhecimento':
+                if (fonte.etapa or not (fonte.caminho in {_ARQUIVO_LOJA, _ARQUIVO_FAQ}
+                        or len(relativo.parts) >= 2 and relativo.parts[0] == 'Conhecimento' and relativo.suffix == '.md')
+                        or not _conhecimento_disponivel(metadados, contexto._exigir_categoria)
+                        or contexto._exigir_categoria and (corpo != fonte.trecho or len(corpo) > _LIMITE_NOTA)):
+                    return False
+                rotulo = fonte.caminho[:120]
+            else:
+                return False
+            partes.append(('\n\n' if partes else '') + f'### {rotulo}\n' + fonte.trecho)
+        # A integridade inclui a relação entre texto e referências; hashes sem uso não bastam.
+        return ''.join(partes) == contexto.texto and _perfil_contexto() == contexto._perfil and str(diretorio()) == contexto._pasta
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        return False
+
+
+def instrucoes_contexto(pergunta: str = '') -> str:
+    """Preserva o leitor legado, inclusive notas gerais; IA usa o envelope estrito."""
+    return contexto_revisado(pergunta, exigir_categoria=False).texto
 
 
 def snapshot() -> dict[str, bytes]:
