@@ -249,7 +249,8 @@ def _fontes_loja():
 
 
 def _fontes_catalogo(pergunta, produtos):
-    termos = set(re.findall(r'[a-z0-9]+', _normalizar(pergunta)))
+    pergunta = _normalizar(pergunta)
+    termos = set(re.findall(r'[a-z0-9]+', pergunta))
     candidatos = []
     for indice, produto in enumerate(produtos, 1):
         if not isinstance(produto, dict):
@@ -262,11 +263,17 @@ def _fontes_catalogo(pergunta, produtos):
         descricao = _texto(produto.get('descricao'))
         if _nota_publicavel(descricao):
             texto += f'. {descricao}'
-        palavras = set(re.findall(r'[a-z0-9]+', _normalizar(nome)))
-        candidatos.append((-len(termos & palavras), indice,
+        nome_busca = re.sub(r'^(?:teste|demo|ficticio)\s*[-:]\s*', '', _normalizar(nome))
+        palavras = re.findall(r'[a-z0-9]+', nome_busca)
+        # X-Salada, X Salada e XSalada identificam o mesmo nome cadastrado.
+        # A expressão completa distingue um item citado de coincidências em
+        # palavras comuns; itens genéricos não podem expulsar as notas úteis.
+        citado = bool(palavras and re.search(
+            r'\b' + r'[\s_-]*'.join(map(re.escape, palavras)) + r'\b', pergunta))
+        candidatos.append((-int(citado), -len(termos & set(palavras)), indice,
                            Fonte(f'catalogo.{indice}', texto)))
-    for _, _, fonte in sorted(candidatos):
-        yield fonte
+    for prioridade, _, _, fonte in sorted(candidatos):
+        yield prioridade == -1, fonte
 
 
 def preparar(pergunta, produtos, contexto, *, limite=12000) -> CircuitoPreparado:
@@ -298,8 +305,10 @@ def preparar(pergunta, produtos, contexto, *, limite=12000) -> CircuitoPreparado
 
     for fonte in _fontes_loja():
         incluir(fonte)
-    for fonte in _fontes_catalogo(pergunta, produtos):
-        incluir(fonte)
+    catalogo = tuple(_fontes_catalogo(pergunta, produtos))
+    for citado, fonte in catalogo:
+        if citado:
+            incluir(fonte)
     indice = 0
     for fonte in getattr(contexto, 'fontes', ()):
         if getattr(fonte, 'tipo', None) != 'conhecimento':
@@ -308,4 +317,7 @@ def preparar(pergunta, produtos, contexto, *, limite=12000) -> CircuitoPreparado
         trecho = getattr(fonte, 'trecho', None)
         if _nota_publicavel(trecho):
             incluir(Fonte(f'nota.{indice}', trecho))
+    for citado, fonte in catalogo:
+        if not citado:
+            incluir(fonte)
     return CircuitoPreparado(tuple(fontes), nome, segmento, limite)

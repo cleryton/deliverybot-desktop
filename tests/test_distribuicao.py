@@ -168,3 +168,91 @@ def test_limpeza_recusa_vinculo_para_fora(tmp_path):
     assert 'src/__pycache__' not in l.planejar(raiz)['remover']
     l.aplicar(raiz)
     assert (fora/'teste.pyc').exists()
+
+
+@pytest.mark.parametrize('nome', ['clientes.txt', 'manual.html', 'README.md'])
+def test_build_com_documento_desconhecido_nao_e_cache_descartavel(tmp_path, nome):
+    raiz = raiz_ficticia(tmp_path)
+    release(raiz, '3.1.0', True)
+    pasta = raiz/'build/DeliveryBot'
+    pasta.mkdir(parents=True)
+    (pasta/'Analysis-00.toc').write_bytes(b'cache ficticio')
+    particular = pasta/nome
+    particular.write_text('Documento particular fictício.', encoding='utf-8')
+    assert 'build/DeliveryBot' not in l.planejar(raiz)['remover']
+    l.aplicar(raiz)
+    assert particular.read_text(encoding='utf-8') == 'Documento particular fictício.'
+
+
+@pytest.mark.parametrize('nome', ['DeliveryBot', 'Funcionario', 'pyinstaller-v3.0.0'])
+def test_reconhece_somente_documentos_gerados_nos_builds(tmp_path, nome):
+    raiz = raiz_ficticia(tmp_path)
+    release(raiz, '3.1.0', True)
+    pasta = raiz/'build'/nome
+    pasta.mkdir(parents=True)
+    for arquivo in ('warn-DeliveryBot.txt', 'xref-DeliveryBot.html',
+                    'warn-Funcionario.txt', 'xref-Funcionario.html', 'Analysis-00.toc'):
+        (pasta/arquivo).write_bytes(b'cache ficticio')
+    assert 'build/' + nome in l.planejar(raiz)['remover']
+
+
+def test_caches_podem_ser_identificados_sem_distribuicao_completa(tmp_path):
+    raiz = raiz_ficticia(tmp_path)
+    cache = raiz/'build/Funcionario'
+    cache.mkdir(parents=True)
+    (cache/'warn-Funcionario.txt').write_text('Aviso gerado.', encoding='utf-8')
+    for nome in ('Desinstalar.exe', 'Desinstalar-Funcionario.exe'):
+        (raiz/'build'/nome).write_bytes(b'MZ executavel ficticio')
+    candidatos = l._caches_reconhecidos(raiz)
+    assert set(candidatos) == {cache, raiz/'build/Desinstalar.exe', raiz/'build/Desinstalar-Funcionario.exe'}
+    assert all(p.exists() for p in candidatos)
+    with pytest.raises(ValueError):
+        l.planejar(raiz)
+    with pytest.raises(ValueError):
+        l.aplicar(raiz)
+    assert all(p.exists() for p in candidatos)
+
+
+@pytest.mark.parametrize('nome', ['Desinstalar.exe', 'Desinstalar-Funcionario.exe'])
+def test_nome_do_desinstalador_sem_executavel_valido_e_preservado(tmp_path, nome):
+    raiz = raiz_ficticia(tmp_path)
+    pasta = raiz/'build'
+    pasta.mkdir()
+    particular = pasta/nome
+    particular.write_text('Documento particular.', encoding='utf-8')
+    assert particular not in l._caches_reconhecidos(raiz)
+
+
+def test_cache_conhecido_nao_aceita_vinculos_intermediarios(tmp_path, monkeypatch):
+    raiz = raiz_ficticia(tmp_path)
+    pasta = raiz/'build/Funcionario'
+    pasta.mkdir(parents=True)
+    (pasta/'Analysis-00.toc').write_bytes(b'cache ficticio')
+    original = l.vinculo
+    monkeypatch.setattr(l, 'vinculo', lambda p: p == pasta or original(p))
+    assert pasta not in l._caches_reconhecidos(raiz)
+
+
+def test_identificacao_de_cache_recusa_pasta_que_nao_seja_projeto(tmp_path):
+    with pytest.raises(ValueError, match='raiz do projeto'):
+        l._caches_reconhecidos(tmp_path)
+
+
+def test_distribuicao_recusa_vinculo_em_diretorio_intermediario(tmp_path, monkeypatch):
+    raiz = raiz_ficticia(tmp_path)
+    original = d.vinculo
+    monkeypatch.setattr(d, 'vinculo', lambda p: p == raiz/'docs' or original(p))
+    with pytest.raises(ValueError, match='vínculo'):
+        d.conferir_arquivo(raiz, 'docs/ACESSO REMOTO.md')
+    pacote = release(raiz, '3.1.0')
+    with pytest.raises(ValueError, match='vínculo'):
+        d.finalizar(pacote, raiz)
+    assert not (pacote/'VERSAO.json').exists()
+
+
+@pytest.mark.parametrize('nome', ['../VERSION', '/VERSION', 'C:/VERSION', 'docs/../VERSION',
+    'docs\\ACESSO REMOTO.md', 'docs//ACESSO REMOTO.md'])
+def test_fonte_da_distribuicao_deve_ser_caminho_relativo_simples(tmp_path, nome):
+    raiz = raiz_ficticia(tmp_path)
+    with pytest.raises(ValueError):
+        d.conferir_arquivo(raiz, nome)

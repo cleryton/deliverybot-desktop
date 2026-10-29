@@ -268,6 +268,47 @@ def test_limite_total_preserva_fonte_inteira_e_produto_relevante_no_fim():
             assert fonte.texto.endswith(original['descricao'].strip())
 
 
+@pytest.mark.parametrize('consulta', ['X-Salada', 'X Salada', 'XSalada', 'X_Salada'])
+def test_catalogo_grande_preserva_produto_citado_e_nota_relevante(consulta):
+    catalogo = [produto(nome=f'Lanche genérico {i}', descricao='Descrição cadastrada. ' * 12)
+                for i in range(1000)] + [produto(nome='X-Salada', preco=31.9)]
+    trecho = 'O X-Salada contém carne, queijo e salada.'
+    preparado = preparar(nota(trecho), produtos=catalogo,
+                         pergunta=f'Quanto custa {consulta} e quais os ingredientes?', limite=3000)
+    fontes = {f.id: f.texto for f in preparado.fontes}
+    assert 'catalogo.1001' in fontes and 'R$ 31,90' in fontes['catalogo.1001']
+    assert fontes['nota.1'] == trecho
+    assert len(preparado.instrucao()) <= 3000
+    texto = preparado.renderizar(proposta(fontes=['catalogo.1001', 'nota.1'])).texto
+    assert 'R$ 31,90' in texto and trecho in texto
+
+
+def test_item_nao_citado_nao_expulsa_conhecimento_do_orcamento():
+    catalogo = [produto(nome=f'Produto {i}', descricao='Descrição cadastrada. ' * 12)
+                for i in range(1000)]
+    trecho = 'Para trocar o produto, fale com a equipe da loja.'
+    preparado = preparar(nota(trecho), produtos=catalogo,
+                         pergunta='Como funciona a troca?', limite=2000)
+    assert preparado.renderizar(proposta(fontes=['nota.1'])).texto == trecho
+    assert len(preparado.instrucao()) <= 2000
+
+
+def test_variacao_com_nome_completo_tem_prioridade_sobre_coincidencias():
+    catalogo = [produto(nome='X-Salada família'), produto(nome='X-Salada')]
+    preparado = preparar(produtos=catalogo, pergunta='Quanto custa XSalada?')
+    ids = [f.id for f in preparado.fontes if f.id.startswith('catalogo.')]
+    assert ids.index('catalogo.2') < ids.index('catalogo.1')
+
+
+@pytest.mark.parametrize('prefixo', ['TESTE - ', 'DEMO: ', 'Fictício - '])
+def test_prefixo_de_catalogo_ficticio_nao_esconde_item_consultado(prefixo):
+    catalogo = [produto(nome=f'Produto {i}') for i in range(1000)]
+    catalogo.append(produto(nome=prefixo + 'X-Salada'))
+    preparado = preparar(produtos=catalogo, pergunta='Quanto custa XSalada?', limite=2000)
+    fonte = next(f for f in preparado.fontes if f.id == 'catalogo.1001')
+    assert fonte.texto.startswith(prefixo + 'X-Salada: R$ 22,00')
+
+
 def test_resposta_longa_falha_sem_cortar_preco_sentenças_ou_ressalvas():
     preparado = preparar(nota('O X-Salada contém carne e queijo. ' * 40),
                          nota('O X-Salada contém pão e salada. ' * 40))

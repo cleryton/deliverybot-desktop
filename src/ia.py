@@ -194,15 +194,12 @@ def _referencia_comercial(atual, regra):
                 or (_RELACAO_PRODUTO.search(atual) and escopo_loja.referencia(atual, regra)))
 
 
-def conhecimento_negocio(corpo: str, regra=None, *, produtos=None) -> bool:
-    """Triagem editorial conservadora, sem usar notas para ampliar o cadastro.
+def triagem_conhecimento(regra, produtos):
+    """Compila uma vez os nomes permitidos no retrato desta resposta.
 
-    Cada sentença factual precisa de vínculo próprio com a operação ou um
-    produto do perfil. Um texto ambíguo fica fora da inferência para revisão;
-    isso não verifica a veracidade de uma política aprovada pelo responsável.
+    O callback não consulta o banco nem retém o catálogo mutável. Não há cache
+    global de autorização: cada nova resposta prepara seu próprio retrato.
     """
-    produtos = cardapio.listar_produtos_ativos() if produtos is None else produtos
-    regra = regra or escopo_loja.politica(produtos)
     nomes = []
     for produto in escopo_loja.produtos_permitidos(produtos, regra):
         nome = re.sub(r'^(?:teste|demo|ficticio)\s*[-:]\s*', '',
@@ -210,6 +207,20 @@ def conhecimento_negocio(corpo: str, regra=None, *, produtos=None) -> bool:
         palavras = re.findall(r'[a-z0-9]+', nome)
         if palavras:
             nomes.append(re.compile(r'\b' + r'[\s_-]*'.join(map(re.escape, palavras)) + r'\b'))
+    nomes = tuple(nomes)
+    return lambda corpo: _conhecimento_referenciado(corpo, regra, nomes)
+
+
+def conhecimento_negocio(corpo: str, regra=None, *, produtos=None) -> bool:
+    """Preserva a consulta individual; inferência reutiliza a triagem por resposta."""
+    produtos = cardapio.listar_produtos_ativos() if produtos is None else produtos
+    regra = regra or escopo_loja.politica(produtos)
+    return triagem_conhecimento(regra, produtos)(corpo)
+
+
+def _conhecimento_referenciado(corpo, regra, nomes):
+    # Um assunto ambíguo fica fora da inferência para revisão. Isso não verifica
+    # a veracidade de uma política aprovada pelo responsável.
 
     def referencia_especifica(texto):
         return any(nome.search(texto) for nome in nomes)
@@ -773,7 +784,7 @@ def _responder_ollama(telefone: str, texto: str) -> str:
     regra = escopo_loja.politica(produtos)
     try:
         contexto = cerebro.contexto_revisado(
-            texto, aceitar_conhecimento=lambda corpo: conhecimento_negocio(corpo, regra, produtos=produtos),
+            texto, aceitar_conhecimento=triagem_conhecimento(regra, produtos),
             exigir_categoria=True,
         )
         circuito = circuito_comercial.preparar(

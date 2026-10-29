@@ -3,6 +3,7 @@ import hashlib
 import json
 import re
 import secrets
+import unicodedata
 from decimal import Decimal, InvalidOperation
 
 from . import config, estoque, pedidos
@@ -63,10 +64,31 @@ def abrir(uid, d):
     return _operacao(uid, d.get('chave'), {'acao': 'ABRIR', 'abertura': valor}, executar)
 
 
+def _forma_configurada(meio):
+    if not isinstance(meio, str) or meio not in {'DINHEIRO', 'PIX', 'CARTAO'}:
+        raise ValueError('Escolha Dinheiro, Pix ou Cartão.')
+    formas = [v.strip() for v in config.FORMAS_PAGAMENTO.split(',') if v.strip()]
+    if not formas:
+        raise ValueError('O responsável precisa configurar as formas de pagamento.')
+    grupos = {
+        'dinheiro': 'DINHEIRO', 'pix': 'PIX', 'cartao': 'CARTAO',
+        'cartao de credito': 'CARTAO', 'cartao de debito': 'CARTAO',
+        'cartao credito': 'CARTAO', 'cartao debito': 'CARTAO',
+        'credito': 'CARTAO', 'debito': 'CARTAO',
+    }
+    for forma in formas:
+        normalizada = ''.join(c for c in unicodedata.normalize('NFKD', forma.casefold())
+                              if not unicodedata.combining(c))
+        if grupos.get(' '.join(normalizada.split())) == meio:
+            # O terminal usa cartão genérico; preserva o primeiro rótulo de
+            # crédito/débito realmente cadastrado, sem inventar outra opção.
+            return forma
+    raise ValueError('Esta forma de pagamento não está configurada pela loja.')
+
+
 def _receber(c, turno, pedido, d):
     forma = d.get('forma')
-    if forma not in {'DINHEIRO', 'PIX', 'CARTAO'}:
-        raise ValueError('Escolha Dinheiro, Pix ou Cartão.')
+    rotulo = _forma_configurada(forma)
     total = centavos(pedido['total_pedido'])
     recebido = centavos(d.get('recebido')) if forma == 'DINHEIRO' else total
     if recebido < total:
@@ -74,7 +96,7 @@ def _receber(c, turno, pedido, d):
     if recebido - total > _saldo(c, turno):
         raise ValueError('O caixa não tem dinheiro suficiente para o troco. Registre suprimento ou escolha outro pagamento.')
     c.execute('INSERT INTO movimentos_caixa(caixa_id,pedido_id,tipo,forma,valor_centavos,recebido_centavos,troco_centavos) VALUES(?,?,\'VENDA\',?,?,?,?)', (turno['id'], pedido['id'], forma, total, recebido, recebido-total))
-    c.execute('UPDATE pedidos SET total_pago=?,atualizado_em=datetime(\'now\') WHERE id=?', (total / 100, pedido['id']))
+    c.execute('UPDATE pedidos SET total_pago=?,forma_pagamento=?,atualizado_em=datetime(\'now\') WHERE id=?', (total / 100, rotulo, pedido['id']))
     return {'recebido_centavos': recebido, 'troco_centavos': recebido-total}
 
 
@@ -95,12 +117,7 @@ def vender(uid, d):
         cotacao = pedidos._cotacao(total, itens, entrega)
         if d.get('cotacao') != cotacao:
             raise pedidos.CotacaoAlterada('O catálogo mudou. Revise o resumo e confirme novamente.')
-        formas = [v.strip() for v in config.FORMAS_PAGAMENTO.split(',') if v.strip()]
-        if not formas:
-            raise ValueError('O responsável precisa configurar as formas de pagamento.')
-        forma = {'DINHEIRO':'Dinheiro', 'PIX':'Pix', 'CARTAO':'Cartao de credito'}.get(d.get('forma'), formas[0])
-        if forma not in formas and forma != 'Cartao de credito':
-            raise ValueError('Esta forma de pagamento não está configurada pela loja.')
+        forma = _forma_configurada(d.get('forma'))
         p = pedidos.criar_pedido('balcao:' + secrets.token_hex(16), nome, d['itens'], forma, forma_entrega=entrega,endereco=endereco,_conn=c)
         c.execute("UPDATE pedidos SET origem='Balcão manual' WHERE id=?", (p['id'],))
         c.execute('INSERT INTO vendas_balcao(pedido_id,operador_id,caixa_id) VALUES(?,?,?)', (p['id'], uid, turno['id']))

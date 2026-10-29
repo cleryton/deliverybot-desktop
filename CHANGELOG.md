@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.48.1 — 2026-10-29
+
+Revisão de qualidade: preserva documentos desconhecidos na limpeza, valida vínculos das distribuições, reutiliza a triagem de notas por resposta, prioriza produtos e conhecimento relevantes em catálogos grandes, respeita meios de pagamento do caixa e impede quantidades ou cotações antigas no terminal. Limpeza local de arquivos gerados sem criar novas pastas de distribuição.
+
 ## 2.48.0 — 2026-10-28
 
 Circuito comercial fechado no Ollama: propostas estruturadas por fontes, respostas montadas pelo aplicativo, conhecimento aprovado com categoria explícita, revisão das notas antes de publicar e recusa de assuntos misturados. Preserva o cofre existente, os pedidos e as configurações; inclui testes de regressão com dados fictícios.

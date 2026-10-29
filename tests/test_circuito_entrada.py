@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src import cardapio, config, ia
+from src import cardapio, config, escopo_loja, ia
 
 
 @pytest.fixture(autouse=True)
@@ -106,8 +106,46 @@ def test_nota_nao_muda_catalogo_ou_perfil(lanchonete):
 
 def test_retrato_do_catalogo_evitaria_consulta_por_nota(lanchonete):
     produtos = lanchonete.return_value
-    from src import escopo_loja
     regra = escopo_loja.politica(produtos)
     lanchonete.reset_mock()
     assert ia.conhecimento_negocio('# Ingredientes\nO X-Salada contém queijo.', regra, produtos=produtos)
     lanchonete.assert_not_called()
+
+
+def test_catalogo_grande_e_compilado_uma_vez_para_varias_notas(monkeypatch, lanchonete):
+    produtos = [{'nome': f'Lanche Especial {i:04d}', 'categoria': 'Lanches'} for i in range(1000)]
+    regra = escopo_loja.politica(produtos)
+    compilar = Mock(wraps=ia.re.compile)
+    monkeypatch.setattr(ia.re, 'compile', compilar)
+    filtrar = Mock(wraps=escopo_loja.produtos_permitidos)
+    monkeypatch.setattr(escopo_loja, 'produtos_permitidos', filtrar)
+    lanchonete.reset_mock()
+    aceitar = ia.triagem_conhecimento(regra, produtos)
+    assert compilar.call_count == 1000
+    for _ in range(25):
+        assert aceitar('O Lanche Especial 0999 contém carne e queijo.')
+    assert compilar.call_count == 1000
+    filtrar.assert_called_once_with(produtos, regra)
+    lanchonete.assert_not_called()
+
+
+def test_triagem_captura_nomes_sem_reter_catalogo_mutavel(lanchonete):
+    produtos = [dict(p) for p in lanchonete.return_value]
+    aceitar = ia.triagem_conhecimento(escopo_loja.politica(produtos), produtos)
+    produtos[0]['nome'] = 'Outro lanche'
+    produtos.clear()
+    assert aceitar('O X-Salada contém queijo.')
+    assert not aceitar('O Outro lanche contém queijo.')
+
+
+def test_nova_resposta_prepara_triagem_do_novo_perfil(monkeypatch, lanchonete):
+    produtos_antes = lanchonete.return_value
+    anterior = ia.triagem_conhecimento(escopo_loja.politica(produtos_antes), produtos_antes)
+    monkeypatch.setattr(config, 'COMERCIO_SEGMENTO', 'Oficina mecânica')
+    monkeypatch.setattr(config, 'COMERCIO_DESCRICAO', 'Peças automotivas')
+    produtos_agora = [{'nome': 'Pneu urbano', 'categoria': 'Oficina'}]
+    atual = ia.triagem_conhecimento(escopo_loja.politica(produtos_agora), produtos_agora)
+    assert anterior('O X-Salada contém queijo.')
+    assert not atual('O X-Salada contém queijo.')
+    assert atual('O Pneu urbano é fornecido com embalagem.')
+    assert not anterior('O Pneu urbano é fornecido com embalagem.')

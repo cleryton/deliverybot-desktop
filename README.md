@@ -41,6 +41,8 @@ As integrações com WAHA externo e Meta continuam disponíveis. Dependências d
 
 Para manutenção, `python packaging/limpar_pasta.py` mostra o plano e `python packaging/limpar_pasta.py --aplicar` remove somente versões antigas e caches reconhecidos. É necessário ter uma distribuição atual completa e com integridade válida; a atual e a anterior válida são preservadas. Arquivos desconhecidos, distribuições futuras e diretórios com dados ou vínculos ficam de fora. Arquivos de testes em `artifacts/` precisam de revisão separada; não são apagados por essa ferramenta.
 
+A limpeza reconhece os builds dos dois aplicativos. Nos builds, documentos de texto e HTML só são descartáveis quando têm os nomes oficiais de diagnóstico do PyInstaller; arquivos como `clientes.txt` e `manual.html` são preservados. A conferência de uma distribuição também recusa vínculos em pastas intermediárias das fontes. Não remova `.env`, banco, cofre, sessões, backups ou alterações pendentes para fazer o Git parecer limpo: preserve primeiro o trabalho em uma recuperação local identificada.
+
 Uma página de pedidos não é hospedada em `<nome-da-loja>.whatsapp.com`. Use o endereço real gerado pela Cloudflare ou um domínio sob seu controle configurado em **Página de pedidos**. Respostas automáticas aceitam links privados gerados pelo aplicativo e links comerciais cadastrados; sites inventados pela IA são bloqueados. Links já enviados para endereços inexistentes não mudam: após atualizar, o cliente pode digitar **2** para receber um novo link.
 
 ## Desenvolvimento e compilação

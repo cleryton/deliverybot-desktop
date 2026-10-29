@@ -62,6 +62,25 @@ def test_ollama_so_seleciona_fontes_sem_ferramentas_ou_fatos_livres(monkeypatch)
     assert 'fontes' in chamada.call_args.args[0][0]['content']
 
 
+def test_ollama_compartilha_um_matcher_entre_as_notas_da_mesma_resposta(monkeypatch):
+    original = cerebro.contexto_revisado
+    preparar_triagem = Mock(wraps=ia.triagem_conhecimento)
+    notas_lidas = []
+
+    def selecionar(*args, **kwargs):
+        aceitar = kwargs['aceitar_conhecimento']
+        for _ in range(25):
+            notas_lidas.append(aceitar('O X-Salada contém queijo.'))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(ia, 'triagem_conhecimento', preparar_triagem)
+    monkeypatch.setattr(cerebro, 'contexto_revisado', selecionar)
+    monkeypatch.setattr(ia, '_chamar_ollama', Mock(return_value=proposta()))
+    assert 'Pix' in ia.responder(T, 'Quais formas de pagamento?')
+    assert notas_lidas == [True] * 25
+    preparar_triagem.assert_called_once()
+
+
 @pytest.mark.parametrize('conteudo', [
     'A Lua é um satélite natural da Terra.',
     'Nosso X-Salada custa R$22. Buracos negros atraem matéria.',
