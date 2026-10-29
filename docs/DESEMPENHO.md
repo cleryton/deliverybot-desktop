@@ -1,5 +1,11 @@
 # Desempenho do painel e do atendimento
 
+## Preparação de conhecimento e seleção de fontes — 2.48.1
+
+A triagem dos nomes de produtos passa a ser preparada uma vez por resposta e reutilizada entre as notas. Não existe cache global de autorização nem de aprovação: a resposta seguinte usa o perfil e o catálogo atuais, e as fontes continuam sendo reconferidas antes da publicação. O teste com 1.000 produtos e 25 notas verifica 1.000 compilações de padrões, em vez das 25.000 que a preparação por nota exigia, com uma filtragem do catálogo e sem consultas adicionais por nota. Isso mede trabalho evitado, não latência real do Ollama ou do WhatsApp.
+
+O registro limitado de fontes mantém os dados oficiais da loja e os produtos citados, depois o conhecimento relevante e, por último, outros produtos. Assim, itens sem relação com a pergunta deixam de ocupar todo o espaço antes das notas. Nomes como X-Salada, X Salada e XSalada recebem a mesma prioridade; prefixos de demonstração como TESTE não mudam o nome e o preço publicados. Os testes usam catálogos fictícios com 1.001 produtos e verificam o limite total, a preservação de fontes inteiras e os IDs disponíveis para a resposta.
+
 ## Respostas locais sem aguardar inferências — versão 2.46.0
 
 A fila mantém dois consumidores gerais e acrescenta um consumidor reservado para uma lista fechada de consultas locais. Saudações, agradecimentos e consultas simples conhecidas de outra pessoa podem ser processados mesmo com os dois consumidores gerais ocupados. A ordem de cada telefone continua obrigatória, inclusive quando uma mensagem anterior falhou ou aguarda conferência. Pedidos, links e confirmações contextuais não entram nessa lista. A busca do consumidor reservado examina até 64 candidatos por consulta; isso evita uma varredura ilimitada e pode adiar uma consulta rápida em filas maiores. A quantidade de inferências simultâneas não aumenta.

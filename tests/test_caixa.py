@@ -200,3 +200,115 @@ def test_obsidian_guia_caixa_nao_publica_financas_nem_entra_no_prompt(loja):
     cerebro.arquivo_inicio()
     assert nota.read_text(encoding='utf-8')==texto
     assert 'Preservar edição manual' not in cerebro.instrucoes_contexto('pedidos manuais caixa')
+
+
+@pytest.mark.parametrize('formas,meio,esperado',[
+    ('Pix','PIX','Pix'), ('  pIX  ','PIX','pIX'),
+    ('Dinheiro','DINHEIRO','Dinheiro'),
+    ('Cartão de crédito','CARTAO','Cartão de crédito'),
+    ('Cartão de débito','CARTAO','Cartão de débito'),
+    ('Cartao de debito,Pix','CARTAO','Cartao de debito'),
+    ('Cartão','CARTAO','Cartão'),
+    ('Pix,Cartão de débito,Cartão de crédito','CARTAO','Cartão de débito'),
+])
+def test_venda_usa_rotulo_real_do_meio_configurado(loja,monkeypatch,formas,meio,esperado):
+    monkeypatch.setattr(config,'FORMAS_PAGAMENTO',formas)
+    caixa.abrir(2,dict(chave=chave(),abertura=100))
+    r=caixa.vender(2,venda(loja,meio))
+    p=pedidos.obter_pedido(r['pedido_id'])
+    assert p['forma_pagamento']==esperado and p['total_pago']==12.30
+    with get_conn() as c:
+        movimento=c.execute("SELECT forma FROM movimentos_caixa WHERE pedido_id=? AND tipo='VENDA'",(p['id'],)).fetchone()
+    assert movimento['forma']==meio
+
+
+@pytest.mark.parametrize('formas,meio',[
+    ('Pix','CARTAO'), ('Pix','DINHEIRO'), ('Dinheiro','PIX'),
+    ('Dinheiro','CARTAO'), ('Cartão de crédito','PIX'),
+    ('Pix','INEXISTENTE'), ('Pix',None), ('Pix',True),
+    ('Aceitamos Pix somente após conferir','PIX'),
+])
+@pytest.mark.parametrize('pago',[False,True])
+def test_venda_recusa_meio_invalido_sem_pedido_estoque_ou_recebimento(loja,monkeypatch,formas,meio,pago):
+    monkeypatch.setattr(config,'FORMAS_PAGAMENTO',formas)
+    caixa.abrir(2,dict(chave=chave(),abertura=100))
+    d=venda(loja,meio,pago=pago)
+    with pytest.raises(ValueError,match='pagamento|Escolha'):
+        caixa.vender(2,d)
+    with get_conn() as c:
+        assert c.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0]==0
+        assert c.execute('SELECT COUNT(*) FROM clientes').fetchone()[0]==0
+        assert c.execute('SELECT COUNT(*) FROM movimentos_caixa').fetchone()[0]==0
+        assert c.execute('SELECT COUNT(*) FROM operacoes_caixa WHERE chave=?',(d['chave'],)).fetchone()[0]==0
+        assert c.execute('SELECT estoque FROM produtos WHERE id=?',(loja,)).fetchone()[0]==10
+
+
+def test_recebimento_atualiza_meio_real_e_preserva_livro_financeiro(loja):
+    caixa.abrir(2,dict(chave=chave(),abertura=100))
+    r=caixa.vender(2,venda(loja,'DINHEIRO',pago=False))
+    caixa.receber(2,r['pedido_id'],dict(chave=chave(),forma='PIX'))
+    p=pedidos.obter_pedido(r['pedido_id'])
+    assert p['forma_pagamento']=='Pix' and p['total_pago']==12.30
+    t=caixa.consultar(2)[0]
+    assert t['esperado_centavos']==10000 and t['recebimentos']['PIX']==1230
+    assert t['recebimentos']['DINHEIRO']==0 and t['pendente_centavos']==0
+    caixa.estornar(1,p['id'],dict(chave=chave(),devolucao_confirmada=True))
+    p=pedidos.obter_pedido(p['id'])
+    assert p['status']=='CANCELADO' and p['total_pago']==0 and p['forma_pagamento']=='Pix'
+    assert caixa.consultar(2)[0]['recebimentos']['PIX']==0
+
+
+def test_recebimento_de_pedido_legado_usa_configuracao_atual(loja,monkeypatch):
+    caixa.abrir(2,dict(chave=chave(),abertura=100))
+    r=caixa.vender(2,venda(loja,'DINHEIRO',pago=False))
+    with get_conn() as c:
+        c.execute("UPDATE pedidos SET forma_pagamento='VALE ALIMENTACAO (COOPCERTO CABAL)' WHERE id=?",(r['pedido_id'],))
+    monkeypatch.setattr(config,'FORMAS_PAGAMENTO','Cartão de débito')
+    caixa.receber(2,r['pedido_id'],dict(chave=chave(),forma='CARTAO'))
+    assert pedidos.obter_pedido(r['pedido_id'])['forma_pagamento']=='Cartão de débito'
+    assert caixa.consultar(2)[0]['recebimentos']['CARTAO']==1230
+
+
+@pytest.mark.parametrize('forma',[ 'PIX','CARTAO','INEXISTENTE',None ])
+def test_recebimento_recusa_meio_desabilitado_apos_venda_sem_alterar_pedido(loja,monkeypatch,forma):
+    caixa.abrir(2,dict(chave=chave(),abertura=100))
+    r=caixa.vender(2,venda(loja,'PIX',pago=False))
+    monkeypatch.setattr(config,'FORMAS_PAGAMENTO','Dinheiro')
+    antes=pedidos.obter_pedido(r['pedido_id'])
+    d=dict(chave=chave(),forma=forma)
+    with pytest.raises(ValueError,match='pagamento|Escolha'):
+        caixa.receber(2,r['pedido_id'],d)
+    assert pedidos.obter_pedido(r['pedido_id'])==antes
+    with get_conn() as c:
+        assert c.execute('SELECT COUNT(*) FROM movimentos_caixa').fetchone()[0]==0
+        assert c.execute('SELECT COUNT(*) FROM operacoes_caixa WHERE chave=?',(d['chave'],)).fetchone()[0]==0
+
+
+def test_retentativa_preserva_operacao_confirmada_apos_mudar_meios_da_loja(loja,monkeypatch):
+    caixa.abrir(2,dict(chave=chave(),abertura=100))
+    d=venda(loja,'PIX')
+    anterior=caixa.vender(2,d)
+    monkeypatch.setattr(config,'FORMAS_PAGAMENTO','Dinheiro')
+    assert caixa.vender(2,d)==anterior
+    assert pedidos.obter_pedido(anterior['pedido_id'])['forma_pagamento']=='Pix'
+    assert len(caixa.vendas(2))==1
+    with pytest.raises(ValueError,match='pagamento'):
+        caixa.vender(2,dict(d,chave=chave()))
+
+
+def test_recebimento_concorrente_e_repetido_nao_duplica_ou_reescreve_historico(loja,monkeypatch):
+    caixa.abrir(2,dict(chave=chave(),abertura=100))
+    r=caixa.vender(2,venda(loja,'DINHEIRO',pago=False))
+    d=dict(chave=chave(),forma='PIX')
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        resultados=list(pool.map(lambda _:caixa.receber(2,r['pedido_id'],d),range(3)))
+    assert resultados[0]==resultados[1]==resultados[2]
+    assert pedidos.obter_pedido(r['pedido_id'])['forma_pagamento']=='Pix'
+    monkeypatch.setattr(config,'FORMAS_PAGAMENTO','Dinheiro')
+    assert caixa.receber(2,r['pedido_id'],d)==resultados[0]
+    with pytest.raises(ValueError,match='já teve'):
+        caixa.receber(2,r['pedido_id'],dict(chave=chave(),forma='DINHEIRO',recebido=12.30))
+    assert pedidos.obter_pedido(r['pedido_id'])['forma_pagamento']=='Pix'
+    with get_conn() as c:
+        assert c.execute("SELECT COUNT(*) FROM movimentos_caixa WHERE pedido_id=? AND tipo='VENDA'",(r['pedido_id'],)).fetchone()[0]==1
+        assert c.execute('SELECT estoque FROM produtos WHERE id=?',(loja,)).fetchone()[0]==9

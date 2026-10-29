@@ -4,7 +4,7 @@ import hashlib
 import json
 import re
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 BINARIOS = ('Instalar-DeliveryBot.exe', 'DeliveryBot.exe', 'Instalar-DeliveryBot-Funcionario.exe', 'DeliveryBot-Funcionario.exe')
@@ -32,8 +32,20 @@ def vinculo(p):
 
 
 def conferir_arquivo(pasta, nome):
-    arquivo = pasta / nome
-    if vinculo(pasta) or vinculo(arquivo) or not arquivo.is_file():
+    pasta = Path(pasta)
+    if not isinstance(nome, str) or not nome or '\\' in nome or '\x00' in nome or ':' in nome:
+        raise ValueError('O arquivo da distribuição deve usar um caminho relativo simples.')
+    relativo = PurePosixPath(nome)
+    if relativo.is_absolute() or relativo.as_posix() != nome or '..' in relativo.parts:
+        raise ValueError('O arquivo da distribuição deve usar um caminho relativo simples.')
+    arquivo = pasta
+    if vinculo(pasta):
+        raise ValueError('A pasta da distribuição não pode ser um vínculo.')
+    for parte in relativo.parts:
+        arquivo = arquivo/parte
+        if vinculo(arquivo):
+            raise ValueError(f'O caminho da distribuição não pode conter vínculo: {nome}')
+    if not arquivo.is_file():
         raise ValueError(f'Arquivo regular obrigatório ausente: {nome}')
     if nome in BINARIOS:
         with arquivo.open('rb') as f:

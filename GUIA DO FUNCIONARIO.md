@@ -1,5 +1,9 @@
 # DeliveryBot Funcionário
 
+As formas de pagamento precisam estar habilitadas pelo responsável na loja. Um recebimento por Pix, dinheiro ou cartão atualiza o meio registrado no pedido, junto do movimento de caixa. Uma opção desativada é recusada antes de gravar a venda ou o recebimento. Operações já confirmadas continuam disponíveis para conferência, mesmo após uma mudança de configuração.
+
+Ao editar uma quantidade, revise novamente os valores antes de confirmar. Campos vazios, zero, negativos ou frações inválidas impedem o registro; uma cotação que chega depois de você alterar o carrinho é descartada. O aplicativo mantém o restante do pedido para correção.
+
 Aplicativo Windows separado para registrar pedidos de balcão e conferir o caixa individual. Usa o catálogo e o banco do aplicativo do responsável pela rede privada da loja. Não exige Docker, Python, Node.js, Obsidian ou Ollama no computador do funcionário. O Microsoft Edge WebView2 precisa estar disponível, assim como no aplicativo principal.
 
 ## Preparar no computador do responsável
