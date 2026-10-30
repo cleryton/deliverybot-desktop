@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.48.1
+# DeliveryBot Desktop 2.49.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 

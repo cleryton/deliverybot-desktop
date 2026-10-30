@@ -16,6 +16,10 @@ from src.db import init_db
     ('qual o horario no feriado e o endereco', []),
     ('qual o horario e quem ganhou o jogo', []),
     ('o endereco e quanto tempo demora', []),
+    ('qual o horario de entrega', []),
+    ('qual o horario de retirada', []),
+    ('qual o preco do X-Salada e o horario', []),
+    ('qual o horario e aceitam vale refeicao', []),
 ])
 def test_pergunta_so_e_direta_quando_todos_os_trechos_sao_conhecidos(pergunta, esperado):
     assert bot._perguntas_diretas(pergunta) == esperado

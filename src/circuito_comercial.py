@@ -76,6 +76,8 @@ class CircuitoPreparado:
     _nome: str
     _segmento: str
     _limite: int
+    _esclarecer: str = _RESPOSTAS['esclarecer']
+    _focado: bool = False
 
     def instrucao(self) -> str:
         """Expõe somente o registro público, sem perguntas, caminhos ou hashes."""
@@ -84,6 +86,8 @@ class CircuitoPreparado:
             'loja': {'nome': self._nome, 'segmento': self._segmento},
             'fontes': [{'id': f.id, 'texto': f.texto} for f in self.fontes],
         }
+        if self._focado:
+            dados['esclarecimento'] = self._esclarecer
         return _INSTRUCAO + _json(dados)
 
     def renderizar(self, raw) -> Proposta:
@@ -113,7 +117,8 @@ class CircuitoPreparado:
         else:
             if ids:
                 raise ValueError(_ERRO)
-            texto = _ABERTURAS[tom] + _RESPOSTAS[acao]
+            resposta = self._esclarecer if acao == 'esclarecer' else _RESPOSTAS[acao]
+            texto = _ABERTURAS[tom] + resposta
         if len(texto) > _MAX_RESPOSTA:
             # Não corta frases, preços ou uma ressalva de segurança da fonte.
             raise ValueError(_ERRO)
@@ -276,7 +281,165 @@ def _fontes_catalogo(pergunta, produtos):
         yield prioridade == -1, fonte
 
 
-def preparar(pergunta, produtos, contexto, *, limite=12000) -> CircuitoPreparado:
+_ASPECTOS = frozenset({'preco', 'descricao', 'garantia', 'troca', 'disponibilidade',
+                      'catalogo', 'pedido', 'horario', 'endereco', 'contato',
+                      'pagamento', 'entrega', 'prazo', 'promocao'})
+_TEMAS_NOTAS = {
+    'descricao': re.compile(r'\b(?:ingredientes?|composicao|contem|compost[oa]|feito|'
+                           r'fabricad[oa]|preparad[oa]|acompanha|leva|descricao|'
+                           r'caracteristicas?|tamanhos?|cores?|sabores?|variacoes?|'
+                           r'alergenos?|lactose|gluten)\b'),
+    'troca': re.compile(r'\b(?:trocas?|trocar|devolucoes?|devolucao|devolver|reembolso)\b'),
+    'garantia': re.compile(r'\b(?:garantias?)\b'),
+}
+_CONDICAO_POLITICA = re.compile(
+    r'\b(?:comprovante|nota fiscal|embalagem original|lacrad[oa]s?|analise|'
+    r'apresente|apresentar|mediante|necessari[oa]s?|condicoes?|exigimos|exige)\b'
+)
+_DIVIDIR_NOTA = re.compile(
+    r'[.!?;\n]+\s*|\s+(?:mas|tambem|alem disso|e tambem)\s+|'
+    r'\s+e\s+(?=(?:temos|vendemos|oferecemos|fazemos|trabalhamos|encomende|compre)\b)'
+)
+
+
+def _padroes_produtos(produtos):
+    nomes = []
+    for indice, produto in enumerate(produtos, 1):
+        if not isinstance(produto, dict):
+            continue
+        nome = re.sub(r'^(?:teste|demo|ficticio)\s*[-:]\s*', '',
+                      _normalizar(_texto(produto.get('nome'))))
+        palavras = re.findall(r'[a-z0-9]+', nome)
+        if palavras:
+            nomes.append((indice, re.compile(r'\b' + r'[\s_-]*'.join(map(re.escape, palavras)) + r'\b')))
+    return tuple(nomes)
+
+
+def _produtos_citados(texto, nomes):
+    encontrados = [(m.start(), m.end(), indice) for indice, padrao in nomes
+                   for m in padrao.finditer(texto)]
+    maiores = []
+    for inicio, fim, indice in sorted(encontrados, key=lambda m: -(m[1] - m[0])):
+        if not any(inicio >= a and fim <= b and (inicio, fim) != (a, b)
+                   for a, b, _ in maiores):
+            maiores.append((inicio, fim, indice))
+    return {indice for _, _, indice in maiores}
+
+
+def _nota_relevante(trecho, aspectos, produto_ids, nomes):
+    """Aceita o trecho inteiro ou o exclui; condições nunca são recortadas."""
+    permitidos = set(_TEMAS_NOTAS) & aspectos
+    if not permitidos:
+        return False
+    texto = _normalizar(trecho)
+    citados = _produtos_citados(texto, nomes)
+    if citados - produto_ids:
+        return False
+    frases = [re.sub(r'^\s*(?:#{1,6}|[-*+]|\d+[.)])\s*', '', f).strip()
+              for f in _DIVIDIR_NOTA.split(texto) if f.strip()]
+    temas_nota = {tema for tema, padrao in _TEMAS_NOTAS.items() if padrao.search(texto)}
+    if not temas_nota or temas_nota - permitidos:
+        return False
+    if 'descricao' in temas_nota and not (citados & produto_ids):
+        return False
+    for frase in frases:
+        temas = {tema for tema, padrao in _TEMAS_NOTAS.items() if padrao.search(frase)}
+        if temas - permitidos:
+            return False
+        if temas:
+            if temas == {'descricao'} and not _produtos_citados(frase, nomes):
+                # Um título pode organizar a composição sem repetir o nome.
+                if not re.fullmatch(r'(?:ingredientes|composicao|alergenos|descricao|'
+                                    r'tamanhos|cores|sabores|variacoes)', frase):
+                    return False
+        else:
+            nome_titulo = re.sub(r'^(?:o|a)\s+', '', frase)
+            if any(indice in produto_ids and padrao.fullmatch(nome_titulo) for indice, padrao in nomes):
+                continue
+            if not (permitidos & {'troca', 'garantia'} and _CONDICAO_POLITICA.search(frase)):
+                return False
+    return True
+
+
+def _dados_foco(foco, produtos):
+    aspectos = getattr(foco, 'aspectos', None)
+    ids = getattr(foco, 'produto_ids', None)
+    esclarecer = getattr(foco, 'esclarecer', None)
+    if (not isinstance(aspectos, frozenset) or aspectos - _ASPECTOS
+            or not isinstance(ids, tuple) or any(type(i) is not int or not 1 <= i <= len(produtos) for i in ids)
+            or len(set(ids)) != len(ids) or not isinstance(esclarecer, str)
+            or esclarecer != _texto(esclarecer) or len(esclarecer) > 512
+            or esclarecer.count('?') > 1 or _LINK_OU_COMANDO.search(_normalizar(esclarecer))):
+        raise ValueError('O foco da consulta comercial é inválido.')
+    return aspectos, frozenset(ids), esclarecer
+
+
+def _esclarecimento_produto(aspectos, produto_ids, produtos):
+    detalhes = {'preco': 'o preço', 'descricao': 'os detalhes', 'garantia': 'a garantia',
+                'troca': 'a política de troca', 'disponibilidade': 'a disponibilidade',
+                'promocao': 'as promoções'}
+    solicitados = aspectos & set(detalhes)
+    detalhe = detalhes[next(iter(solicitados))] if len(solicitados) == 1 else 'as informações'
+    complemento = 'dos produtos selecionados'
+    if len(produto_ids) == 1:
+        produto = produtos[next(iter(produto_ids)) - 1]
+        nome = _texto(produto.get('nome')) if isinstance(produto, dict) else ''
+        complemento = f'de {nome}' if nome and len(nome) <= 160 and '?' not in nome else 'do produto selecionado'
+    return f'Quer confirmar com a equipe {detalhe} {complemento}?'
+
+
+def _fontes_focadas(produtos, contexto, aspectos, produto_ids):
+    prazo_pedido = 'prazo' in aspectos and ('entrega' in aspectos or not aspectos & {'troca', 'garantia'})
+    if prazo_pedido:
+        prazo = 'Para confirmar o prazo de entrega ou retirada, fale com a equipe da loja.'
+        taxa = _dinheiro(config.TAXA_ENTREGA) if {'preco', 'entrega'} <= aspectos else ''
+        yield Fonte('loja.entrega', (f'Taxa de entrega cadastrada: {taxa}. ' if taxa else '') + prazo)
+    for fonte in _fontes_loja():
+        aspecto = fonte.id.removeprefix('loja.')
+        if aspecto in aspectos and not (aspecto == 'entrega' and prazo_pedido):
+            yield fonte
+    for indice, produto in enumerate(produtos, 1):
+        if not isinstance(produto, dict) or (indice not in produto_ids and
+                                           not ('catalogo' in aspectos and not produto_ids)):
+            continue
+        nome = _texto(produto.get('nome'))
+        if not nome:
+            continue
+        partes = []
+        if 'preco' in aspectos:
+            preco = _dinheiro(produto.get('preco'))
+            if preco:
+                partes.append(preco)
+        if 'descricao' in aspectos:
+            descricao = _texto(produto.get('descricao'))
+            outros = {tema for tema, padrao in _TEMAS_NOTAS.items()
+                      if tema != 'descricao' and padrao.search(_normalizar(descricao))}
+            if _nota_publicavel(descricao) and not outros - aspectos:
+                partes.append(descricao)
+        if 'disponibilidade' in aspectos:
+            saldo = produto.get('estoque')
+            if type(saldo) in (int, float) and 0 <= saldo <= 999999:
+                partes.append(f'Saldo cadastrado: {saldo} {_texto(produto.get("unidade")) or "un"}')
+            else:
+                partes.append('Item cadastrado no catálogo da loja.')
+        if partes:
+            yield Fonte(f'catalogo.{indice}', f'{nome}: ' + '. '.join(partes))
+        elif 'catalogo' in aspectos:
+            yield Fonte(f'catalogo.{indice}', nome)
+    if not aspectos & set(_TEMAS_NOTAS):
+        return
+    nomes = _padroes_produtos(produtos)
+    indice = 0
+    for fonte in getattr(contexto, 'fontes', ()):
+        if getattr(fonte, 'tipo', None) != 'conhecimento':
+            continue
+        indice += 1
+        trecho = getattr(fonte, 'trecho', None)
+        if _nota_publicavel(trecho) and _nota_relevante(trecho, aspectos, produto_ids, nomes):
+            yield Fonte(f'nota.{indice}', trecho)
+
+
+def preparar(pergunta, produtos, contexto, *, limite=12000, foco=None) -> CircuitoPreparado:
     """Congela somente fatos públicos; a pergunta não é guardada no registro.
 
     ``contexto`` é o ContextoRevisado conferido pelo cérebro. Seus trechos de
@@ -288,7 +451,13 @@ def preparar(pergunta, produtos, contexto, *, limite=12000) -> CircuitoPreparado
             or not isinstance(limite, int) or not 0 < limite <= _MAX_CONTEXTO):
         raise ValueError('Limite inválido para as fontes comerciais.')
     nome, segmento = _texto(config.NOME_RESTAURANTE), _texto(config.COMERCIO_SEGMENTO)
-    registro = CircuitoPreparado((), nome, segmento, limite)
+    aspectos, ids, esclarecer = _dados_foco(foco, produtos) if foco is not None else (frozenset(), frozenset(), '')
+    orientacao = esclarecer or _RESPOSTAS['esclarecer']
+    if not esclarecer and ids:
+        orientacao = _esclarecimento_produto(aspectos, ids, produtos)
+    if not esclarecer and 'prazo' in aspectos and ('entrega' in aspectos or not aspectos & {'troca', 'garantia'}):
+        orientacao = 'Para confirmar o prazo de entrega ou retirada, fale com a equipe da loja.'
+    registro = CircuitoPreparado((), nome, segmento, limite, orientacao, foco is not None)
     tamanho = len(registro.instrucao())
     if tamanho > limite:
         raise ValueError('O limite não comporta o contrato comercial.')
@@ -302,6 +471,12 @@ def preparar(pergunta, produtos, contexto, *, limite=12000) -> CircuitoPreparado
         if tamanho + adicional <= limite:
             fontes.append(fonte)
             tamanho += adicional
+
+    if foco is not None:
+        if not esclarecer:
+            for fonte in _fontes_focadas(produtos, contexto, aspectos, ids):
+                incluir(fonte)
+        return CircuitoPreparado(tuple(fontes), nome, segmento, limite, orientacao, True)
 
     for fonte in _fontes_loja():
         incluir(fonte)

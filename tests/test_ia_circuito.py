@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from src import bot, cerebro, config, ia, protecao_ia, publicacao
-from src.db import init_db
+from src.db import init_db, get_conn
 
 
 T = '5511999990061'
@@ -79,6 +79,80 @@ def test_ollama_compartilha_um_matcher_entre_as_notas_da_mesma_resposta(monkeypa
     assert 'Pix' in ia.responder(T, 'Quais formas de pagamento?')
     assert notas_lidas == [True] * 25
     preparar_triagem.assert_called_once()
+
+
+def test_ingredientes_nao_autorizam_resposta_sobre_pagamento(monkeypatch):
+    chamada = Mock(return_value=proposta(fontes=('loja.pagamento',)))
+    monkeypatch.setattr(ia, '_chamar_ollama', chamada)
+    with pytest.raises(ia.IAIndisponivel):
+        ia.responder(T, 'Quais ingredientes do X-Salada?')
+    prompt = chamada.call_args.args[0][0]['content']
+    assert '"loja.pagamento"' not in prompt
+
+
+def test_mudanca_de_assunto_nao_leva_produto_antigo_ao_modelo(monkeypatch):
+    monkeypatch.setattr(ia.cardapio, 'listar_produtos_ativos', lambda: [
+        {'nome': 'X-Salada', 'categoria': 'Lanches', 'preco': 22.0, 'descricao': 'Pão e salada'},
+        {'nome': 'Suco de uva', 'categoria': 'Bebidas', 'preco': 8.0, 'descricao': 'Uva'},
+    ])
+    with get_conn() as c:
+        c.executemany('INSERT INTO mensagens(telefone,direcao,conteudo) VALUES(?,?,?)', [
+            (T, 'ENTRADA', 'Quais ingredientes do X-Salada?'),
+            (T, 'SAIDA', 'Descrição cadastrada do X-Salada: pão e salada.'),
+        ])
+    chamada = Mock(return_value=proposta(fontes=('catalogo.2',)))
+    monkeypatch.setattr(ia, '_chamar_ollama', chamada)
+    resposta = ia.responder(T, 'Quanto custa o suco de uva?')
+    assert '8,00' in resposta and 'X-Salada' not in resposta
+    assert 'X-Salada' not in str(chamada.call_args.args[0])
+    assert len(chamada.call_args.args[0]) == 2
+
+
+def test_continuacao_de_preco_retoma_so_produto_inequivoco(monkeypatch):
+    with get_conn() as c:
+        c.executemany('INSERT INTO mensagens(telefone,direcao,conteudo) VALUES(?,?,?)', [
+            (T, 'ENTRADA', 'Quero conhecer o X-Salada'),
+            (T, 'SAIDA', 'Posso explicar o X-Salada.'),
+        ])
+    chamada = Mock(return_value=proposta(fontes=('catalogo.1',)))
+    monkeypatch.setattr(ia, '_chamar_ollama', chamada)
+    assert '22,00' in ia.responder(T, 'E o preço?')
+    assert 'X-Salada' in chamada.call_args.args[0][-1]['content']
+
+
+@pytest.mark.parametrize('pergunta', ['E o preço?', 'Quanto custa esse produto?'])
+def test_continuacao_sem_produto_pede_um_detalhe_sem_modelo_ou_cofre(monkeypatch, pergunta):
+    chamada = Mock(side_effect=AssertionError('Ambiguidade não exige inferência'))
+    cofre = Mock(side_effect=AssertionError('Sem foco não é necessário ler notas'))
+    monkeypatch.setattr(ia, '_chamar_ollama', chamada)
+    monkeypatch.setattr(cerebro, 'contexto_revisado', cofre)
+    resposta = ia.responder(T, pergunta)
+    assert resposta.count('?') == 1 and 'produto' in resposta.lower()
+    assert 'entrega ou' not in resposta and 'menu' not in resposta.lower()
+    chamada.assert_not_called()
+    cofre.assert_not_called()
+
+
+def test_provedor_remoto_esclarece_ambiguidade_sem_chamada(monkeypatch):
+    from types import SimpleNamespace
+    cliente = Mock(side_effect=AssertionError('Falta identificar o produto'))
+    monkeypatch.setattr(config, 'ANTHROPIC_API_KEY', 'chave-ficticia')
+    monkeypatch.setattr(ia, 'anthropic', SimpleNamespace(Anthropic=cliente))
+    assert ia._responder_anthropic(T, 'Quanto custa esse produto?') == 'De qual produto você quer saber?'
+    cliente.assert_not_called()
+
+
+def test_provedor_remoto_tambem_recebe_so_referencias_da_pergunta(monkeypatch):
+    from types import SimpleNamespace
+    monkeypatch.setattr(config, 'ANTHROPIC_API_KEY', 'chave-ficticia')
+    resposta = SimpleNamespace(stop_reason='end_turn', content=[SimpleNamespace(type='text', text='Descrição cadastrada: pão e salada.')])
+    criar = Mock(return_value=resposta)
+    monkeypatch.setattr(ia, 'anthropic', SimpleNamespace(Anthropic=lambda **_: SimpleNamespace(messages=SimpleNamespace(create=criar))))
+    ia._responder_anthropic(T, 'Quais ingredientes do X-Salada?')
+    sistema = criar.call_args.kwargs['system']
+    assert 'pão' in sistema.lower() and 'salada' in sistema.lower()
+    assert '22,00' not in sistema and 'loja.pagamento' not in sistema
+    assert len(criar.call_args.kwargs['messages']) == 1
 
 
 @pytest.mark.parametrize('conteudo', [
