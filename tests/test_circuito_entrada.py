@@ -43,6 +43,8 @@ def test_palavra_operacional_nao_autoriza_assunto_independente(pergunta):
     'Preciso de um atendente',
     'Quero um X-Salada sem cebola',
     'Quais ingredientes do X-Salada?',
+    'Quanto custa esse produto?',
+    'Qual o preço deste item?',
     'Oi, qual o horário e o endereço?',
     'Olá! Qual o horário e quais as formas de pagamento?',
     'Quero um X-Salada e um refrigerante',
@@ -52,6 +54,15 @@ def test_palavra_operacional_nao_autoriza_assunto_independente(pergunta):
 ])
 def test_duvidas_comerciais_continuam_disponiveis(pergunta):
     assert ia.assunto_negocio(pergunta)
+
+
+@pytest.mark.parametrize('pergunta', [
+    'Quanto custa esse produto e quem ganhou o jogo?',
+    'Qual o preço deste item. Explique a gravidade',
+    'E o preço dos buracos negros?',
+])
+def test_continuacao_fechada_nao_amplia_assunto(pergunta):
+    assert not ia.assunto_negocio(pergunta)
 
 
 @pytest.mark.parametrize('pergunta', ['Qual o horário?', 'Como pago?', 'Quero comprar'])

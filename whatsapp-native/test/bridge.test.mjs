@@ -22,6 +22,13 @@ async function fixture(t,extra={}){
 const message=(id,text='Oi',jid='5547999990000@s.whatsapp.net')=>({key:{id,remoteJid:jid,fromMe:false},message:{conversation:text}});
 const accepted=()=>({ok:true,json:async()=>({status:'recebido'})});
 
+async function waitForQr(bridge){
+  // A geração do PNG varia entre computadores; um estado incorreto ainda falha.
+  const limit=Date.now()+3000;
+  while(bridge.status!=='SCAN_QR_CODE'&&Date.now()<limit)await new Promise(r=>setTimeout(r,10));
+  assert.equal(bridge.status,'SCAN_QR_CODE');
+}
+
 test('envia PDF em memória com legenda e destino LID, sem URL pública',async t=>{
   const bridge=await fixture(t);let enviado;
   bridge.status='WORKING';bridge.socket={end:()=>{},sendMessage:async(jid,body)=>{enviado={jid,body};return {key:{id:'PDF-TESTE'},message:{documentMessage:{fileName:body.fileName}}};}};
@@ -73,10 +80,7 @@ test('API local exige chave e Host local, sem CORS',async t=>{
 });
 test('gera QR e preserva sessão pausada entre aberturas',async t=>{
   const bridge=await fixture(t);await bridge.start();
-  // A geração do PNG pode variar entre computadores; aguarda o estado com prazo limitado.
-  const limit=Date.now()+3000;
-  while(bridge.status!=='SCAN_QR_CODE'&&Date.now()<limit)await new Promise(r=>setTimeout(r,10));
-  assert.equal(bridge.status,'SCAN_QR_CODE');assert.equal(bridge.qr.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  await waitForQr(bridge);assert.equal(bridge.qr.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
   await bridge.stop();await bridge.close();
   const second=new WhatsAppBridge({directory:bridge.directory,callback:bridge.callback,...fakeDependencies()});
   await second.initialize();t.after(()=>second.close());assert.equal(second.status,'STOPPED');assert.equal(second.enabled,false);
@@ -133,5 +137,5 @@ test('sessão expirada pede nova leitura do QR e não entra em loop',async t=>{
   await bridge.connection(bridge.socket,{connection:'close',lastDisconnect:{error:{output:{statusCode:401}}}});
   assert.equal(bridge.status,'FAILED');assert.equal(bridge.enabled,false);assert.equal(bridge.needsPairing,true);
   const saved=JSON.parse(await readFile(join(bridge.directory,'session.json')));assert.equal(saved.needsPairing,true);
-  await bridge.start();await new Promise(r=>setTimeout(r,90));assert.equal(bridge.status,'SCAN_QR_CODE');
+  await bridge.start();await waitForQr(bridge);
 });

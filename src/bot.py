@@ -4,7 +4,7 @@ import re
 import threading
 import time
 
-from . import cardapio, config, ia, protecao_ia
+from . import cardapio, config, escopo_loja, foco_atendimento, ia, protecao_ia
 from .links import gerar_link_pedido
 
 logger = logging.getLogger(__name__)
@@ -123,6 +123,20 @@ def _resposta_rapida(telefone: str, texto: str) -> str | None:
     # Perguntas sobre feriados, cobertura, pagamento específico ou exceções
     # precisam de contexto: o cadastro geral não confirma essas condições.
     excepcao = re.search(r"\b(hoje|agora|feriado|amanha|domingo|bairro|gratis|gratuito|parcel|prazo)\w*\b", comando)
+    if opcoes:
+        try:
+            foco = _foco_da_consulta(texto)
+        except (OSError, ValueError):
+            return None
+        cobertos = set().union(*({'1': {'horario'}, '3': {'pagamento'}, '4': {'catalogo'},
+                                  '5': {'contato'}, '6': {'promocao'}, '7': {'entrega', 'preco'},
+                                  '8': {'endereco'}}[opcao] for opcao in opcoes))
+        aspectos = foco.aspectos - ({'pedido'} if quer_pedido else set())
+        # O cadastro de um campo não responde outro assunto nem apaga uma
+        # segunda pergunta: "horário de entrega" não é funcionamento da loja.
+        if (foco.esclarecer or not aspectos <= cobertos
+                or foco.produto_ids and aspectos & {'preco', 'descricao', 'disponibilidade', 'garantia', 'troca'}):
+            return None
     if quer_pedido:
         if excepcao:
             return None
@@ -141,12 +155,19 @@ def _resposta_rapida(telefone: str, texto: str) -> str | None:
     if not opcoes and re.search(r"\b(quanto|preco|valor|custa|custam)\b", comando):
         consulta = " ".join(re.sub(r"[^\w]+", " ", comando).split())
         produtos = []
-        for produto in cardapio.listar_produtos_ativos():
+        catalogo = cardapio.listar_produtos_ativos()
+        for produto in catalogo:
             nome = " ".join(re.sub(r"[^\w]+", " ", ia.normalizar_texto(produto["nome"])).split())
             if nome and re.search(r"(?<!\w)" + re.escape(nome) + r"(?!\w)", consulta):
                 produtos.append(produto)
         if len(produtos) == 1:
             produto = produtos[0]
+            try:
+                foco = _foco_da_consulta(texto, produtos=catalogo)
+            except (OSError, ValueError):
+                return None
+            if foco.esclarecer or foco.aspectos - {'preco'}:
+                return None
             preco = f"{produto['preco']:.2f}".replace(".", ",")
             unidade = produto.get("unidade") or "un"
             return f"{produto['nome']} custa R$ {preco}/{unidade}. Você confere o valor e a disponibilidade ao confirmar o pedido."
@@ -183,13 +204,39 @@ def _perguntas_diretas(comando: str) -> list[str]:
     return opcoes
 
 
+def _foco_da_consulta(texto, *, mensagens=(), produtos=None):
+    if produtos is None:
+        produtos = cardapio.listar_produtos_ativos()
+    permitidos = escopo_loja.produtos_permitidos(produtos)
+    return foco_atendimento.resolver(texto, permitidos, mensagens=mensagens)
+
+
 def _processar_mensagem_menu_fixo(telefone: str, texto_limpo: str) -> str:
     """Reserva natural: o atendimento continua mesmo quando a IA falha."""
     resposta_opcao = _resposta_rapida(telefone, texto_limpo)
     if resposta_opcao is not None:
         return resposta_opcao
 
-    return "Me conta um pouco mais: você quer saber sobre um produto, entrega ou fazer um pedido? Se preferir uma pessoa da equipe, digite ATENDENTE."
+    try:
+        foco = _foco_da_consulta(texto_limpo, mensagens=ia._historico_mensagens(telefone))
+    except (OSError, ValueError):
+        return 'Me conta: qual informação da loja você quer confirmar?'
+    if foco.esclarecer:
+        return foco.esclarecer
+    assunto = foco.assunto
+    if assunto == 'geral' and 'entrega' in foco.aspectos:
+        assunto = 'entrega'
+    if assunto == 'entrega':
+        return 'Essa condição de entrega ou retirada precisa ser confirmada com a equipe. Quer falar com ATENDENTE?'
+    if assunto == 'pagamento':
+        return 'Essa forma de pagamento precisa ser confirmada com a equipe. Quer falar com ATENDENTE?'
+    if assunto == 'produto':
+        return 'Essa informação do produto precisa ser confirmada com a equipe. Quer falar com ATENDENTE?'
+    if assunto == 'politica':
+        return 'Essa condição da loja precisa ser confirmada com a equipe. Quer falar com ATENDENTE?'
+    if assunto == 'horario':
+        return 'Esse horário específico precisa ser confirmado com a equipe. Quer falar com ATENDENTE?'
+    return 'Me conta: qual informação da loja você quer confirmar?'
 
 
 def processar_mensagem(telefone: str, texto: str) -> str | None:

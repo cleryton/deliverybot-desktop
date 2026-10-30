@@ -147,9 +147,15 @@ Pontos de leitura: [diretorio](../../src/cerebro.py#L258), [arquivo_inicio](../.
 
 ### src/circuito_comercial.py
 
-Limita o atendimento Ollama a uma proposta com ação, referências e tom. `preparar()` congela fontes públicas do cadastro e conhecimento revisado, com limite de contexto. `CircuitoPreparado.renderizar()` valida JSON, campos, tipos e IDs, e monta a mensagem usando somente as fontes disponíveis. Texto livre, referências desconhecidas, valores de notas que substituam o cadastro e respostas acima do limite são recusados. O módulo não acessa banco, arquivos, rede ou pedidos; a execução da ação continua em `ia.py`.
+Limita o atendimento Ollama a uma proposta com ação, referências e tom. `preparar()` congela fontes públicas do cadastro e conhecimento revisado, com limite de contexto. Quando recebe o foco da consulta, seleciona apenas os produtos e aspectos pedidos; preço e descrição não são expostos juntos sem necessidade. Notas pertinentes são mantidas inteiras, sem cortar condições. `CircuitoPreparado.renderizar()` valida JSON, campos, tipos e IDs, e monta a mensagem usando somente as fontes disponíveis. Texto livre, referências desconhecidas, valores de notas que substituam o cadastro e respostas acima do limite são recusados. O módulo não acessa banco, arquivos, rede ou pedidos; a execução da ação continua em `ia.py`.
 
 Pontos de leitura: [contrato e renderização](../../src/circuito_comercial.py), [testes do circuito](../../tests/test_circuito_comercial.py) e [integração do Ollama](../../tests/test_ia_circuito.py).
+
+### src/foco_atendimento.py
+
+`resolver()` extrai o assunto atual, os aspectos perguntados e as posições dos produtos no retrato permitido do catálogo. Uma continuação curta só recupera um produto identificado pelo cliente, sem atravessar uma mudança de assunto ou confirmação ambígua. `Foco.historico()` limita os antecedentes necessários; a pergunta atual é enviada separadamente. Sem produto inequívoco, retorna uma pergunta dirigida que pode ser respondida sem inferência. Não consulta banco, arquivos ou rede, não autoriza ferramentas e não substitui a triagem de escopo.
+
+Pontos de leitura: [resolução do foco](../../src/foco_atendimento.py), [regressões de continuidade](../../tests/test_foco_atendimento.py) e [integração de fontes e histórico](../../tests/test_ia_circuito.py).
 
 ### src/cliente_terminal.py
 
