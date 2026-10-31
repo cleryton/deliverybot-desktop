@@ -172,7 +172,7 @@ def test_ferramenta_sem_intencao_nao_executa(monkeypatch):
     monkeypatch.setattr(ia, "_chamar_ollama", chamada)
     monkeypatch.setattr(ia, "gerar_link_pedido", gerar)
     with pytest.raises(ia.IAIndisponivel, match="sem intenção"):
-        ia._responder_ollama(TELEFONE, "qual o preço?")
+        ia._responder_ollama(TELEFONE, "Quais as formas de pagamento?")
     assert chamada.call_args.kwargs["permitir_ferramentas"] is False
     gerar.assert_not_called()
 
@@ -208,6 +208,71 @@ def test_resposta_local_humana_quando_modelo_falha(monkeypatch):
     monkeypatch.setattr(ia, "responder", Mock(side_effect=ia.IAIndisponivel("timeout")))
     resposta = bot.processar_mensagem(TELEFONE, "me explique melhor")
     assert "Me conta" in resposta and "1 - " not in resposta
+
+
+@pytest.mark.parametrize('pergunta', ['Qual o horário de entrega?', 'Qual o horário de retirada?'])
+def test_horario_especifico_nao_usa_funcionamento_geral(monkeypatch, pergunta):
+    modelo = Mock(return_value='A equipe precisa confirmar esse horário específico.')
+    monkeypatch.setattr(ia, 'responder', modelo)
+    resposta = bot.processar_mensagem(TELEFONE, pergunta)
+    assert config.HORARIO_FUNCIONAMENTO not in resposta
+    assert 'específico' in resposta
+    modelo.assert_called_once_with(TELEFONE, pergunta)
+
+
+def test_preco_e_horario_na_mesma_pergunta_nao_descartam_preco(monkeypatch):
+    from src import estoque
+    estoque.salvar_produto({'nome': 'X-Salada', 'categoria': 'Lanches', 'preco': 22, 'estoque': 5})
+    modelo = Mock(return_value='O X-Salada custa R$ 22,00. O horário informado é ' + config.HORARIO_FUNCIONAMENTO + '.')
+    monkeypatch.setattr(ia, 'responder', modelo)
+    pergunta = 'Qual o preço do X-Salada e o horário?'
+    resposta = bot.processar_mensagem(TELEFONE, pergunta)
+    assert '22,00' in resposta and config.HORARIO_FUNCIONAMENTO in resposta
+    modelo.assert_called_once_with(TELEFONE, pergunta)
+
+
+def test_preco_com_outro_detalhe_do_produto_nao_descarta_a_segunda_pergunta(monkeypatch):
+    from src import estoque
+    estoque.salvar_produto({'nome': 'X-Salada', 'categoria': 'Lanches', 'preco': 22, 'estoque': 5})
+    modelo = Mock(return_value='O X-Salada custa R$ 22,00. A equipe precisa confirmar os ingredientes.')
+    monkeypatch.setattr(ia, 'responder', modelo)
+    pergunta = 'Quanto custa o X-Salada e quais os ingredientes?'
+    resposta = bot.processar_mensagem(TELEFONE, pergunta)
+    assert '22,00' in resposta and 'ingredientes' in resposta
+    modelo.assert_called_once_with(TELEFONE, pergunta)
+
+
+@pytest.mark.parametrize('pergunta,tema', [
+    ('Qual o prazo de entrega?', 'entrega'),
+    ('Aceitam vale refeição?', 'pagamento'),
+    ('Qual o tamanho do X-Salada?', 'produto'),
+])
+def test_fallback_pede_confirmacao_do_assunto_sem_reabrir_menu(monkeypatch, pergunta, tema):
+    from src import estoque
+    estoque.salvar_produto({'nome': 'X-Salada', 'categoria': 'Lanches', 'preco': 22, 'estoque': 5})
+    monkeypatch.setattr(ia, 'responder', Mock(side_effect=ia.IAIndisponivel('Falha fictícia.')))
+    resposta = bot.processar_mensagem(TELEFONE, pergunta)
+    assert tema in resposta.casefold()
+    assert resposta.count('?') == 1
+    assert 'produto, entrega ou fazer um pedido' not in resposta
+    assert '1 - ' not in resposta and '/m/' not in resposta
+
+
+def test_fallback_com_ambiguidade_usa_uma_pergunta_sem_inventar_produto(monkeypatch):
+    monkeypatch.setattr(ia, 'responder', Mock(side_effect=ia.IAIndisponivel('Falha fictícia.')))
+    resposta = bot.processar_mensagem(TELEFONE, 'Qual o preço?')
+    assert 'qual' in resposta.casefold() and 'produto' in resposta.casefold()
+    assert resposta.count('?') == 1
+    assert 'R$' not in resposta and '/m/' not in resposta
+
+
+def test_fallback_erro_de_leitura_nao_usa_contexto_antigo(monkeypatch):
+    from src import foco_atendimento
+    monkeypatch.setattr(ia, 'responder', Mock(side_effect=ia.IAIndisponivel('Falha fictícia.')))
+    monkeypatch.setattr(foco_atendimento, 'resolver', Mock(side_effect=ValueError('Perfil fictício mudou.')))
+    resposta = bot._processar_mensagem_menu_fixo(TELEFONE, 'Me explique melhor')
+    assert resposta.count('?') == 1 and '/m/' not in resposta
+    assert 'produto, entrega ou fazer um pedido' not in resposta
 
 
 def test_status_nao_e_inventado_pelo_modelo(monkeypatch):

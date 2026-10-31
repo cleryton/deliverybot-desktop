@@ -1,5 +1,13 @@
 # Qualidade e confiabilidade dos pedidos
 
+## Foco do atendimento
+
+A versão 2.49.0 resolve o assunto atual antes da inferência. O foco é temporário: identifica os produtos pelo catálogo permitido e os aspectos pedidos, sem criar memória permanente nem ampliar permissões. O histórico enviado ao modelo contém somente antecedentes necessários à continuação; uma pergunta nova independente recebe apenas a entrada atual. Respostas anteriores do assistente não escolhem produtos pelo cliente.
+
+O circuito Ollama oferece somente fontes compatíveis com esse foco e continua montando a resposta no aplicativo. Preço, descrição e dados operacionais são selecionados separadamente. Notas de conhecimento com assunto ou produto extra são excluídas inteiras, preservando condições e ressalvas. Uma pergunta ambígua sobre produto é esclarecida localmente; perguntas sobre prazo encaminham à equipe e não usam o horário de funcionamento ou o tempo de preparo como promessa.
+
+Os testes usam catálogos e notas fictícios e modelos simulados. Cobrem mudança de assunto, continuações, produtos negados ou ambíguos, consulta composta, ausência de fonte e tentativa de selecionar referências alheias. Isso valida os controles e os casos reproduzidos; não mede satisfação, qualidade geral de um modelo real nem tempo de entrega do WhatsApp. O provedor remoto recebe referências reduzidas, mas não usa o renderizador fechado do Ollama.
+
 ## Limpeza de código
 
 A revisão da versão 2.45.1 removeu três funções internas sem referências no repositório (`gerar_segredo_sugerido`, `_webhook_exibicao` e `obter_pedido_por_numero`), a constante não utilizada `FINAIS`, nove importações sem uso e três vínculos locais desnecessários. As chamadas de criação de operador e abertura de caixa continuam sendo executadas no teste do aplicativo.
