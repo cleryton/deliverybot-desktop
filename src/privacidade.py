@@ -58,10 +58,14 @@ def corrigir(dados):
     cep = texto(dados.get("cep", ""), "CEP", 9)
     endereco = texto(dados.get("endereco", ""), "Endereço", 400)
     with get_conn() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         cliente = conn.execute("SELECT id FROM clientes WHERE telefone=?", (telefone,)).fetchone()
         if not cliente:
             raise ValueError("Cliente não encontrado.")
         conn.execute("UPDATE clientes SET nome=?, cep=?, endereco=? WHERE id=?", (nome, cep, endereco, cliente["id"]))
+        # Correção explícita de titular continua abrangendo seus registros.
+        conn.execute('UPDATE pedidos SET nome_cliente=?, cep_cliente=?, endereco_cliente=? WHERE cliente_id=?',
+                     (nome, cep, endereco, cliente['id']))
         auditar(conn, "CORRIGIR", cliente["id"])
     return {"ok": True}
 
@@ -80,8 +84,11 @@ def remover_identificacao(dados):
         for tabela in ("mensagens", "links_pedido", "sessoes_bot", "tarefas_bot", "atendimentos_humanos", "carrinhos_conversa", "bloqueios_ia", "frequencia_ia", "versoes_protecao_ia"):
             conn.execute(f"DELETE FROM {tabela} WHERE telefone=?", (telefone,))
         if cliente:
+            removido = "removido:" + secrets.token_hex(24)
             conn.execute("UPDATE clientes SET nome='Cliente sem identificação', telefone=?, cep='', endereco='', chat_id=NULL, waha_session=NULL WHERE id=?",
-                         ("removido:" + secrets.token_hex(24), cliente["id"]))
+                         (removido, cliente["id"]))
+            conn.execute("UPDATE pedidos SET nome_cliente='Cliente sem identificação', telefone_cliente=?, "
+                         "cep_cliente='', endereco_cliente='' WHERE cliente_id=?", (removido, cliente['id']))
             conn.execute("UPDATE itens_pedido SET observacao=NULL WHERE pedido_id IN (SELECT id FROM pedidos WHERE cliente_id=?)", (cliente["id"],))
         auditar(conn, "REMOVER_IDENTIFICACAO", cliente["id"] if cliente else None)
     from . import whatsapp, bot

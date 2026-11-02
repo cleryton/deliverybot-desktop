@@ -86,3 +86,67 @@ def test_apagar_pedido_invalida_comprovante_sem_expor_erro(loja):
     c.post(url,base_url=BASE,data=dados)
     with db.get_conn() as conn:conn.execute('UPDATE links_pedido SET pedido_id=NULL')
     assert c.get(url+'/comprovante',base_url=BASE).status_code==410
+
+
+def test_dois_clientes_nao_consultam_compra_alheia_com_token_ou_parametros(loja):
+    from src import links, pedidos
+    app, primeiro, url_a, dados, _ = loja
+    resposta_a = primeiro.post(url_a, base_url=BASE, data=dados)
+    outro = app.test_client()
+    url_b = '/m/' + gerar_link_pedido('5511999990002').rsplit('/', 1)[-1]
+    html_b = outro.get(url_b, base_url=BASE).text
+    csrf_b = re.search(r'name="csrf_token" value="([^"]+)"', html_b)[1]
+    resposta_b = outro.post(url_b, base_url=BASE,
+                           data={**dados, 'csrf_token': csrf_b, 'nome': 'Outra pessoa fictícia'})
+    assert resposta_a.status_code == resposta_b.status_code == 303
+    pedido_a = pedidos.obter_pedido(links.obter_link(url_a.rsplit('/', 1)[-1])['pedido_id'])
+    pedido_b = pedidos.obter_pedido(links.obter_link(url_b.rsplit('/', 1)[-1])['pedido_id'])
+    for cliente, proprio, alheio in ((primeiro, (url_a, pedido_a), (url_b, pedido_b)),
+                                      (outro, (url_b, pedido_b), (url_a, pedido_a))):
+        r = cliente.get(proprio[0] + '/comprovante?pedido_id=' + str(alheio[1]['id']), base_url=BASE)
+        assert r.status_code == 200 and proprio[1]['numero_pedido'] in r.text
+        assert alheio[1]['numero_pedido'] not in r.text
+        for sufixo in ('', '?pedido_id=' + str(proprio[1]['id']), '?telefone=' + proprio[1]['cliente_telefone']):
+            r = cliente.get(alheio[0] + '/comprovante' + sufixo, base_url=BASE)
+            assert r.status_code == 410
+            assert alheio[1]['numero_pedido'] not in r.text
+            assert alheio[1]['cliente_nome'] not in r.text
+
+
+@pytest.mark.parametrize('campo', ['link', 'pedido'])
+def test_vinculo_interno_inconsistente_entre_link_e_cliente_nao_expoe_compra(loja, campo):
+    """Simula corrupção interna; não representa um bypass HTTP reproduzido."""
+    from src.links import obter_link
+    _, cliente, url, dados, _ = loja
+    cliente.post(url, base_url=BASE, data=dados)
+    token = url.rsplit('/', 1)[-1]
+    pid = obter_link(token)['pedido_id']
+    with db.get_conn() as conn:
+        if campo == 'link':
+            conn.execute('UPDATE links_pedido SET telefone=? WHERE token=?', ('5511999990999', token))
+        else:
+            conn.execute('UPDATE pedidos SET telefone_cliente=? WHERE id=?', ('5511999990999', pid))
+    r = cliente.get(url + '/comprovante', base_url=BASE)
+    assert r.status_code == 410
+    assert 'R$ 12,00' not in r.text and 'Produto fictício' not in r.text
+
+
+def test_remocao_de_identificacao_invalida_recibo_mesmo_com_cookie_anterior(loja):
+    from src import links, pedidos, privacidade
+    _, cliente, url, dados, _ = loja
+    cliente.post(url, base_url=BASE, data=dados)
+    pid = links.obter_link(url.rsplit('/', 1)[-1])['pedido_id']
+    pedidos.cancelar_pedido(pid)
+    privacidade.remover_identificacao({'telefone': '5511999990001', 'identidade_confirmada': True,
+                                      'confirmar_remocao': True})
+    r = cliente.get(url + '/comprovante', base_url=BASE)
+    assert r.status_code == 410 and 'R$ 12,00' not in r.text
+
+
+def test_expiracao_do_link_de_compra_nao_antecipa_fim_da_sessao_do_recibo(loja):
+    _, cliente, url, dados, _ = loja
+    cliente.post(url, base_url=BASE, data=dados)
+    with db.get_conn() as conn:
+        conn.execute("UPDATE links_pedido SET expira_em='2000-01-01 00:00:00'")
+    assert cliente.get(url, base_url=BASE).status_code == 410
+    assert cliente.get(url + '/comprovante', base_url=BASE).status_code == 200

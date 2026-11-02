@@ -21,7 +21,8 @@ $('#brain-preview').addEventListener('click',e=>run(e.currentTarget,async()=>{
   showBrainNote();
 }));
 let toastTimer;
-let photoRemoved = false, productDirty = false, orderRequest = 0, autoRefreshing = false;
+let photoRemoved = false, productDirty = false, productEdicoes = 0, productDialogo = 0;
+let botEdicoes = 0, orderRequest = 0, autoRefreshing = false;
 function productPhoto(p){return /^\/produtos\/fotos\/[a-f0-9]{64}\.jpg$/.test(p.foto_url||'')?`<img class="product-avatar product-photo" src="${p.foto_url}" alt="" loading="lazy">`:'<span class="product-avatar">▦</span>';}
 function toast(message,error=false){$('#toast').textContent=message;$('#toast').classList.toggle('error',error);$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').hidden=true,error?9000:5500);}
 async function api(path,method='GET',data){
@@ -55,7 +56,7 @@ for(const [pagina,[seletor]] of Object.entries(formulariosEditaveis)) {
   for(const evento of ['input','change'])$(seletor).addEventListener(evento,()=>{edicoes.registrar(pagina);informarEdicao(pagina);});
 }
 window.addEventListener('beforeunload',evento=>{if(edicoes.tem()||productDirty){evento.preventDefault();evento.returnValue='';}});
-function productChanged(){productDirty=true;$('#product-save-status').textContent='Alterações não salvas. Salve o produto antes de sair.';}
+function productChanged(){productDirty=true;productEdicoes++;$('#product-save-status').textContent='Alterações não salvas. Salve o produto antes de sair.';}
 function closeProduct(){
   if($('#product-form button[type="submit"][aria-busy="true"]')){toast('Aguarde a conclusão do produto antes de fechar.',true);return false;}
   if(productDirty&&!confirm('Descartar as alterações não salvas deste produto?'))return false;
@@ -65,6 +66,7 @@ $('#product-form').addEventListener('input',productChanged);
 $('#product-form').addEventListener('change',productChanged);
 $('#product-photo-remove').addEventListener('click',productChanged);
 $('#product-dialog').addEventListener('cancel',e=>{e.preventDefault();closeProduct();});
+$('#product-dialog').addEventListener('close',()=>productDialogo++);
 function showProductPhoto(src){const img=$('#product-photo-image');img.hidden=!src;if(src)img.src=src;else img.removeAttribute('src');$('#product-photo-empty').hidden=!!src;$('#product-photo-remove').hidden=!src;$('#product-photo-status').textContent='';}
 $('#product-photo').addEventListener('change',()=>{const input=$('#product-photo'),file=input.files[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024){input.value='';const atual=state.products.find(p=>String(p.id)===$('#product-form').elements.id.value);showProductPhoto(photoRemoved?null:atual?.foto_url);toast('Escolha uma foto JPG, PNG ou WebP de até 5 MB.',true);return;}const reader=new FileReader();reader.onload=()=>{if(input.files[0]!==file)return;photoRemoved=false;showProductPhoto(reader.result);$('#product-photo-status').textContent='Nova foto selecionada. Clique em Salvar produto para confirmar.';};reader.onerror=()=>{input.value='';toast('Não foi possível abrir esta foto.',true);};reader.readAsDataURL(file);});
 $('#product-photo-remove').addEventListener('click',()=>{$('#product-photo').value='';photoRemoved=true;showProductPhoto(null);$('#product-photo-status').textContent='A foto será removida ao salvar o produto.';});
@@ -114,7 +116,7 @@ async function navigate(page){
   return reload({confirmarEdicoes:false});
 }
 async function reload({confirmarEdicoes=true}={}){if(confirmarEdicoes&&!podeMudarTela('atualizar a tela'))return false;const page=state.page,revisao=edicoes.revisao(page);await summary();if(state.page!==page)return false;if(formulariosEditaveis[page]&&!consultaAtual(page,revisao))return false;if(['inicio','produtos'].includes(page))await products();if(page==='inicio'&&isAdmin)await preparacao();if(page==='pedidos')await orders();if(page==='movimentos')await movements();if(page==='configuracoes')await settings();if(page==='comercio')await commerce();if(page==='tutorial')await tutorialLoad();if(page==='conexoes')await refreshConnections();if(page==='privacidade')await privacy();if(page==='meta'&&isAdmin)await metaLoad();if(page==='remoto'&&isAdmin)await remoteAdminLoad();$('#sync-status').textContent='';}
-function openProduct(id){const form=$('#product-form');form.reset();const p=state.products.find(p=>p.id===id);form.elements.id.value=p?.id||'';$('#product-title').textContent=p?'Editar produto':'Cadastrar produto';if(!p){form.elements.controlar_estoque.checked=state.summary?.comercio.controlar_estoque!==false;if(state.summary?.comercio.modelo==='SERVICOS')form.elements.unidade.value='serv';}if(p){for(const key of ['nome','sku','categoria','preco','unidade','descricao','estoque_minimo','familia','variacao','custo']){form.elements[key].value=p[key]??'';}if(![...form.elements.unidade.options].some(o=>o.value===p.unidade))form.elements.unidade.add(new Option(p.unidade,p.unidade,true,true));form.elements.estoque.value=p.estoque??0;form.elements.fracionado.checked=!!p.fracionado;form.elements.ativo.checked=!!p.ativo;form.elements.controlar_estoque.checked=p.estoque!==null;}photoRemoved=false;productDirty=false;$('#product-save-status').textContent='';showProductPhoto(p?.foto_url);stockInputs();$('#product-dialog').showModal();}
+function openProduct(id){productDialogo++;productEdicoes=0;const form=$('#product-form');form.reset();const p=state.products.find(p=>p.id===id);form.elements.id.value=p?.id||'';$('#product-title').textContent=p?'Editar produto':'Cadastrar produto';if(!p){form.elements.controlar_estoque.checked=state.summary?.comercio.controlar_estoque!==false;if(state.summary?.comercio.modelo==='SERVICOS')form.elements.unidade.value='serv';}if(p){for(const key of ['nome','sku','categoria','preco','unidade','descricao','estoque_minimo','familia','variacao','custo']){form.elements[key].value=p[key]??'';}if(![...form.elements.unidade.options].some(o=>o.value===p.unidade))form.elements.unidade.add(new Option(p.unidade,p.unidade,true,true));form.elements.estoque.value=p.estoque??0;form.elements.fracionado.checked=!!p.fracionado;form.elements.ativo.checked=!!p.ativo;form.elements.controlar_estoque.checked=p.estoque!==null;}photoRemoved=false;productDirty=false;$('#product-save-status').textContent='';showProductPhoto(p?.foto_url);stockInputs();$('#product-dialog').showModal();}
 function stockInputs(){const f=$('#product-form'),p=state.products.find(p=>String(p.id)===f.elements.id.value),control=f.elements.controlar_estoque.checked;f.elements.estoque.disabled=!control||p?.estoque!==null&&!!p;f.elements.estoque_minimo.disabled=!control;f.elements.estoque.closest('label').hidden=!control;f.elements.estoque_minimo.closest('label').hidden=!control;$('#stock-help').textContent=p?.estoque!==null&&p?'Use Movimentar para registrar entradas e saídas. A edição do produto preserva o saldo atual.':'Habilite Fracionado para vender por peso ou volume. Use família e variação para organizar tamanhos e cores.';}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||(!['action','connectionAction','messageAction','page','close','edit','stock','advance','cancel'].some(k=>b.dataset[k])&&!['refresh','diagnostic-export'].includes(b.id)))return;run(b,async()=>{
   if(b.dataset.connectionAction)await connectionAction(b.dataset.connectionAction);
@@ -144,7 +146,29 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
   if(b.id==='refresh')await reload();
 });});
 $('#search').addEventListener('input',renderProducts);$('#filter').addEventListener('change',renderProducts);$('#order-filter').addEventListener('change',renderOrders);$('#order-search').addEventListener('input',renderOrders);$('#product-form').elements.controlar_estoque.addEventListener('change',stockInputs);
-$('#product-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const f=e.target,d=Object.fromEntries(new FormData(f)),id=d.id;d.fracionado=f.elements.fracionado.checked;d.ativo=f.elements.ativo.checked;d.controlar_estoque=f.elements.controlar_estoque.checked;d.estoque=f.elements.estoque.value;d.estoque_minimo=f.elements.estoque_minimo.value;delete d.id;d.remover_foto=photoRemoved;const foto=$('#product-photo').files[0];let body=d;if(foto){body=new FormData();body.append('dados',JSON.stringify(d));body.append('foto',foto);}await api('produtos'+(id?'/'+id:''),id?'PUT':'POST',body);productDirty=false;$('#product-save-status').textContent='';$('#product-dialog').close();toast('Produto salvo no catálogo.');await reload();});});
+$('#product-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{
+  const f=e.target,d=Object.fromEntries(new FormData(f)),id=d.id;
+  const revisao=productEdicoes,dialogo=productDialogo;
+  d.fracionado=f.elements.fracionado.checked;d.ativo=f.elements.ativo.checked;d.controlar_estoque=f.elements.controlar_estoque.checked;
+  d.estoque=f.elements.estoque.value;d.estoque_minimo=f.elements.estoque_minimo.value;delete d.id;d.remover_foto=photoRemoved;
+  const foto=$('#product-photo').files[0];let body=d;
+  if(foto){body=new FormData();body.append('dados',JSON.stringify(d));body.append('foto',foto);}
+  const salvo=await api('produtos'+(id?'/'+id:''),id?'PUT':'POST',body);
+  const idConfirmado=Number.isSafeInteger(salvo?.id)&&salvo.id>0;
+  if(idConfirmado){const indice=state.products.findIndex(p=>p.id===salvo.id);if(indice<0)state.products.push(salvo);else state.products[indice]=salvo;}
+  // Uma resposta pertence ao diálogo que enviou o cadastro, nunca ao próximo.
+  if(dialogo!==productDialogo||String(f.elements.id.value)!==String(id)){
+    toast('O produto enviado foi salvo. O cadastro aberto foi mantido.');return;
+  }
+  // O novo cadastro já existe: uma edição posterior precisa usar PUT e não
+  // repetir o POST, preservando também a contagem inicial de estoque.
+  if(!id&&idConfirmado){f.elements.id.value=String(salvo.id);$('#product-title').textContent='Editar produto';stockInputs();}
+  if(productEdicoes!==revisao){
+    productDirty=true;$('#product-save-status').textContent='O produto enviado foi salvo. Há novas alterações não salvas neste cadastro.';
+    toast('Os dados enviados foram salvos. Salve as novas alterações para concluir.');return;
+  }
+  productDirty=false;$('#product-save-status').textContent='';$('#product-dialog').close();toast('Produto salvo no catálogo.');await reload();
+});});
 $('#stock-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const d=Object.fromEntries(new FormData(e.target));await api(`produtos/${d.id}/estoque`,'POST',{quantidade:Number(d.quantidade)*Number(d.tipo),motivo:d.motivo});$('#stock-dialog').close();toast('Movimentação registrada.');await reload();});});
 $('#settings-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{
   const form=e.target,enviados=Object.fromEntries(new FormData(form)),revisao=edicoes.revisao('configuracoes');
@@ -155,7 +179,8 @@ $('#settings-form').addEventListener('submit',e=>{e.preventDefault();run(e.submi
   limparEdicao('configuracoes');toast(r.preparacao_whatsapp?'Configurações salvas. Preparando HTTPS e WhatsApp automaticamente…':'Configurações salvas.');
   await reload({confirmarEdicoes:false});if(r.preparacao_whatsapp&&!edicoes.tem('configuracoes'))await navigate('conexoes');
 });});
-$('#bot-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const d=Object.fromEntries(new FormData(e.target));$('#chat').insertAdjacentHTML('beforeend',`<div class="bubble customer">${escapeHTML(d.texto)}</div>`);const result=await api('simular','POST',d);$('#chat').insertAdjacentHTML('beforeend',`<div class="bubble assistant">${escapeHTML(result.resposta)}${result.caminho?`<br><a href="${escapeHTML(result.caminho)}" target="_blank" rel="noopener">Abrir pedido de teste →</a>`:''}</div>`);e.target.elements.texto.value='';$('#chat').scrollTop=$('#chat').scrollHeight;});});
+$('#bot-form').addEventListener('input',()=>botEdicoes++);
+$('#bot-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const d=Object.fromEntries(new FormData(e.target)),revisao=botEdicoes,texto=e.target.elements.texto.value;$('#chat').insertAdjacentHTML('beforeend',`<div class="bubble customer">${escapeHTML(d.texto)}</div>`);const result=await api('simular','POST',d);$('#chat').insertAdjacentHTML('beforeend',`<div class="bubble assistant">${escapeHTML(result.resposta)}${result.caminho?`<br><a href="${escapeHTML(result.caminho)}" target="_blank" rel="noopener">Abrir pedido de teste →</a>`:''}</div>`);if(botEdicoes===revisao&&e.target.elements.texto.value===texto)e.target.elements.texto.value='';$('#chat').scrollTop=$('#chat').scrollHeight;});});
 function openBackup(acao){$('#backup-form').reset();$('#backup-form').dataset.acao=acao;$('#backup-title').textContent=acao==='criar'?'Criar backup criptografado':'Restaurar backup';$('#backup-dialog').showModal();}
 $('#backup-form').addEventListener('submit',e=>{e.preventDefault();run(e.submitter,async()=>{const f=e.target,senha=f.elements.senha.value;if(senha!==f.elements.confirmacao.value)throw new Error('As senhas devem ser iguais.');if(f.dataset.acao==='criar'){const r=await api('backup','POST',{senha});$('#backup-result').textContent=r.caminho;toast('Backup criptografado criado. Guarde a senha em local separado.');}else{if(!confirm('Substituir os dados atuais pelo backup? Uma cópia protegida será criada antes. O aplicativo fechará; abra-o novamente para concluir.'))return;const r=await window.pywebview.api.restaurar_backup(senha);if(r?.erro)throw new Error(r.erro);}f.reset();$('#backup-dialog').close();});});
 async function privacy(){const [cfg,s]=await Promise.all([api('configuracoes'),api('privacidade')]);for(const field of $('#privacy-settings').elements){if(field.name&&cfg[field.name]!==undefined)field.value=cfg[field.name];}$('#privacy-note').textContent=`${s.clientes} cadastros com identificação. `+(!cfg.LGPD_CONTATO||!cfg.LGPD_RESPONSAVEL?'Informe a empresa e o contato antes de iniciar o atendimento.':'Responsável e contato configurados. Confira se a retenção dos pedidos corresponde à política da loja.');$('#privacy-audit').innerHTML=s.auditoria.map(a=>`<li>${date(a.criado_em)} · ${escapeHTML(({EXPORTAR:'Exportação de dados',CORRIGIR:'Correção de cadastro',REMOVER_IDENTIFICACAO:'Remoção de identificação',LIMPAR_HISTORICO:'Limpeza do histórico'})[a.acao]||a.acao)}</li>`).join('');}

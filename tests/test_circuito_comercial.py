@@ -408,6 +408,54 @@ def test_preco_e_ingredientes_podem_ser_consultados_juntos():
     assert preparado.renderizar(proposta()).texto == 'X-Salada: R$ 22,00. Pão, carne, queijo e salada.'
 
 
+def test_composicao_nao_expoe_saldo_nao_perguntado():
+    preparado = focado('O X-Salada tem lactose?', produtos=[produto(estoque=8)])
+    resposta = preparado.renderizar(proposta()).texto
+    assert 'Pão' in resposta and 'Saldo' not in resposta and '8 un' not in resposta
+
+
+def test_consulta_com_produtos_e_aspectos_diferentes_nao_cruza_fatos():
+    preparado = focado('Qual o preço do X-Salada e os ingredientes do Refrigerante?')
+    fontes = {f.id: f.texto for f in preparado.fontes}
+    assert fontes['catalogo.1'] == 'X-Salada: R$ 22,00'
+    assert fontes['catalogo.2'] == 'Refrigerante: Bebida gaseificada.'
+
+
+def test_notas_inteiras_tambem_respeitam_o_aspecto_de_cada_produto():
+    preparado = focado('Qual o preço do X-Salada e os ingredientes do Refrigerante?',
+                       nota('O X-Salada contém queijo.'),
+                       nota('O Refrigerante contém água.'),
+                       nota('O Refrigerante contém água. O X-Salada contém queijo.'))
+    fontes = {f.id: f.texto for f in preparado.fontes}
+    assert 'nota.1' not in fontes and 'nota.3' not in fontes
+    assert fontes['nota.2'] == 'O Refrigerante contém água.'
+
+
+def test_associacao_ambigua_entre_produtos_nao_autoriza_fonte_factual():
+    preparado = focado('X-Salada e Refrigerante; qual preço de um e ingredientes do outro?')
+    assert preparado.fontes == ()
+    resposta = preparado.renderizar(proposta(acao='esclarecer', fontes=[])).texto
+    assert resposta.count('?') == 1 and 'produto' in resposta.casefold()
+
+
+@pytest.mark.parametrize('mapa', [
+    {1: frozenset({'preco'})},
+    ((True, frozenset({'preco'})),),
+    ((3, frozenset({'preco'})),),
+    ((1, {'preco'}),),
+    ((1, frozenset({'preco'})), (1, frozenset({'preco'}))),
+    ((1, frozenset({'preco'})),),
+    ((1, frozenset({'horario'})), (2, frozenset({'descricao'}))),
+    ((1, frozenset({'garantia'})), (2, frozenset({'descricao'}))),
+])
+def test_mapa_de_campos_invalido_nao_amplia_permissoes(mapa):
+    from dataclasses import replace
+    produtos = [produto(), produto(nome='Refrigerante')]
+    foco = resolver('Qual o preço do X-Salada e os ingredientes do Refrigerante?', produtos)
+    with pytest.raises(ValueError, match='mapa'):
+        circuito.preparar(foco.consulta, produtos, None, foco=replace(foco, aspectos_produtos=mapa))
+
+
 def test_descricao_faltante_nao_e_substituida_pelo_preco_ou_por_outro_item():
     preparado = focado('Quais os ingredientes do X-Salada?', produtos=[produto(descricao='')])
     assert preparado.fontes == ()

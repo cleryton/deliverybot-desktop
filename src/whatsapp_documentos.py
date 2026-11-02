@@ -38,7 +38,7 @@ def enviar(telefone, pdf, legenda, chat_id=None, session=None):
             from .whatsapp_local import credenciais
             endereco, chave = credenciais()
         transporte_seguro(endereco)
-        payload = {'session': session or whatsapp._sessao_conhecida(telefone) or config.WAHA_SESSION,
+        payload = {'session': whatsapp._sessao_envio(session),
                    'chatId': destino, 'caption': legenda,
                    'file': {'mimetype': 'application/pdf', 'filename': NOME,
                             'data': base64.b64encode(pdf).decode('ascii')}}

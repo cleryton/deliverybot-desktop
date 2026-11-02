@@ -24,6 +24,25 @@ ENUMS = {"WHATSAPP_PROVIDER": {"TESTE", "LOCAL", "WAHA", "META"}, "WHATSAPP_META
          'COMERCIO_ESTOQUE_PADRAO': {'SIM', 'NAO'}, 'COMERCIO_CONFIGURADO': {'SIM', 'NAO'},
          'CEREBRO_RECUPERACAO_AUTOMATICA': {'SIM', 'NAO'}}
 CAMPOS = set(TEXTOS) | SEGREDOS | set(ENUMS) | {"TAXA_ENTREGA", "TEMPO_PREPARO_MIN", "LGPD_MENSAGENS_DIAS", "TUNEL_PORTA"}
+ROTEAMENTO_WHATSAPP = ('WHATSAPP_PROVIDER', 'WAHA_URL', 'WAHA_SESSION',
+                      'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_BUSINESS_ACCOUNT_ID',
+                      'WHATSAPP_META_AMBIENTE')
+
+
+def roteamento_whatsapp(valores=None):
+    """Identifica o transporte ativo sem incluir tokens ou chaves rotativas."""
+    valores = valores or {}
+    def obter(chave):
+        return valores.get(chave, getattr(config, chave))
+    provedor = obter('WHATSAPP_PROVIDER')
+    if provedor == 'LOCAL':
+        return provedor, obter('WAHA_SESSION')
+    if provedor == 'WAHA':
+        return provedor, obter('WAHA_URL').rstrip('/'), obter('WAHA_SESSION')
+    if provedor == 'META':
+        return (provedor, obter('WHATSAPP_PHONE_NUMBER_ID'),
+                obter('WHATSAPP_BUSINESS_ACCOUNT_ID'), obter('WHATSAPP_META_AMBIENTE'))
+    return (provedor,)
 
 
 def aplicar(valores):
@@ -101,6 +120,8 @@ def salvar(dados, *, numero_meta_esperado=None, conta_meta_esperada=None, meta_s
             valor = inteiro(valor, "Tempo estimado", 1)
         valores[chave] = valor
     completos = {k: valores.get(k, getattr(config, k)) for k in CAMPOS}
+    if completos['WHATSAPP_PROVIDER'] in {'LOCAL', 'WAHA'} and not completos['WAHA_SESSION']:
+        raise ValueError('Informe a sessão do WhatsApp antes de conectar o atendimento.')
     if completos['TUNEL_AUTOMATICO'] == 'SIM' and completos['TUNEL_MODO'] == 'FIXO' and not all(completos[k] for k in ('TUNEL_URL','TUNEL_TOKEN')):
         raise ValueError('Informe domínio HTTPS e token do túnel fixo antes de ativar o início automático.')
     if completos["WHATSAPP_PROVIDER"] == "META" and not all(completos[k] for k in ("WHATSAPP_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET")):
@@ -137,6 +158,12 @@ def salvar(dados, *, numero_meta_esperado=None, conta_meta_esperada=None, meta_s
                 guardar_numero(conn, config.WHATSAPP_PHONE_NUMBER_ID, config.WHATSAPP_META_AMBIENTE, config.WHATSAPP_BUSINESS_ACCOUNT_ID)
             if completos['WHATSAPP_PROVIDER'] == 'META':
                 guardar_numero(conn, completos['WHATSAPP_PHONE_NUMBER_ID'], completos['WHATSAPP_META_AMBIENTE'], completos['WHATSAPP_BUSINESS_ACCOUNT_ID'])
+        persistidos = {r['chave']: r['valor'] for r in conn.execute(
+            'SELECT chave,valor FROM configuracoes WHERE chave IN ('
+            + ','.join('?' for _ in ROTEAMENTO_WHATSAPP) + ')', ROTEAMENTO_WHATSAPP)}
+        if (roteamento_whatsapp(persistidos) != roteamento_whatsapp({**persistidos, **valores})
+                and conn.execute("SELECT 1 FROM tarefas_bot WHERE estado!='CONCLUIDA' LIMIT 1").fetchone()):
+            raise ValueError('Conclua ou revise as mensagens pendentes antes de alterar a conexão do WhatsApp.')
         for chave, valor in valores.items():
             armazenado = proteger_segredo(str(valor)) if chave in SEGREDOS else str(valor)
             conn.execute("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor", (chave, armazenado))

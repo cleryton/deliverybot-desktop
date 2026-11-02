@@ -15,6 +15,7 @@ def ambiente(tmp_path, monkeypatch):
     monkeypatch.setattr(config, 'SEED_CATALOGO', False)
     monkeypatch.setattr(config, 'MODO_TESTE', False)
     monkeypatch.setattr(config, 'WHATSAPP_PROVIDER', 'LOCAL')
+    monkeypatch.setattr(config, 'WAHA_SESSION', 'loja')
     monkeypatch.setattr(config, 'IA_PROVIDER', '')
     monkeypatch.setattr(config, 'BASE_URL', '')
     monkeypatch.setattr(publicacao, '_gerente', None)

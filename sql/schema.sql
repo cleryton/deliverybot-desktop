@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS pedidos (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     numero_pedido       TEXT NOT NULL UNIQUE,     -- ex: #21535858, exibido ao cliente
     cliente_id          INTEGER NOT NULL REFERENCES clientes(id),
+    nome_cliente        TEXT,
+    telefone_cliente    TEXT,
+    cep_cliente         TEXT,
+    endereco_cliente    TEXT,
     origem              TEXT NOT NULL DEFAULT 'Bot Atendimento',
     forma_entrega       TEXT NOT NULL,            -- 'RETIRADA BALCAO' ou 'ENTREGA'
     tempo_estimado_min  INTEGER NOT NULL,
@@ -142,6 +146,7 @@ CREATE TABLE IF NOT EXISTS configuracoes (
 CREATE TABLE IF NOT EXISTS tarefas_bot (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     origem TEXT NOT NULL,
+    rota TEXT NOT NULL DEFAULT '',
     chave TEXT NOT NULL,
     telefone TEXT NOT NULL,
     texto TEXT NOT NULL,

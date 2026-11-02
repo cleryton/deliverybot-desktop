@@ -38,6 +38,47 @@ def test_nome_com_variacao_nao_seleciona_tambem_o_item_base():
     assert foco.aspectos == frozenset({'descricao'})
 
 
+@pytest.mark.parametrize('pergunta', ['O X-Salada tem lactose?', 'O X-Salada tem glúten?',
+                                    'Qual a cor do X-Salada?', 'Qual o sabor do X-Salada?'])
+def test_caracteristica_do_produto_nao_pergunta_saldo(pergunta):
+    foco = resolver(pergunta, PRODUTOS)
+    assert foco.produto_ids == (1,)
+    assert foco.aspectos == frozenset({'descricao'})
+
+
+@pytest.mark.parametrize('pergunta,mapa', [
+    ('Qual o preço do X-Salada e os ingredientes do Refrigerante lata?',
+     ((1, frozenset({'preco'})), (2, frozenset({'descricao'})))),
+    ('Quais ingredientes do X-Salada e quanto custa Refrigerante lata?',
+     ((1, frozenset({'descricao'})), (2, frozenset({'preco'})))),
+    ('Quanto custa X-Salada e Refrigerante lata?',
+     ((1, frozenset({'preco'})), (2, frozenset({'preco'})))),
+    ('Preço e ingredientes do X-Salada e Refrigerante lata',
+     ((1, frozenset({'preco', 'descricao'})), (2, frozenset({'preco', 'descricao'})))),
+    ('Qual o preço e os ingredientes do X-Salada?',
+     ((1, frozenset({'preco', 'descricao'})),)),
+    ('O X-Salada tem lactose e tem Refrigerante lata?',
+     ((1, frozenset({'descricao'})), (2, frozenset({'disponibilidade'})))),
+])
+def test_aspectos_sao_associados_a_cada_produto(pergunta, mapa):
+    foco = resolver(pergunta, PRODUTOS)
+    assert not foco.esclarecer
+    assert foco.aspectos_produtos == mapa
+
+
+def test_associacao_ambigua_entre_produtos_pede_esclarecimento():
+    foco = resolver('X-Salada e Refrigerante lata; qual preço de um e ingredientes do outro?', PRODUTOS)
+    assert foco.esclarecer and foco.esclarecer.count('?') == 1
+    assert not foco.aspectos_produtos
+
+
+def test_conjuncao_no_nome_nao_separa_aspectos_de_outro_produto():
+    catalogo = [{'nome': 'Pão e queijo'}, {'nome': 'Suco'}]
+    foco = resolver('Qual o preço do Pão e queijo e quais ingredientes do Suco?', catalogo)
+    assert foco.aspectos_produtos == ((1, frozenset({'preco'})),
+                                     (2, frozenset({'descricao'})))
+
+
 @pytest.mark.parametrize('pergunta,aspecto', [('e o preço?', 'preco'),
                                           ('Qual o preço?', 'preco'),
                                           ('Qual é o preço do produto?', 'preco'),

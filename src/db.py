@@ -33,8 +33,11 @@ _MIGRACOES_COLUNAS = {
         ("custo", "REAL"),
     ],
     "itens_pedido": [("nome_produto", "TEXT"), ("custo_unitario", "REAL")],
+    "pedidos": [("nome_cliente", "TEXT"), ("telefone_cliente", "TEXT"),
+                ("cep_cliente", "TEXT"), ("endereco_cliente", "TEXT")],
     "tarefas_bot": [("entrada_registrada", "INTEGER NOT NULL DEFAULT 0"),
-                    ("formato_saida", "TEXT NOT NULL DEFAULT 'TEXTO'")],
+                    ("formato_saida", "TEXT NOT NULL DEFAULT 'TEXTO'"),
+                    ("rota", "TEXT NOT NULL DEFAULT ''")],
     "meta_mensagens_custo": [("precificado_em", "TEXT")],
 }
 
@@ -87,6 +90,12 @@ def _aplicar_migracoes(conn: sqlite3.Connection) -> None:
                 conn.execute(f"ALTER TABLE {tabela} ADD COLUMN {nome_coluna} {tipo_coluna}")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_produtos_sku ON produtos(sku) WHERE sku != ''")
     conn.execute("UPDATE itens_pedido SET nome_produto = (SELECT nome FROM produtos WHERE id = produto_id) WHERE nome_produto IS NULL")
+    # Pedidos legados recebem os dados ainda disponíveis na primeira migração.
+    # Não sobrescreva retratos já preenchidos ou apagados por privacidade.
+    for destino, origem in (("nome_cliente", "nome"), ("telefone_cliente", "telefone"),
+                             ("cep_cliente", "cep"), ("endereco_cliente", "endereco")):
+        conn.execute(f"UPDATE pedidos SET {destino}=COALESCE((SELECT {origem} FROM clientes "
+                     f"WHERE clientes.id=pedidos.cliente_id),'') WHERE {destino} IS NULL")
     # O identificador de um evento pode conter o telefone. Mantém a deduplicação sem guardá-lo em texto.
     for row in conn.execute("SELECT id, chave FROM tarefas_bot WHERE chave NOT LIKE 'sha256:%'").fetchall():
         conn.execute("UPDATE tarefas_bot SET chave=? WHERE id=?", ("sha256:" + hashlib.sha256(row["chave"].encode()).hexdigest(), row["id"]))

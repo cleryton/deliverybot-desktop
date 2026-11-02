@@ -60,6 +60,38 @@ def test_data_invalida_ou_antiga_nao_impede_tentativa_de_backup(banco, monkeypat
     criar.assert_called_once()
 
 
+def test_falha_de_backup_nao_impede_limpeza_programada(banco, monkeypatch):
+    with get_conn() as conn:
+        conn.execute('UPDATE rotinas SET backup_ativo=1, limpar=1 WHERE id=1')
+    criar = Mock(side_effect=OSError('pasta-ficticia-com-informacao-privada'))
+    limpar = Mock()
+    monkeypatch.setattr(backups, 'criar', criar)
+    monkeypatch.setattr(privacidade, 'limpar_historico', limpar)
+    assert rotinas.executar() is False
+    criar.assert_called_once()
+    limpar.assert_called_once()
+    with get_conn() as conn:
+        linha = conn.execute('SELECT ultima_copia, ultima_limpeza, erro FROM rotinas WHERE id=1').fetchone()
+    assert linha['ultima_copia'] is None and linha['ultima_limpeza']
+    assert linha['erro'] and 'privada' not in linha['erro']
+
+
+def test_falha_de_limpeza_nao_marca_limpeza_e_proxima_tentativa_recupera(banco, monkeypatch):
+    with get_conn() as conn:
+        conn.execute('UPDATE rotinas SET backup_ativo=0, limpar=1 WHERE id=1')
+    limpar = Mock(side_effect=[OSError('falha fictícia'), None])
+    monkeypatch.setattr(privacidade, 'limpar_historico', limpar)
+    assert rotinas.executar() is False
+    with get_conn() as conn:
+        linha = conn.execute('SELECT ultima_limpeza,erro FROM rotinas WHERE id=1').fetchone()
+    assert linha['ultima_limpeza'] is None and linha['erro']
+    assert rotinas.executar() is True
+    with get_conn() as conn:
+        linha = conn.execute('SELECT ultima_limpeza,erro FROM rotinas WHERE id=1').fetchone()
+    assert linha['ultima_limpeza'] and linha['erro'] is None
+    assert limpar.call_count == 2
+
+
 @pytest.mark.parametrize('idade,fuso,executar', [(2, timezone.utc, False), (2, timezone(timedelta(hours=-3)), False), (49, timezone.utc, True), (None, timezone.utc, True)])
 def test_limpeza_respeita_intervalo_com_fuso_e_recupera_data_invalida(banco, monkeypatch, idade, fuso, executar):
     instante = (datetime.now(fuso) - timedelta(hours=idade)).isoformat() if idade is not None else 'data-invalida'

@@ -1,6 +1,7 @@
 """Fila persistente: webhooks rápidos, mensagens duplicadas sem repetir IA/envio."""
 import logging
 import hashlib
+import json
 import threading
 import time
 import uuid
@@ -18,12 +19,55 @@ _status_lock = threading.Lock()
 _status_ate = 0
 _pronto = False
 _ERRO_HTTPS = 'Aguardando a reconexão da página HTTPS.'
+_ERRO_CONEXAO = ('A conexão do WhatsApp mudou. Confira a conexão de origem desta mensagem '
+                 'antes de reenviar, ou descarte a tarefa para continuar.')
 _LEGENDA_CATALOGO = (
     'A página de pedidos não ficou disponível. Segue nosso catálogo em PDF para você conferir os produtos. '
     'Para pedir por esta conversa, diga PEDIDO PELO WHATSAPP. '
     'Preços e disponibilidade serão conferidos ao confirmar; nenhum pedido foi confirmado ainda. '
     'Para saber como usamos seus dados, digite PRIVACIDADE.'
 )
+
+
+class _ConexaoAlterada(Exception):
+    """Uma resposta preparada não pode atravessar uma troca de transporte."""
+
+
+def _conexao_inalterada(conn, roteamento):
+    from . import preferencias
+    persistidos = {r['chave']: r['valor'] for r in conn.execute(
+        'SELECT chave,valor FROM configuracoes WHERE chave IN ('
+        + ','.join('?' for _ in preferencias.ROTEAMENTO_WHATSAPP) + ')',
+        preferencias.ROTEAMENTO_WHATSAPP)}
+    return (preferencias.roteamento_whatsapp() == roteamento
+            and preferencias.roteamento_whatsapp(persistidos) == roteamento)
+
+
+def _falhar_conexao(conn, tarefa_id):
+    conn.execute("UPDATE tarefas_bot SET estado='FALHOU', erro=?, atualizado_em=datetime('now') WHERE id=?",
+                 (_ERRO_CONEXAO, tarefa_id))
+
+
+def _assinatura_roteamento(roteamento):
+    return hashlib.sha256(json.dumps(roteamento, ensure_ascii=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def _rota_para_fila(conn):
+    from . import preferencias
+    roteamento = preferencias.roteamento_whatsapp()
+    if not _conexao_inalterada(conn, roteamento):
+        # ValueError é reservado a entradas inválidas, ignoradas pelo webhook Meta.
+        # Uma troca em andamento deve provocar falha e nova entrega do evento.
+        raise _ConexaoAlterada(_ERRO_CONEXAO)
+    return _assinatura_roteamento(roteamento)
+
+
+def _sessao_para_fila(informada=None):
+    if config.WHATSAPP_PROVIDER in {'LOCAL', 'WAHA'}:
+        if not config.WAHA_SESSION or informada and informada != config.WAHA_SESSION:
+            raise _ConexaoAlterada(_ERRO_CONEXAO)
+        return config.WAHA_SESSION
+    return informada
 
 
 def _mensagem_ruido(texto):
@@ -107,14 +151,16 @@ def enfileirar(dados, chave=None):
         raise ValueError("Telefone de atendimento inválido.")
     if not isinstance(dados.get("texto"), str) or not 1 <= len(dados["texto"]) <= 8000:
         raise ValueError("Mensagem de atendimento inválida.")
-    origem = ({'LOCAL':'LOCAL:','META':'META:'}.get(config.WHATSAPP_PROVIDER,'WAHA:')) + (dados.get("session") or "default")
     chave = "sha256:" + hashlib.sha256(str(chave or uuid.uuid4()).encode()).hexdigest()
     from . import protecao_ia
     with protecao_ia.trava(dados['telefone']),get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        rota = _rota_para_fila(conn)
+        sessao = _sessao_para_fila(dados.get('session'))
+        origem = ({'LOCAL':'LOCAL:','META':'META:'}.get(config.WHATSAPP_PROVIDER,'WAHA:')) + (dados.get("session") or "default")
         cur = conn.execute(
-            "INSERT OR IGNORE INTO tarefas_bot (origem, chave, telefone, texto, chat_id, sessao) VALUES (?, ?, ?, ?, ?, ?)",
-            (origem, chave, dados["telefone"], dados["texto"], dados.get("chat_id"), dados.get("session")),
+            "INSERT OR IGNORE INTO tarefas_bot (origem, chave, telefone, texto, chat_id, sessao, rota) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (origem, chave, dados["telefone"], dados["texto"], dados.get("chat_id"), sessao, rota),
         )
         tarefa = dict(conn.execute("SELECT id, estado FROM tarefas_bot WHERE origem=? AND chave=?", (origem, chave)).fetchone())
         tarefa["duplicada"] = cur.rowcount == 0
@@ -142,11 +188,17 @@ def processar_proxima(somente_rapidas=False):
         return False
     if not _servico_pronto():
         return False
+    from . import preferencias
+    roteamento = preferencias.roteamento_whatsapp()
     from .publicacao import endereco
     aguardando_https = not bool(endereco())
     ordem = 'CASE WHEN t.erro=? THEN 1 ELSE 0 END, id' if aguardando_https else 'id'
     with get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        # Inclui o intervalo entre gravar a configuração e aplicá-la em memória.
+        # Uma troca simultânea não deve reservar uma tarefa com transporte antigo.
+        if not _conexao_inalterada(conn, roteamento):
+            return False
         idade_maxima = max(60, int(config.BOT_FILA_MAX_IDADE_SEGUNDOS))
         vencidas = conn.execute(
             "SELECT id FROM tarefas_bot WHERE estado='PENDENTE' AND origem!='HUMANO' "
@@ -172,6 +224,10 @@ def processar_proxima(somente_rapidas=False):
         if row is None:
             return False
         tarefa = dict(row)
+        if (tarefa['rota'] != _assinatura_roteamento(roteamento)
+                or roteamento[0] in {'LOCAL', 'WAHA'} and tarefa['sessao'] != roteamento[-1]):
+            _falhar_conexao(conn, tarefa['id'])
+            return True
         from . import protecao_ia
         geracao=protecao_ia.versao(tarefa['telefone'],conn)
         if tarefa["origem"] != "HUMANO" and _mensagem_ruido(tarefa["texto"]):
@@ -256,20 +312,29 @@ def processar_proxima(somente_rapidas=False):
                 protecao_ia.validar_saida(tarefa['telefone'],resposta,geracao)
             with get_conn() as conn:
                 conn.execute('BEGIN IMMEDIATE')
-                atual=conn.execute('SELECT estado FROM tarefas_bot WHERE id=?',(tarefa['id'],)).fetchone()
+                if not _conexao_inalterada(conn, roteamento):
+                    raise _ConexaoAlterada()
+                atual=conn.execute('SELECT estado,rota FROM tarefas_bot WHERE id=?',(tarefa['id'],)).fetchone()
                 if not atual or atual['estado']!='PROCESSANDO':
                     raise protecao_ia.ConversaBloqueada()
+                if atual['rota'] != _assinatura_roteamento(roteamento):
+                    raise _ConexaoAlterada()
                 conn.execute("UPDATE tarefas_bot SET resposta=?, estado='ENVIANDO', atualizado_em=datetime('now') WHERE id=?", (resposta, tarefa['id']))
             if usar_pdf:
-                whatsapp.enviar_pdf(tarefa['telefone'], pdf, resposta, chat_id=tarefa['chat_id'], session=tarefa['sessao'])
+                whatsapp.enviar_pdf(tarefa['telefone'], pdf, resposta, chat_id=tarefa['chat_id'],
+                                    session=roteamento[-1] if roteamento[0] in {'LOCAL', 'WAHA'} else tarefa['sessao'])
             else:
-                whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"], session=tarefa["sessao"], permitir_externos=humano_externo)
+                whatsapp.enviar_mensagem(tarefa["telefone"], resposta, chat_id=tarefa["chat_id"],
+                                         session=roteamento[-1] if roteamento[0] in {'LOCAL', 'WAHA'} else tarefa['sessao'], permitir_externos=humano_externo)
         with get_conn() as conn:
             conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA', erro=NULL, atualizado_em=datetime('now') WHERE id=?", (tarefa["id"],))
             conn.execute("INSERT INTO mensagens (telefone, direcao, conteudo) VALUES (?, 'SAIDA', ?)", (tarefa["telefone"], resposta))
     except protecao_ia.ConversaBloqueada:
         with get_conn() as conn:
             _concluir_sem_resposta(conn,tarefa['id'],'proteção antes do envio')
+    except _ConexaoAlterada:
+        with get_conn() as conn:
+            _falhar_conexao(conn, tarefa['id'])
     except PaginaIndisponivel:
         # Falha na validação anterior ao transporte: nenhum envio foi iniciado.
         # Mantém a resposta pronta e o token para retomar sem chamar a IA outra vez.
@@ -326,6 +391,12 @@ def situacao():
 
 def reenviar(tarefa_id):
     with get_conn() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        tarefa = conn.execute("SELECT estado,rota FROM tarefas_bot WHERE id=?", (tarefa_id,)).fetchone()
+        if not tarefa or tarefa['estado'] not in {'FALHOU', 'VERIFICAR'}:
+            raise ValueError("Esta mensagem não está aguardando uma nova tentativa.")
+        if tarefa['rota'] != _rota_para_fila(conn):
+            raise ValueError('A conexão original desta mensagem não está confirmada. Confira o conteúdo e descarte esta tarefa; solicite uma nova mensagem ao cliente na conexão atual.')
         cur = conn.execute("UPDATE tarefas_bot SET estado='PENDENTE', erro=NULL, recebido_em=datetime('now'), atualizado_em=datetime('now') WHERE id=? AND estado IN ('FALHOU','VERIFICAR')", (tarefa_id,))
         if not cur.rowcount:
             raise ValueError("Esta mensagem não está aguardando uma nova tentativa.")

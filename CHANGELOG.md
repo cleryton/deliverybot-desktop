@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.49.1 — 2026-11-01
+
+Correções de qualidade na operação: preserva a identificação e o endereço de cada compra, confere o vínculo entre cliente, link e comprovante, mantém edições e fotos feitas durante o salvamento, restringe cada aspecto da resposta ao produto perguntado, protege a fila e as notificações contra seleção de outra conexão e separa falhas de backup da limpeza agendada. Migração aditiva, privacidade, testes de regressão e documentação atualizados.
+
 ## 2.49.0 — 2026-10-29
 
 Atendimento focado na pergunta atual: referências por produto e aspecto, histórico mínimo para continuações inequívocas, esclarecimento local sem inferência e distinção entre funcionamento e prazo de entrega. Preserva compra, privacidade e atendimento humano, com regressões de escopo, fontes e contexto e documentação atualizada.
