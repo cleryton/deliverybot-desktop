@@ -1,7 +1,8 @@
 """Testes com dados fictícios, sem serviços, contas ou mensagens reais."""
 import os
+import re
 import sqlite3
-from contextlib import closing
+from contextlib import closing, contextmanager
 from unittest.mock import Mock
 
 import pytest
@@ -95,14 +96,15 @@ def test_headers_e_scripts_sem_recurso_externo(cliente):
 
 
 def test_formulario_publico_protege_pedido_e_nao_vaza_dados(cliente):
-    c, headers = cliente
+    c, _ = cliente
     p = estoque.salvar_produto({"nome": "Caneta", "categoria": "Papelaria", "preco": 5, "estoque": 1})
     url = gerar_link_pedido(TELEFONE).replace(config.BASE_URL, '')
     pagina = c.get(url)
     assert b'aviso de privacidade' in pagina.data and b'csrf_token' in pagina.data
+    csrf_pedido = re.search(r'name="csrf_token" value="([^"]+)"', pagina.text)[1]
     corpo = {'nome':'Ana', 'forma_pagamento':'Pix',f'qtd_{p["id"]}':'1'}
     assert c.post(url, data=corpo).status_code == 403
-    assert c.post(url, data={**corpo,'csrf_token':headers['X-CSRF-Token']}).status_code == 303
+    assert c.post(url, data={**corpo,'csrf_token':csrf_pedido}).status_code == 303
     assert c.get(url).status_code == 410
 
 
@@ -190,6 +192,37 @@ def test_remocao_bloqueada_durante_envio():
         conn.execute("UPDATE tarefas_bot SET estado='ENVIANDO' WHERE id=?",(tarefa['id'],))
     with pytest.raises(ValueError, match='processamento'):
         privacidade.remover_identificacao(titular(confirmar_remocao=True))
+
+
+@pytest.mark.parametrize('consultar', ['_chat_id_conhecido', '_sessao_conhecida'])
+def test_remocao_invalida_leitura_de_contato_que_ja_estava_em_andamento(monkeypatch, consultar):
+    from src import whatsapp
+    pedido = compra()
+    pedidos.cancelar_pedido(pedido['id'])
+    with get_conn() as conn:
+        conn.execute('UPDATE clientes SET chat_id=?,waha_session=? WHERE telefone=?',
+                     ('contato-ficticio@lid', 'sessao-ficticia', TELEFONE))
+    whatsapp._invalidar_rotas(TELEFONE)
+    primeira = True
+    @contextmanager
+    def leitura_em_andamento():
+        with get_conn() as conn:
+            class Conexao:
+                def execute(self, *args):
+                    cursor = conn.execute(*args)
+                    class Cursor:
+                        def fetchone(self):
+                            nonlocal primeira
+                            resultado = cursor.fetchone()
+                            if primeira:
+                                primeira = False
+                                privacidade.remover_identificacao(titular(confirmar_remocao=True))
+                            return resultado
+                    return Cursor()
+            yield Conexao()
+    monkeypatch.setattr(whatsapp, 'get_conn', leitura_em_andamento)
+    assert getattr(whatsapp, consultar)(TELEFONE) is None
+    assert TELEFONE not in whatsapp._chat_id_cache and TELEFONE not in whatsapp._sessao_cache
 
 
 def test_limpeza_preserva_pendentes_e_deduplicacao():

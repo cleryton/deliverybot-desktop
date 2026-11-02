@@ -205,7 +205,7 @@ def criar_api():
         return jsonify(parear(dados()))
     @app.post('/terminal/entrar')
     def entrar():
-        if seguranca.login_bloqueado() or not limites.consumir(('login',g.dispositivo),30,300):
+        if seguranca.login_bloqueado(ambito='terminal') or not limites.consumir(('login',g.dispositivo),30,300):
             return jsonify(erro='Muitas tentativas. Aguarde cinco minutos.'),429
         d=dados()
         sessoes.sair(session.get('terminal_sessao'))
@@ -218,7 +218,7 @@ def criar_api():
         ok=operadores.entrar(login if autorizado else '',d.get('senha'))
         u=operadores.usuario() if ok else None
         ok=bool(u and u['perfil']=='CAIXA' and u['id']==g.autorizacao['operador_id'])
-        seguranca.registrar_login(ok)
+        seguranca.registrar_login(ok, ambito='terminal')
         if not ok:
             registrar_recusa('LOGIN')
             session.clear()

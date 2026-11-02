@@ -26,7 +26,7 @@
     {% if erro %}<div class="aviso aviso-erro" id="erro-pedido" role="alert" tabindex="-1"><strong>Vamos ajustar seu pedido</strong><p>{{ erro }}</p><span>Confira os dados abaixo e tente novamente.</span></div>{% endif %}
     <noscript><p class="aviso">Preencha a quantidade desejada em cada produto e confirme no fim da página. Ative o JavaScript para usar a busca e acompanhar o total antes de enviar.</p></noscript>
     <form method="post" action="" id="form-pedido" data-taxa-entrega="{{ taxa_entrega }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token('pedido:' ~ token) }}">
       <div class="layout-pedido">
         <div class="catalogo" id="catalogo" tabindex="-1">
           {% if grupos %}

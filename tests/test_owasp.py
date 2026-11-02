@@ -1,6 +1,6 @@
 """Casos adversariais OWASP, exclusivamente em bancos e serviços fictícios."""
 import json
-from pathlib import Path
+import re
 from unittest.mock import Mock
 
 import pytest
@@ -76,9 +76,8 @@ def test_parametros_repetidos_nao_iniciam_sessao(cliente):
 def test_formulario_ambiguo_rejeitado_antes_do_pedido(cliente):
     c,_,_=cliente
     url=gerar_link_pedido('5500000000001').replace('http://localhost:5000','')
-    c.get(url)
-    with c.session_transaction() as sessao:
-        token=sessao['csrf']
+    pagina=c.get(url)
+    token=re.search(r'name="csrf_token" value="([^"]+)"',pagina.text)[1]
     r=c.post(url,data=MultiDict([('csrf_token',token),('nome','Ana'),('nome','Outra pessoa')]))
     assert r.status_code==403
     with get_conn() as conn:

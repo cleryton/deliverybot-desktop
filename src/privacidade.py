@@ -92,8 +92,7 @@ def remover_identificacao(dados):
             conn.execute("UPDATE itens_pedido SET observacao=NULL WHERE pedido_id IN (SELECT id FROM pedidos WHERE cliente_id=?)", (cliente["id"],))
         auditar(conn, "REMOVER_IDENTIFICACAO", cliente["id"] if cliente else None)
     from . import whatsapp, bot
-    whatsapp._chat_id_cache.pop(telefone, None)
-    whatsapp._sessao_cache.pop(telefone, None)
+    whatsapp._invalidar_rotas(telefone)
     bot._ultima_chamada_ia.pop(telefone, None)
     return {"ok": True, "aviso": "Identificação e conversas removidas do banco atual. Revise backups antigos e dados nos provedores. Os totais e itens dos pedidos foram preservados."}
 

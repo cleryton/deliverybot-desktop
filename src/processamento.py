@@ -52,9 +52,10 @@ def _assinatura_roteamento(roteamento):
     return hashlib.sha256(json.dumps(roteamento, ensure_ascii=True, separators=(',', ':')).encode()).hexdigest()
 
 
-def _rota_para_fila(conn):
+def _rota_para_fila(conn, roteamento_esperado=None):
     from . import preferencias
-    roteamento = preferencias.roteamento_whatsapp()
+    roteamento = (preferencias.roteamento_whatsapp() if roteamento_esperado is None
+                  else roteamento_esperado)
     if not _conexao_inalterada(conn, roteamento):
         # ValueError é reservado a entradas inválidas, ignoradas pelo webhook Meta.
         # Uma troca em andamento deve provocar falha e nova entrega do evento.
@@ -145,7 +146,7 @@ def _servico_pronto():
         return _pronto
 
 
-def enfileirar(dados, chave=None):
+def enfileirar(dados, chave=None, *, roteamento_esperado=None):
     # WhatsApp pode fornecer um LID numérico quando o número alternativo não está disponível.
     if not isinstance(dados.get("telefone"), str) or not dados["telefone"].isascii() or not dados["telefone"].isdigit() or not 10 <= len(dados["telefone"]) <= 20:
         raise ValueError("Telefone de atendimento inválido.")
@@ -153,9 +154,10 @@ def enfileirar(dados, chave=None):
         raise ValueError("Mensagem de atendimento inválida.")
     chave = "sha256:" + hashlib.sha256(str(chave or uuid.uuid4()).encode()).hexdigest()
     from . import protecao_ia
+    lembrar = False
     with protecao_ia.trava(dados['telefone']),get_conn() as conn:
         conn.execute("BEGIN IMMEDIATE")
-        rota = _rota_para_fila(conn)
+        rota = _rota_para_fila(conn, roteamento_esperado)
         sessao = _sessao_para_fila(dados.get('session'))
         origem = ({'LOCAL':'LOCAL:','META':'META:'}.get(config.WHATSAPP_PROVIDER,'WAHA:')) + (dados.get("session") or "default")
         cur = conn.execute(
@@ -164,6 +166,9 @@ def enfileirar(dados, chave=None):
         )
         tarefa = dict(conn.execute("SELECT id, estado FROM tarefas_bot WHERE origem=? AND chave=?", (origem, chave)).fetchone())
         tarefa["duplicada"] = cur.rowcount == 0
+        if not tarefa['duplicada'] and config.WHATSAPP_PROVIDER in {'LOCAL', 'WAHA'} and dados.get('chat_id'):
+            whatsapp._lembrar_chat_id(dados['telefone'], dados['chat_id'], sessao, _conn=conn)
+            lembrar = True
         protegida = not tarefa['duplicada'] and protecao_ia.avaliar(conn,dados['telefone'],dados['texto'],contar=True)
         humana = (not protecao_ia.privacidade(dados['texto']) and conn.execute(
             'SELECT 1 FROM atendimentos_humanos WHERE telefone=?', (dados['telefone'],)
@@ -172,6 +177,8 @@ def enfileirar(dados, chave=None):
             conn.execute("INSERT INTO mensagens(telefone,direcao,conteudo,ia_permitida) VALUES(?,'ENTRADA',?,0)",(dados['telefone'],dados['texto']))
             _concluir_sem_resposta(conn,tarefa['id'],'proteção ou atendimento humano')
             tarefa['estado']='CONCLUIDA'
+    if lembrar:
+        whatsapp._invalidar_rotas(dados['telefone'])
     _acordar.set()
     return tarefa
 
