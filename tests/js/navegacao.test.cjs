@@ -93,7 +93,11 @@ function painel() {
     matchMedia:()=>({matches:false,addEventListener(){}}),
     setInterval(){},setTimeout(){},clearTimeout(){},
     confirm:mensagem=>{confirmacoes.push(mensagem);return contexto.aprovar;},aprovar:false,
-    fetch:async()=>{throw Error('Sem transporte real');},FormData:class{constructor(form){return form.entradas||[];}},
+    fetch:async()=>{throw Error('Sem transporte real');},FormData:class{
+      constructor(form){this.entradas=[...(form?.entradas||[])];}
+      [Symbol.iterator](){return this.entradas[Symbol.iterator]();}
+      append(nome,valor){this.entradas.push([nome,valor]);}
+    },
     Option:class{},FileReader:class{},
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../../web/static/gestao.js'),'utf8'),contexto);
@@ -163,4 +167,110 @@ test('salvamento em andamento impede descarte e formulário pendente avisa antes
   const a=painel();a.exec("state.page='comercio'");a.editar('comercio');a.$('#commerce-form').busy=true;a.contexto.aprovar=true;
   assert.equal(await a.exec("navigate('pedidos')"),false);assert.equal(a.confirmacoes.length,0);assert.match(a.avisos.at(-1),/Aguarde/);
   const evento={preventDefault(){this.impedido=true;}};a.janelaEventos.beforeunload(evento);assert.ok(evento.impedido);
+});
+
+function cadastro(id='7'){
+  const a=painel(),f=a.$('#product-form'),botao=elemento({tagName:'BUTTON',disabled:false});
+  let fechar=0,atualizar=0;
+  const produto={id:7,nome:'Nome enviado',categoria:'Teste',preco:10,unidade:'un',estoque:4,estoque_minimo:1,ativo:true};
+  a.exec('state.products='+JSON.stringify([produto,{...produto,id:9,nome:'Outro produto'}]));
+  const ux=require('../../web/static/experiencia.js');
+  a.contexto.DeliveryUX.ocupado=(b,fn)=>{const p=ux.ocupado(b,fn);p.catch(()=>{});a.acoes.push(p);return p;};
+  a.contexto.reload=async()=>atualizar++;
+  a.$('#product-photo').files=[];
+  f.elements.unidade.options=[];f.elements.unidade.add=o=>f.elements.unidade.options.push(o);
+  f.elements.estoque.closest=()=>elemento();f.elements.estoque_minimo.closest=()=>elemento();
+  f.elements.id.value=id;f.elements.nome.value=produto.nome;f.elements.estoque.value='4';f.elements.estoque_minimo.value='1';
+  f.elements.controlar_estoque.checked=true;
+  f.entradas=[['id',id],['nome',produto.nome]];
+  a.$('#product-dialog').close=()=>{fechar++;a.$('#product-dialog').emitir('close');};
+  return {...a,f,botao,produto,enviar(){f.emitir('submit',{submitter:botao});},
+    get fechamentos(){return fechar;},get atualizacoes(){return atualizar;}};
+}
+
+test('produto mantém edição e foto novas feitas durante o salvamento',async()=>{
+  const a=cadastro();let liberar;
+  a.contexto.api=()=>new Promise(resolve=>{liberar=resolve;});
+  a.f.emitir('input');a.enviar();await aguardar();assert.equal(a.botao.disabled,true);
+  a.f.elements.nome.value='Nome posterior';const foto={name:'nova-foto.png'};
+  a.$('#product-photo').files=[foto];a.f.emitir('input');
+  liberar({...a.produto,foto_url:'/produtos/fotos/foto-salva.jpg'});await Promise.all(a.acoes);
+  assert.equal(a.fechamentos,0);assert.equal(a.atualizacoes,0);assert.equal(a.f.elements.nome.value,'Nome posterior');
+  assert.equal(a.$('#product-photo').files[0],foto);assert.ok(a.exec('productDirty'));
+  assert.match(a.$('#product-save-status').textContent,/novas alterações não salvas/);assert.equal(a.botao.disabled,false);
+});
+
+test('novo produto recebe id confirmado antes de salvar edição posterior sem repetir criação',async()=>{
+  const a=cadastro('');let liberar;const chamadas=[];
+  a.contexto.api=(rota,metodo,dados)=>{chamadas.push({rota,metodo,dados});return chamadas.length===1?
+    new Promise(resolve=>{liberar=resolve;}):Promise.resolve({...a.produto,id:41,nome:'Nome posterior'});};
+  a.f.emitir('input');a.enviar();await aguardar();
+  a.f.elements.nome.value='Nome posterior';a.f.emitir('input');liberar({...a.produto,id:41});await a.acoes[0];
+  assert.equal(a.f.elements.id.value,'41');assert.equal(a.f.elements.estoque.disabled,true);
+  assert.equal(a.fechamentos,0);assert.ok(a.exec('productDirty'));
+  a.f.entradas=[['id',a.f.elements.id.value],['nome',a.f.elements.nome.value]];a.enviar();await Promise.all(a.acoes);
+  assert.deepEqual(chamadas.map(c=>[c.rota,c.metodo]),[['produtos','POST'],['produtos/41','PUT']]);
+  assert.equal(chamadas[1].dados.nome,'Nome posterior');assert.equal(a.fechamentos,1);assert.equal(a.atualizacoes,1);
+  assert.equal(a.exec('productDirty'),false);assert.equal(a.exec('state.products.filter(p=>p.id===41).length'),1);
+});
+
+test('remoção de foto feita durante envio de outra foto permanece pendente',async()=>{
+  const a=cadastro();let liberar,enviado;const foto={name:'foto-enviada.png'};
+  a.$('#product-photo').files=[foto];a.f.emitir('input');
+  a.contexto.api=(rota,metodo,dados)=>{enviado=dados;return new Promise(resolve=>{liberar=resolve;});};
+  a.enviar();await aguardar();a.$('#product-photo').files=[];a.$('#product-photo-remove').emitir('click');
+  liberar({...a.produto,foto_url:'/produtos/fotos/salva.jpg'});await Promise.all(a.acoes);
+  assert.equal(enviado.entradas.find(([k])=>k==='foto')[1],foto);
+  assert.equal(JSON.parse(enviado.entradas.find(([k])=>k==='dados')[1]).remover_foto,false);
+  assert.equal(a.exec('photoRemoved'),true);assert.ok(a.exec('productDirty'));assert.equal(a.fechamentos,0);
+  assert.equal(a.$('#product-photo-image').hidden,true);
+});
+
+test('resposta atrasada de um produto não modifica outro diálogo aberto',async()=>{
+  const a=cadastro('');let liberar;
+  a.contexto.api=()=>new Promise(resolve=>{liberar=resolve;});a.enviar();await aguardar();
+  a.exec('openProduct(9)');a.f.elements.nome.value='Outro editado';a.f.emitir('input');
+  liberar({...a.produto,id:41});await Promise.all(a.acoes);
+  assert.equal(a.f.elements.id.value,9);assert.equal(a.f.elements.nome.value,'Outro editado');
+  assert.equal(a.$('#product-title').textContent,'Editar produto');assert.equal(a.fechamentos,0);
+  assert.ok(a.exec('productDirty'));assert.match(a.$('#product-save-status').textContent,/não salvas/);
+});
+
+test('fechar e reabrir o mesmo produto invalida resposta do diálogo anterior',async()=>{
+  const a=cadastro();let liberar;
+  a.contexto.api=()=>new Promise(resolve=>{liberar=resolve;});a.enviar();await aguardar();
+  a.$('#product-dialog').emitir('close');a.exec('openProduct(7)');
+  a.f.elements.nome.value='Nova sessão de edição';a.f.emitir('input');liberar(a.produto);await Promise.all(a.acoes);
+  assert.equal(a.f.elements.nome.value,'Nova sessão de edição');assert.equal(a.fechamentos,0);assert.ok(a.exec('productDirty'));
+});
+
+test('falha do produto mantém alterações e libera botão para nova tentativa',async()=>{
+  const a=cadastro();let rejeitar;let chamadas=0;
+  a.contexto.api=()=>{chamadas++;return new Promise((_,reject)=>{rejeitar=reject;});};
+  a.f.emitir('input');a.enviar();await aguardar();a.f.elements.nome.value='Ainda em edição';a.f.emitir('input');
+  rejeitar(Error('Falha fictícia'));await Promise.allSettled(a.acoes);await aguardar();
+  assert.equal(a.f.elements.nome.value,'Ainda em edição');assert.ok(a.exec('productDirty'));
+  assert.equal(a.fechamentos,0);assert.equal(a.botao.disabled,false);assert.equal(chamadas,1);assert.match(a.avisos.at(-1),/Falha fictícia/);
+});
+
+test('salvamento de produto sem edição nova fecha diálogo e atualiza catálogo normalmente',async()=>{
+  const a=cadastro();a.contexto.api=async()=>a.produto;a.f.emitir('input');a.enviar();await Promise.all(a.acoes);
+  assert.equal(a.fechamentos,1);assert.equal(a.atualizacoes,1);assert.equal(a.exec('productDirty'),false);
+  assert.equal(a.$('#product-save-status').textContent,'');assert.equal(a.botao.disabled,false);
+});
+
+for(const nova of ['Próxima pergunta','Mensagem enviada'])test(`simulador preserva novo rascunho durante resposta: ${nova}`,async()=>{
+  const a=painel(),f=a.$('#bot-form');let liberar;
+  a.contexto.api=()=>new Promise(resolve=>{liberar=resolve;});
+  f.entradas=[['texto','Mensagem enviada']];f.elements.texto.value='Mensagem enviada';f.emitir('submit',{submitter:elemento()});
+  await aguardar();f.elements.texto.value=nova;f.emitir('input');liberar({resposta:'Resposta fictícia'});await Promise.all(a.acoes);
+  assert.equal(f.elements.texto.value,nova);
+});
+
+test('simulador limpa apenas mensagem concluída sem edição posterior e preserva rascunho em falha',async()=>{
+  const a=painel(),f=a.$('#bot-form');f.entradas=[['texto','Mensagem enviada']];f.elements.texto.value='Mensagem enviada';
+  a.contexto.api=async()=>({resposta:'Resposta fictícia'});f.emitir('submit',{submitter:elemento()});await Promise.all(a.acoes);
+  assert.equal(f.elements.texto.value,'');
+  f.elements.texto.value='Pergunta mantida';a.contexto.api=async()=>{throw Error('Falha fictícia');};
+  f.emitir('submit',{submitter:elemento()});await Promise.allSettled(a.acoes);await aguardar();assert.equal(f.elements.texto.value,'Pergunta mantida');
 });

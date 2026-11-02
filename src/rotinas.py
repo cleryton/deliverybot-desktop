@@ -71,6 +71,37 @@ def verificar_arquivo(arquivo,senha):
     backups.verificar_arquivo(arquivo,senha)
 
 
+def _executar_backup(r, agora):
+    senha=seguranca.revelar_segredo(r['senha'])
+    origem=Path(backups.criar(senha))
+    verificar_arquivo(origem,senha)
+    pasta=Path(r['pasta']) if r['pasta'] else origem.parent
+    pasta.mkdir(parents=True,exist_ok=True)
+    destino=pasta/('automatico-'+origem.name)
+    if origem.parent.resolve()==pasta.resolve():
+        os.replace(origem,destino)
+    else:
+        temp=destino.with_suffix('.novo')
+        try:
+            shutil.copyfile(origem,temp)
+            # Discos externos podem falhar: valide no destino antes da troca.
+            with temp.open('rb+') as arquivo:
+                arquivo.flush()
+                os.fsync(arquivo.fileno())
+            verificar_arquivo(temp,senha)
+            os.replace(temp,destino)
+            origem.unlink()
+        finally:
+            temp.unlink(missing_ok=True)
+    with get_conn() as c:
+        c.execute('UPDATE rotinas SET ultima_copia=? WHERE id=1',(agora.isoformat(),))
+    # Somente arquivos da rotina; backups manuais continuam preservados.
+    copias=sorted(pasta.glob('automatico-DeliveryBot-*.dbot'),key=lambda p:p.stat().st_mtime,reverse=True)
+    for antigo in copias[r['quantidade']:]:
+        if not antigo.is_symlink():
+            antigo.unlink()
+
+
 def executar(forcar=False):
     if not _lock.acquire(blocking=False):
         return False
@@ -79,40 +110,27 @@ def executar(forcar=False):
         agora=datetime.now(timezone.utc).replace(tzinfo=None)
         ultima_copia = _instante_utc(r['ultima_copia'])
         ultima_limpeza = _instante_utc(r['ultima_limpeza']) if r['limpar'] else None
+        falhou = False
+        executou = False
         if r['backup_ativo'] and (forcar or not ultima_copia or agora-ultima_copia>=timedelta(hours=r['horas'])):
-            senha=seguranca.revelar_segredo(r['senha'])
-            origem=Path(backups.criar(senha))
-            verificar_arquivo(origem,senha)
-            pasta=Path(r['pasta']) if r['pasta'] else origem.parent
-            pasta.mkdir(parents=True,exist_ok=True)
-            destino=pasta/('automatico-'+origem.name)
-            if origem.parent.resolve()==pasta.resolve():
-                os.replace(origem,destino)
-            else:
-                temp=destino.with_suffix('.novo')
-                try:
-                    shutil.copyfile(origem,temp)
-                    # Valide os bytes no destino antes de publicar a cópia ou
-                    # descartar a origem: discos externos/redes podem falhar.
-                    with temp.open('rb+') as arquivo:
-                        arquivo.flush()
-                        os.fsync(arquivo.fileno())
-                    verificar_arquivo(temp,senha)
-                    os.replace(temp,destino)
-                    origem.unlink()
-                finally:
-                    temp.unlink(missing_ok=True)
-            with get_conn() as c:
-                c.execute('UPDATE rotinas SET ultima_copia=?,erro=NULL WHERE id=1',(agora.isoformat(),))
-            # Apenas arquivos criados pela rotina; preserva backups manuais e antigos.
-            copias=sorted(pasta.glob('automatico-DeliveryBot-*.dbot'),key=lambda p:p.stat().st_mtime,reverse=True)
-            for antigo in copias[r['quantidade']:]:
-                if not antigo.is_symlink():
-                    antigo.unlink()
+            executou = True
+            try:
+                _executar_backup(r, agora)
+            except Exception:
+                falhou = True
         if r['limpar'] and (forcar or not ultima_limpeza or agora-ultima_limpeza>=timedelta(days=1)):
-            privacidade.limpar_historico()
+            executou = True
+            try:
+                privacidade.limpar_historico()
+                with get_conn() as c:
+                    c.execute('UPDATE rotinas SET ultima_limpeza=? WHERE id=1',(agora.isoformat(),))
+            except Exception:
+                falhou = True
+        if falhou:
+            raise RuntimeError('Uma rotina de proteção não foi concluída.')
+        if executou:
             with get_conn() as c:
-                c.execute('UPDATE rotinas SET ultima_limpeza=? WHERE id=1',(agora.isoformat(),))
+                c.execute('UPDATE rotinas SET erro=NULL WHERE id=1')
         return True
     except Exception:
         with get_conn() as c:

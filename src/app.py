@@ -374,7 +374,8 @@ def comprovante_pedido(token):
     link = obter_link(token)
     acesso = comprovantes.consultar(token,link['pedido_id']) if link and link['usado'] else None
     pedido = pedidos.obter_pedido(acesso['id']) if acesso else None
-    if not pedido:
+    if (not pedido or not link.get('telefone')
+            or not seguranca.igual(pedido.get('cliente_telefone'), link['telefone'])):
         return render_template('comprovante_indisponivel.html'),410
     return render_template('pedido_sucesso.html',pedido=pedido,nome_restaurante=config.NOME_RESTAURANTE,
                            modo_teste=acesso['teste'],notificacao_ok=acesso['notificado'])

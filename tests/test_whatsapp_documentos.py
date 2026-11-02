@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src import config, meta_custos, whatsapp, whatsapp_documentos
+from src import config, meta_custos, whatsapp
 
 PDF = b'%PDF-1.4\nconteudo-ficticio\n%%EOF'
 TELEFONE = '5547999990000'
@@ -32,6 +32,7 @@ def ambiente(monkeypatch):
 @pytest.mark.parametrize('provedor', ['LOCAL', 'WAHA'])
 def test_envio_inline_preserva_lid_sessao_e_nao_precisa_https_publico(monkeypatch, provedor):
     monkeypatch.setattr(config, 'WHATSAPP_PROVIDER', provedor)
+    monkeypatch.setattr(config, 'WAHA_SESSION', 'loja')
     monkeypatch.setattr(config, 'BASE_URL', '')
     from src import whatsapp_local
     monkeypatch.setattr(whatsapp_local, 'credenciais', lambda: ('http://127.0.0.1:3555', 'chave-local'))

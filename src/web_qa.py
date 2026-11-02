@@ -27,6 +27,8 @@ ESTADOS_QA = {
 }
 
 def criar_app(pasta,base,chave_sessao):
+    raiz=Path(__file__).resolve().parents[1]
+    versao=(raiz/'VERSION').read_text(encoding='utf-8').strip()
     url=urlsplit(base)
     if url.scheme!='https' or not url.hostname or url.username or url.password or url.path not in {'','/'} or url.query or url.fragment:
         raise ValueError('Configure a origem HTTPS do ambiente QA.')
@@ -82,8 +84,8 @@ def criar_app(pasta,base,chave_sessao):
                 'descricao':'Produto fictício para testar o catálogo e o pedido. Não está à venda.',
                 'controlar_estoque':controle,'estoque':1000,'unidade':'un','ativo':True},
                 produto_id=anterior['id'] if anterior else None,_foto=foto.getvalue(),_conn=c)
-    app=Flask('deliverybot_qa',template_folder=str(Path(__file__).resolve().parents[1]/'web/templates'),
-              static_folder=str(Path(__file__).resolve().parents[1]/'web/static'),static_url_path='/static')
+    app=Flask('deliverybot_qa',template_folder=str(raiz/'web/templates'),
+              static_folder=str(raiz/'web/static'),static_url_path='/static')
     app.secret_key=chave_sessao
     app.config.update(MAX_CONTENT_LENGTH=1024*1024,TRUSTED_HOSTS=[url.hostname],SESSION_COOKIE_SECURE=True)
     app.wsgi_app=ProxyFix(app.wsgi_app,x_for=0,x_proto=1,x_host=0,x_port=0,x_prefix=0)
@@ -99,12 +101,18 @@ def criar_app(pasta,base,chave_sessao):
     def isolar():
         if not config.MODO_TESTE or config.WHATSAPP_PROVIDER!='TESTE':abort(503)
         if request.endpoint=='static' and request.view_args.get('filename') not in ASSETS:abort(404)
+        if request.endpoint in {'pagina_pedido','enviar_pedido','catalogo_cliente_pdf'}:
+            # O laboratório cria o pedido no navegador; conhecer outro token
+            # não transfere essa sessão. O comprovante usa sua própria permissão
+            # temporária, para preservar recibos anteriores após um novo teste.
+            if not seguranca.igual(session.get('qa_link'),request.view_args.get('token')):abort(410)
         if request.endpoint in {'qa_novo','enviar_pedido'} and not limites.consumir('gravacoes',60,60):abort(429)
         if request.endpoint=='enviar_pedido':
             with get_conn() as c:
                 if c.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0]>=500:abort(429)
     @app.after_request
     def cabecalhos(r):
+        r.headers['X-DeliveryBot-Version']=versao
         r.headers['X-Robots-Tag']='noindex, nofollow'
         r.headers['Referrer-Policy']='same-origin'
         if r.status_code in ESTADOS_QA:
@@ -118,9 +126,9 @@ def criar_app(pasta,base,chave_sessao):
         return r
     @app.get('/')
     def qa_inicio():
-        return render_template('qa_inicio.html')
+        return render_template('qa_inicio.html',versao_qa=versao)
     @app.get('/healthz')
-    def qa_saude():return jsonify(ok=True,ambiente='QA',whatsapp='SIMULADO')
+    def qa_saude():return jsonify(ok=True,ambiente='QA',whatsapp='SIMULADO',versao=versao)
     @app.get('/robots.txt')
     def robots():return 'User-agent: *\nDisallow: /\n',200,{'Content-Type':'text/plain'}
     @app.post('/qa/novo')

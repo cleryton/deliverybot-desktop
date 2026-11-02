@@ -42,6 +42,7 @@ class Foco:
     retomada: bool = False
     _entrada: str = field(default='', repr=False)
     _antecedentes: tuple[str, ...] = field(default=(), repr=False)
+    aspectos_produtos: tuple[tuple[int, frozenset[str]], ...] = ()
 
     def historico(self, mensagens):
         """Retorna até quatro antecedentes do cliente, sem acrescentar a atual.
@@ -67,10 +68,10 @@ _PADROES = {
     'entrega': r'\b(?:entregas?|entregam|entrega[mr]|frete|retirada|retirar|retira|preparo|pronto|chegar|chega)\b',
     'prazo': r'\b(?:prazos?|demora|tempo|minutos?|quanto leva|quanto falta)\b',
     'preco': r'\b(?:precos?|valores?|custa|custam|quanto fica|custo|taxas?|frete)\b',
-    'descricao': r'\b(?:ingredientes?|composicao|descricao|detalhes?|contem|alergenos?|lactose|gluten|tamanhos?|cores?|sabores?|compatibilidade|diferenca|comparar|compare)\b',
+    'descricao': r'\b(?:ingredientes?|composicao|descricao|detalhes?|contem|alergenos?|lactose|gluten|tamanhos?|cor(?:es)?|sabor(?:es)?|compatibilidade|diferenca|comparar|compare)\b',
     'garantia': r'\b(?:garantias?)\b',
     'troca': r'\b(?:trocas?|trocar|devolver|devolucao|reembolso)\b',
-    'disponibilidade': r'\b(?:tem|vendem|oferecem|disponivel|disponiveis|disponibilidade|estoque|saldo|esgotad[oa]|acabou)\b',
+    'disponibilidade': r'\b(?:vendem|oferecem|disponivel|disponiveis|disponibilidade|estoque|saldo|esgotad[oa]|acabou)\b',
     'catalogo': r'\b(?:catalogo|cardapio|quais produtos|quais opcoes|ver produtos|conhecer os produtos)\b',
     'pedido': r'\b(?:fazer (?:um |meu |o )?pedido|quero comprar|quero pedir|link(?: do pedido)?|encomendar)\b',
     'promocao': r'\b(?:promocao|promocoes|ofertas?|descontos?)\b',
@@ -87,10 +88,20 @@ _CONTINUACAO = re.compile(
 _NEGACAO = re.compile(r'\b(?:nao (?:quero|gostaria|preciso|prefiro|desejo|vou)|'
                        r'dispenso|retire|remova|sem|nem|nao(?! (?:tem|ha|vendem?|oferecem?|contem|serve)\b))\b')
 _AFIRMACAO = re.compile(r'\b(?:quero|gostaria|preciso|prefiro|desejo|vou|escolho)\b')
+_TEM_CARACTERISTICA = re.compile(
+    r'\s+(?:(?:qual|quais|algum|alguma)\s+)?(?:lactose|gluten|ingredientes?|'
+    r'composicao|cor(?:es)?|sabor(?:es)?|tamanhos?)\b')
+_ASPECTOS_PRODUTO = frozenset({'preco', 'descricao', 'garantia', 'troca',
+                              'disponibilidade', 'catalogo', 'promocao'})
+_SEPARADOR_CONSULTA = re.compile(r'[,;!?]+|(?<!\d)\.(?!\d)|\s+(?:e|mas|tambem)\s+')
+_REFERENCIA_AMBIGUA = re.compile(r'\b(?:de|do|da) (?:um|uma|outro|outra|primeiro|primeira|segundo|segunda)\b')
 
 
 def _aspectos(texto):
     aspectos = {nome for nome, expressao in _PADROES.items() if expressao.search(texto)}
+    if any(not _TEM_CARACTERISTICA.match(texto, termo.end())
+           for termo in re.finditer(r'\btem\b', texto)):
+        aspectos.add('disponibilidade')
     horario_entrega = re.search(
         r'\b(?:horario|horarios) (?:de|da|para|pra) (?:entrega|retirada|preparo)\b|'
         r'\bque horas (?:chega|entrega|fica pronto|posso retirar)\b', texto)
@@ -173,6 +184,67 @@ def _assunto(aspectos, ids):
     return 'geral'
 
 
+def _clausulas(texto, nomes):
+    """Não separa a conjunção ou pontuação que faz parte de um nome oficial."""
+    intervalos = sorted({m.span() for _, _, _, padrao in nomes for m in padrao.finditer(texto)})
+    protegidos = []
+    for inicio, fim in intervalos:
+        if protegidos and inicio <= protegidos[-1][1]:
+            protegidos[-1] = (protegidos[-1][0], max(fim, protegidos[-1][1]))
+        else:
+            protegidos.append((inicio, fim))
+    inicio = posicao = 0
+    for separador in _SEPARADOR_CONSULTA.finditer(texto):
+        while posicao < len(protegidos) and protegidos[posicao][1] <= separador.start():
+            posicao += 1
+        if (posicao < len(protegidos) and protegidos[posicao][0] < separador.end()
+                and protegidos[posicao][1] > separador.start()):
+            continue
+        yield texto[inicio:separador.start()]
+        inicio = separador.end()
+    yield texto[inicio:]
+
+
+def _aspectos_por_produto(texto, nomes, ids, aspectos):
+    """Associa campos de cláusulas explícitas; dúvida não autoriza fatos cruzados."""
+    detalhes = aspectos & _ASPECTOS_PRODUTO
+    if len(ids) <= 1 or not detalhes:
+        return tuple((indice, detalhes) for indice in ids)
+    if _REFERENCIA_AMBIGUA.search(texto):
+        return None
+    partes = [(_produtos_citados(parte, nomes)[0], _aspectos(parte) & detalhes)
+              for parte in _clausulas(texto, nomes)]
+    mapa = {indice: set() for indice in ids}
+    pendentes, sem_campo, grupo, ultimos = set(), set(), set(), set()
+    for posicao, (citados, campos) in enumerate(partes):
+        citados = set(citados) & mapa.keys()
+        if citados and campos:
+            grupo, ultimos = citados | sem_campo, set(campos) | pendentes
+            for indice in grupo:
+                mapa[indice].update(ultimos)
+            pendentes, sem_campo = set(), set()
+        elif citados:
+            if ultimos:
+                grupo.update(citados)
+                for indice in citados:
+                    mapa[indice].update(ultimos)
+            else:
+                sem_campo.update(citados)
+        elif campos:
+            if any(set(futuros) & mapa.keys() for futuros, _ in partes[posicao + 1:]):
+                pendentes.update(campos)
+            else:
+                grupo = grupo or sem_campo
+                for indice in grupo:
+                    mapa[indice].update(campos)
+                sem_campo = set()
+    if pendentes or sem_campo or any(not campos for campos in mapa.values()):
+        return None
+    if set().union(*mapa.values()) != detalhes:
+        return None
+    return tuple((indice, frozenset(mapa[indice])) for indice in ids)
+
+
 def resolver(pergunta, produtos, mensagens=()) -> Foco:
     """Descreve o foco sem ampliar escopo nem autorizar qualquer operação."""
     pergunta = str(pergunta or '').strip()
@@ -212,5 +284,8 @@ def resolver(pergunta, produtos, mensagens=()) -> Foco:
     chaves = [''.join(chave) for indice, _, chave, _ in nomes if indice in ids]
     if len(ids) > 1 and len(set(chaves)) == 1:
         esclarecer = 'Qual variação do produto você quer consultar?'
+    mapa = _aspectos_por_produto(atual, nomes, ids, aspectos) if not esclarecer else ()
+    if mapa is None:
+        esclarecer = 'Qual informação você quer saber de cada produto?'
     return Foco(consulta, _assunto(aspectos, ids), aspectos, ids, esclarecer, retomada,
-                pergunta, antecedentes)
+                pergunta, antecedentes, aspectos_produtos=mapa or ())

@@ -7,7 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from src import bot, config, humano, ia, processamento, publicacao, whatsapp
+from src import bot, config, humano, ia, preferencias, processamento, publicacao, whatsapp
 from src.db import get_conn, init_db
 
 
@@ -15,6 +15,8 @@ from src.db import get_conn, init_db
 def ambiente(tmp_path, monkeypatch):
     monkeypatch.setattr(config, 'DATABASE_PATH', str(tmp_path / 'ficticia.db'))
     monkeypatch.setattr(config, 'SEED_CATALOGO', False)
+    for chave in preferencias.CAMPOS | {'MODO_TESTE'}:
+        monkeypatch.setattr(config, chave, getattr(config, chave))
     monkeypatch.setattr(config, 'WHATSAPP_PROVIDER', 'LOCAL')
     monkeypatch.setattr(config, 'MODO_TESTE', False)
     monkeypatch.setattr(processamento, '_parar', threading.Event())
@@ -161,3 +163,352 @@ def test_benchmark_recusa_backend_carregado_e_preserva_configuracao(monkeypatch)
     with pytest.raises(ValueError, match='processo separado'):
         benchmark['executar'](3, .2)
     assert (config.DATABASE_PATH, config.WHATSAPP_PROVIDER, config.MODO_TESTE) == antes
+
+
+@pytest.mark.parametrize('estado', ['PENDENTE', 'PROCESSANDO', 'ENVIANDO', 'FALHOU', 'VERIFICAR'])
+@pytest.mark.parametrize('inicial,dados', [
+    ('LOCAL', {'WHATSAPP_PROVIDER': 'WAHA'}),
+    ('LOCAL', {'WHATSAPP_PROVIDER': 'TESTE'}),
+    ('LOCAL', {'WAHA_SESSION': 'outra-loja-ficticia'}),
+    ('WAHA', {'WHATSAPP_PROVIDER': 'LOCAL'}),
+    ('WAHA', {'WAHA_URL': 'https://novo-ficticio.example'}),
+    ('WAHA', {'WAHA_SESSION': 'outra-loja-ficticia'}),
+])
+def test_troca_de_rota_com_fila_pendente_e_atomica(inicial, dados, estado):
+    preferencias.salvar({'WHATSAPP_PROVIDER': inicial, 'WAHA_URL': 'https://antigo-ficticio.example',
+                        'WAHA_SESSION': 'default'})
+    tarefa = entrada('oi')
+    with get_conn() as conn:
+        conn.execute('UPDATE tarefas_bot SET estado=? WHERE id=?', (estado, tarefa['id']))
+        persistidos = dict(conn.execute('SELECT chave,valor FROM configuracoes').fetchall())
+    rota = preferencias.roteamento_whatsapp()
+    nome = config.NOME_RESTAURANTE
+    with pytest.raises(ValueError, match='mensagens pendentes'):
+        preferencias.salvar({**dados, 'NOME_RESTAURANTE': 'Não salvar alteração parcial'})
+    assert preferencias.roteamento_whatsapp() == rota
+    assert config.NOME_RESTAURANTE == nome
+    with get_conn() as conn:
+        assert dict(conn.execute('SELECT chave,valor FROM configuracoes').fetchall()) == persistidos
+
+
+def test_rotacao_de_chaves_e_save_idempotente_recuperam_conexao_com_fila():
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example',
+                        'WAHA_SESSION': 'default'})
+    entrada('oi')
+    rota = preferencias.roteamento_whatsapp()
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example/',
+                        'WAHA_SESSION': 'default', 'WAHA_API_KEY': 'chave-ficticia-renovada'})
+    assert preferencias.roteamento_whatsapp() == rota
+    assert config.WAHA_API_KEY == 'chave-ficticia-renovada'
+
+
+def test_troca_de_rota_e_permitida_com_tarefas_concluidas():
+    tarefa = entrada('oi')
+    with get_conn() as conn:
+        conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA' WHERE id=?", (tarefa['id'],))
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_SESSION': 'nova-loja-ficticia'})
+    assert config.WHATSAPP_PROVIDER == 'WAHA'
+    assert config.WAHA_SESSION == 'nova-loja-ficticia'
+
+
+def test_tarefa_de_outro_provedor_nao_usa_a_conexao_atual(monkeypatch):
+    tarefa = entrada('oi')
+    # Simula uma tarefa antiga preservada após uma troca de configuração.
+    monkeypatch.setattr(config, 'WHATSAPP_PROVIDER', 'WAHA')
+    responder = Mock(side_effect=AssertionError('Não interpretar uma tarefa de outra conexão.'))
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert processamento.processar_proxima()
+    responder.assert_not_called()
+    whatsapp.enviar_mensagem.assert_not_called()
+    with get_conn() as conn:
+        row = conn.execute('SELECT estado,erro FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()
+        assert row['estado'] == 'FALHOU' and 'conexão' in row['erro']
+        assert conn.execute('SELECT COUNT(*) FROM mensagens').fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('campo,valor', [
+    ('WHATSAPP_PROVIDER', 'LOCAL'),
+    ('WAHA_URL', 'https://outro-ficticio.example'),
+    ('WAHA_SESSION', 'outra-sessao-ficticia'),
+])
+def test_mudanca_inesperada_durante_preparacao_nao_atravessa_o_envio(monkeypatch, campo, valor):
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example',
+                        'WAHA_SESSION': 'default'})
+    tarefa = entrada('oi')
+    def responder(*_):
+        monkeypatch.setattr(config, campo, valor)
+        return 'Resposta preparada na conexão anterior'
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert processamento.processar_proxima()
+    whatsapp.enviar_mensagem.assert_not_called()
+    with get_conn() as conn:
+        row = conn.execute('SELECT estado,erro FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()
+        assert row['estado'] == 'FALHOU' and 'conexão' in row['erro']
+
+
+def test_rota_persistida_alterada_antes_de_aplicar_tambem_bloqueia_envio(monkeypatch):
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example'})
+    tarefa = entrada('oi')
+    def responder(*_):
+        with get_conn() as conn:
+            conn.execute("UPDATE configuracoes SET valor='https://outro-ficticio.example' WHERE chave='WAHA_URL'")
+        return 'Resposta preparada na conexão anterior'
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert processamento.processar_proxima()
+    whatsapp.enviar_mensagem.assert_not_called()
+    with get_conn() as conn:
+        assert conn.execute('SELECT estado FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()[0] == 'FALHOU'
+
+
+def test_configuracao_muda_enquanto_reserva_nao_processa_com_snapshot_antigo(monkeypatch):
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example'})
+    tarefa = entrada('oi')
+    with get_conn() as conn:
+        conn.execute("UPDATE configuracoes SET valor='https://outro-ficticio.example' WHERE chave='WAHA_URL'")
+    responder = Mock(side_effect=AssertionError('Aguarde a aplicação da configuração persistida.'))
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert not processamento.processar_proxima()
+    responder.assert_not_called()
+    whatsapp.enviar_mensagem.assert_not_called()
+    with get_conn() as conn:
+        assert conn.execute('SELECT estado FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()[0] == 'PENDENTE'
+
+
+def test_rotacao_de_chave_durante_inferencia_nao_descarta_resposta(monkeypatch):
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example'})
+    entrada('oi')
+    def responder(*_):
+        preferencias.salvar({'WAHA_API_KEY': 'chave-ficticia-renovada'})
+        return 'Resposta na mesma conexão'
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert processamento.processar_proxima()
+    whatsapp.enviar_mensagem.assert_called_once()
+
+
+def test_troca_simultanea_com_inferencia_e_recusada_antes_de_gravar(monkeypatch):
+    iniciou, liberar = threading.Event(), threading.Event()
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example'})
+    entrada('oi')
+    def responder(*_):
+        iniciou.set()
+        assert liberar.wait(8)
+        return 'Resposta na mesma conexão'
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        futuro = executor.submit(processamento.processar_proxima)
+        try:
+            assert iniciou.wait(8)
+            with pytest.raises(ValueError, match='mensagens pendentes'):
+                preferencias.salvar({'WHATSAPP_PROVIDER': 'LOCAL'})
+            assert config.WHATSAPP_PROVIDER == 'WAHA'
+        finally:
+            liberar.set()
+        assert futuro.result(timeout=8)
+    whatsapp.enviar_mensagem.assert_called_once()
+
+
+@pytest.mark.parametrize('dados', [
+    {'WAHA_URL': 'https://outro-ficticio.example'},
+    {'WAHA_SESSION': 'outra-sessao-ficticia'},
+])
+def test_evento_na_janela_entre_gravacao_e_aplicacao_nao_e_aceito(monkeypatch, dados):
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example',
+                        'WAHA_SESSION': 'default'})
+    aplicar = preferencias.aplicar
+    def aplicar_depois_de_evento(valores):
+        with pytest.raises(processamento._ConexaoAlterada):
+            entrada('oi')
+        aplicar(valores)
+    monkeypatch.setattr(preferencias, 'aplicar', aplicar_depois_de_evento)
+    preferencias.salvar(dados)
+    with get_conn() as conn:
+        assert conn.execute('SELECT COUNT(*) FROM tarefas_bot').fetchone()[0] == 0
+    # O evento repetido depois da aplicação recebe o retrato da nova conexão.
+    tarefa = entrada('oi')
+    with get_conn() as conn:
+        assert conn.execute('SELECT rota FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()[0]
+
+
+@pytest.mark.parametrize('dados', [
+    {'WAHA_URL': 'https://outro-ficticio.example'},
+    {'WAHA_SESSION': 'outra-sessao-ficticia'},
+])
+def test_tarefa_preserva_a_rota_original_ao_recuperar_na_mesma_plataforma(monkeypatch, dados):
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example',
+                        'WAHA_SESSION': 'default'})
+    tarefa = entrada('oi')
+    with get_conn() as conn:
+        conn.execute("UPDATE tarefas_bot SET estado='CONCLUIDA' WHERE id=?", (tarefa['id'],))
+        original = conn.execute('SELECT rota FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()[0]
+    preferencias.salvar(dados)
+    with get_conn() as conn:
+        # Representa uma tarefa antiga restaurada depois de mudar o servidor/sessão.
+        conn.execute("UPDATE tarefas_bot SET estado='PENDENTE' WHERE id=?", (tarefa['id'],))
+    responder = Mock(side_effect=AssertionError('A rota original não corresponde à conta atual.'))
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert processamento.processar_proxima()
+    responder.assert_not_called()
+    whatsapp.enviar_mensagem.assert_not_called()
+    with get_conn() as conn:
+        assert conn.execute('SELECT estado,rota FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()[:] == ('FALHOU', original)
+    with pytest.raises(ValueError, match='conexão original'):
+        processamento.reenviar(tarefa['id'])
+
+
+@pytest.mark.parametrize('origem', ['LOCAL:default', 'WAHA:default', 'HUMANO'])
+def test_tarefa_legada_sem_rota_e_preservada_para_revisao(monkeypatch, origem):
+    with get_conn() as conn:
+        ident = conn.execute("INSERT INTO tarefas_bot(origem,chave,telefone,texto,resposta,chat_id,sessao) VALUES(?,?,?,?,?,?,?)",
+                             (origem, 'legada-ficticia', '554799990000', 'oi', 'Resposta preservada', '123456789@lid', 'sessao-antiga')).lastrowid
+    responder = Mock(side_effect=AssertionError('Legado não autoriza conexão atual.'))
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert processamento.processar_proxima()
+    responder.assert_not_called()
+    whatsapp.enviar_mensagem.assert_not_called()
+    with pytest.raises(ValueError, match='conexão original'):
+        processamento.reenviar(ident)
+    with get_conn() as conn:
+        row = conn.execute('SELECT estado,texto,resposta,chat_id,sessao,rota FROM tarefas_bot WHERE id=?', (ident,)).fetchone()
+        assert row[:] == ('FALHOU', 'oi', 'Resposta preservada', '123456789@lid', 'sessao-antiga', '')
+
+
+def test_deduplicacao_legada_nao_carimba_a_rota_atual():
+    tarefa = entrada('oi')
+    with get_conn() as conn:
+        conn.execute("UPDATE tarefas_bot SET rota='', estado='CONCLUIDA' WHERE id=?", (tarefa['id'],))
+    repetida = entrada('oi')
+    assert repetida['duplicada'] and repetida['id'] == tarefa['id']
+    with get_conn() as conn:
+        assert conn.execute('SELECT rota FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()[0] == ''
+        assert conn.execute('SELECT COUNT(*) FROM tarefas_bot').fetchone()[0] == 1
+
+
+def test_reenvio_confirmado_na_mesma_rota_preserva_metadados():
+    preferencias.salvar({'WAHA_SESSION': 'loja-ficticia'})
+    tarefa = processamento.enfileirar({'telefone': '554799990000', 'texto': 'oi',
+                                       'chat_id': '123456789@lid', 'session': 'loja-ficticia'}, 'evento-ficticio')
+    with get_conn() as conn:
+        conn.execute("UPDATE tarefas_bot SET estado='VERIFICAR', resposta='Resposta preservada' WHERE id=?", (tarefa['id'],))
+        original = dict(conn.execute('SELECT origem,rota,chat_id,sessao,resposta FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone())
+    processamento.reenviar(tarefa['id'])
+    with get_conn() as conn:
+        assert dict(conn.execute('SELECT origem,rota,chat_id,sessao,resposta FROM tarefas_bot WHERE id=?', (tarefa['id'],)).fetchone()) == original
+    assert processamento.processar_proxima()
+    assert whatsapp.enviar_mensagem.call_args.kwargs['chat_id'] == '123456789@lid'
+    assert whatsapp.enviar_mensagem.call_args.kwargs['session'] == 'loja-ficticia'
+
+
+def test_resposta_humana_tambem_fica_vinculada_a_rota_da_criacao(monkeypatch):
+    humano.controlar('554799990000', 'assumir')
+    tarefa = humano.responder({'telefone': '554799990000', 'mensagem': 'Resposta humana fictícia', 'confirmar_envio': True})
+    with get_conn() as conn:
+        original = conn.execute('SELECT rota FROM tarefas_bot WHERE id=?', (tarefa['tarefa_id'],)).fetchone()[0]
+        assert len(original) == 64
+    monkeypatch.setattr(config, 'WHATSAPP_PROVIDER', 'WAHA')
+    assert processamento.processar_proxima()
+    whatsapp.enviar_mensagem.assert_not_called()
+    with get_conn() as conn:
+        assert conn.execute('SELECT estado,resposta FROM tarefas_bot WHERE id=?', (tarefa['tarefa_id'],)).fetchone()[:] == ('FALHOU', 'Resposta humana fictícia')
+
+
+def test_resposta_humana_nao_e_aceita_entre_gravacao_e_aplicacao(monkeypatch):
+    preferencias.salvar({'WHATSAPP_PROVIDER': 'WAHA', 'WAHA_URL': 'https://ficticio.example'})
+    humano.controlar('554799990000', 'assumir')
+    with get_conn() as conn:
+        conn.execute("UPDATE configuracoes SET valor='https://outro-ficticio.example' WHERE chave='WAHA_URL'")
+    with pytest.raises(processamento._ConexaoAlterada):
+        humano.responder({'telefone': '554799990000', 'mensagem': 'Resposta humana fictícia', 'confirmar_envio': True})
+    with get_conn() as conn:
+        assert conn.execute('SELECT COUNT(*) FROM tarefas_bot').fetchone()[0] == 0
+
+
+def test_webhook_meta_repete_evento_se_a_configuracao_ainda_esta_em_transicao(monkeypatch):
+    import hashlib
+    import hmac
+    import json
+    from src.app import app
+    monkeypatch.setitem(app.config, 'PROPAGATE_EXCEPTIONS', False)
+    monkeypatch.setattr(config, 'WHATSAPP_PROVIDER', 'META')
+    monkeypatch.setattr(config, 'WHATSAPP_PHONE_NUMBER_ID', '123456789000')
+    monkeypatch.setattr(config, 'WHATSAPP_BUSINESS_ACCOUNT_ID', '987654321000')
+    monkeypatch.setattr(config, 'WHATSAPP_APP_SECRET', 'segredo-exclusivamente-ficticio')
+    monkeypatch.setattr(config, 'WHATSAPP_META_AMBIENTE', 'TESTE')
+    with get_conn() as conn:
+        conn.execute("INSERT INTO configuracoes(chave,valor) VALUES('WHATSAPP_META_AMBIENTE','PRODUCAO')")
+    payload = {'entry': [{'id': config.WHATSAPP_BUSINESS_ACCOUNT_ID, 'changes': [{'value': {
+        'metadata': {'phone_number_id': config.WHATSAPP_PHONE_NUMBER_ID},
+        'messages': [{'from': '554799990000', 'id': 'evento-exclusivamente-ficticio', 'type': 'text', 'text': {'body': 'oi'}}],
+    }}]}]}
+    corpo = json.dumps(payload).encode()
+    assinatura = 'sha256=' + hmac.new(config.WHATSAPP_APP_SECRET.encode(), corpo, hashlib.sha256).hexdigest()
+    cliente = app.test_client()
+    resposta = cliente.post('/webhook', data=corpo, content_type='application/json', headers={'X-Hub-Signature-256': assinatura})
+    assert resposta.status_code == 500
+    with get_conn() as conn:
+        assert conn.execute('SELECT COUNT(*) FROM tarefas_bot').fetchone()[0] == 0
+    monkeypatch.setattr(config, 'WHATSAPP_META_AMBIENTE', 'PRODUCAO')
+    repetida = cliente.post('/webhook', data=corpo, content_type='application/json', headers={'X-Hub-Signature-256': assinatura})
+    assert repetida.status_code == 200 and repetida.json['status'] == 'recebido'
+    with get_conn() as conn:
+        assert conn.execute('SELECT COUNT(*) FROM tarefas_bot').fetchone()[0] == 1
+
+
+@pytest.mark.parametrize('provedor', ['LOCAL', 'WAHA'])
+def test_sessao_explicita_de_outra_conexao_nao_e_aceita(provedor):
+    preferencias.salvar({'WHATSAPP_PROVIDER': provedor, 'WAHA_SESSION': 'sessao-ativa'})
+    with pytest.raises(processamento._ConexaoAlterada):
+        processamento.enfileirar({'telefone': '554799990000', 'texto': 'oi', 'session': 'outra-sessao'}, 'ficticio')
+    with get_conn() as conn:
+        assert conn.execute('SELECT COUNT(*) FROM tarefas_bot').fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('provedor', ['LOCAL', 'WAHA'])
+@pytest.mark.parametrize('formato', ['TEXTO', 'PDF', 'HUMANO'])
+def test_transporte_recebe_sessao_pinada_sem_fallback_de_cadastro(monkeypatch, provedor, formato):
+    from src import catalogo_pdf
+    preferencias.salvar({'WHATSAPP_PROVIDER': provedor, 'WAHA_SESSION': 'sessao-ativa'})
+    monkeypatch.setattr(whatsapp, '_sessao_conhecida', Mock(side_effect=AssertionError('Sessão antiga do cadastro não é autoridade.')))
+    monkeypatch.setattr(bot, 'processar_mensagem', Mock(return_value='Informação fictícia'))
+    pdf = Mock(return_value={'id': 'ficticio'})
+    monkeypatch.setattr(whatsapp, 'enviar_pdf', pdf)
+    monkeypatch.setattr(catalogo_pdf, 'gerar', Mock(return_value=b'%PDF-1.4\n%%EOF'))
+    if formato == 'HUMANO':
+        humano.controlar('554799990000', 'assumir')
+        tarefa = humano.responder({'telefone': '554799990000', 'mensagem': 'Mensagem fictícia', 'confirmar_envio': True})['tarefa_id']
+    else:
+        tarefa = entrada('oi')['id']
+        if formato == 'PDF':
+            with get_conn() as conn:
+                conn.execute("UPDATE tarefas_bot SET formato_saida='PDF', resposta='Catálogo fictício' WHERE id=?", (tarefa,))
+    with get_conn() as conn:
+        assert conn.execute('SELECT sessao FROM tarefas_bot WHERE id=?', (tarefa,)).fetchone()[0] == 'sessao-ativa'
+    assert processamento.processar_proxima()
+    envio = pdf if formato == 'PDF' else whatsapp.enviar_mensagem
+    envio.assert_called_once()
+    assert envio.call_args.kwargs['session'] == 'sessao-ativa'
+
+
+def test_tarefa_com_sessao_trocada_nao_usa_o_hash_valido(monkeypatch):
+    tarefa = entrada('oi')
+    with get_conn() as conn:
+        conn.execute("UPDATE tarefas_bot SET sessao='sessao-alheia' WHERE id=?", (tarefa['id'],))
+    responder = Mock(side_effect=AssertionError('A sessão não corresponde à conexão do evento.'))
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert processamento.processar_proxima()
+    responder.assert_not_called()
+    whatsapp.enviar_mensagem.assert_not_called()
+
+
+def test_troca_inesperada_da_sessao_local_durante_resposta_nao_envia(monkeypatch):
+    entrada('oi')
+    def responder(*_):
+        monkeypatch.setattr(config, 'WAHA_SESSION', 'outra-sessao')
+        return 'Resposta fictícia'
+    monkeypatch.setattr(bot, 'processar_mensagem', responder)
+    assert processamento.processar_proxima()
+    whatsapp.enviar_mensagem.assert_not_called()
+
+
+def test_sessao_vazia_nao_e_aceita_com_provedor_real():
+    with pytest.raises(ValueError, match='sessão do WhatsApp'):
+        preferencias.salvar({'WAHA_SESSION': ''})

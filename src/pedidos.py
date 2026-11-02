@@ -169,8 +169,9 @@ def criar_pedido(
 
         cur = conn.execute(
             "INSERT INTO pedidos (numero_pedido, cliente_id, forma_entrega, tempo_estimado_min, "
-            "forma_pagamento, total_itens, total_pedido, status) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, 'RECEBIDO')",
+            "forma_pagamento, total_itens, total_pedido, nome_cliente, telefone_cliente, "
+            "cep_cliente, endereco_cliente, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEBIDO')",
             (
                 numero_pedido,
                 cliente_id,
@@ -179,6 +180,10 @@ def criar_pedido(
                 forma_pagamento,
                 float(round(total_itens, 2)),
                 float(round(total_pedido, 2)),
+                nome_cliente,
+                telefone,
+                cep,
+                endereco,
             ),
         )
         pedido_id = cur.lastrowid
@@ -214,6 +219,23 @@ def criar_pedido(
     return obter_pedido(pedido_id, _conn=_conn)
 
 
+_CABECALHO = (
+    'SELECT p.*, COALESCE(p.nome_cliente,c.nome) AS cliente_nome, '
+    'COALESCE(p.telefone_cliente,c.telefone) AS cliente_telefone, '
+    'COALESCE(p.cep_cliente,c.cep) AS cliente_cep, '
+    'COALESCE(p.endereco_cliente,c.endereco) AS cliente_endereco '
+    'FROM pedidos p JOIN clientes c ON c.id=p.cliente_id '
+)
+
+
+def _cabecalho_publico(linha):
+    pedido = dict(linha)
+    # A API mantém os campos cliente_* existentes, sem duplicar dados pessoais.
+    for campo in ('nome_cliente', 'telefone_cliente', 'cep_cliente', 'endereco_cliente'):
+        pedido.pop(campo, None)
+    return pedido
+
+
 def listar_pedidos(limite=200):
     """Lê cabeçalhos e itens em lote no mesmo snapshot, sem abrir N conexões."""
     limite = inteiro(limite, 'Limite', 1)
@@ -221,12 +243,8 @@ def listar_pedidos(limite=200):
         raise ValueError('Consulte até 200 pedidos por vez.')
     with get_conn() as conn:
         conn.execute('BEGIN')
-        linhas = conn.execute(
-            'SELECT p.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone, '
-            'c.cep AS cliente_cep, c.endereco AS cliente_endereco '
-            'FROM pedidos p JOIN clientes c ON c.id=p.cliente_id '
-            'ORDER BY p.id DESC LIMIT ?', (limite,)).fetchall()
-        resultado = [dict(p, itens=[]) for p in linhas]
+        linhas = conn.execute(_CABECALHO + 'ORDER BY p.id DESC LIMIT ?', (limite,)).fetchall()
+        resultado = [dict(_cabecalho_publico(p), itens=[]) for p in linhas]
         if not resultado:
             return resultado
         por_id = {p['id']: p for p in resultado}
@@ -241,12 +259,7 @@ def listar_pedidos(limite=200):
 
 def obter_pedido(pedido_id: int, _conn=None) -> dict | None:
     with (get_conn() if _conn is None else nullcontext(_conn)) as conn:
-        pedido = conn.execute(
-            "SELECT p.*, c.nome AS cliente_nome, c.telefone AS cliente_telefone, "
-            "c.cep AS cliente_cep, c.endereco AS cliente_endereco "
-            "FROM pedidos p JOIN clientes c ON c.id = p.cliente_id WHERE p.id = ?",
-            (pedido_id,),
-        ).fetchone()
+        pedido = conn.execute(_CABECALHO + 'WHERE p.id = ?', (pedido_id,)).fetchone()
         if pedido is None:
             return None
         itens = conn.execute(
@@ -255,7 +268,7 @@ def obter_pedido(pedido_id: int, _conn=None) -> dict | None:
             (pedido_id,),
         ).fetchall()
 
-    pedido = dict(pedido)
+    pedido = _cabecalho_publico(pedido)
     pedido["itens"] = [dict(i) for i in itens]
     return pedido
 

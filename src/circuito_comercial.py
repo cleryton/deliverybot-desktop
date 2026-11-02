@@ -284,10 +284,12 @@ def _fontes_catalogo(pergunta, produtos):
 _ASPECTOS = frozenset({'preco', 'descricao', 'garantia', 'troca', 'disponibilidade',
                       'catalogo', 'pedido', 'horario', 'endereco', 'contato',
                       'pagamento', 'entrega', 'prazo', 'promocao'})
+_CAMPOS_PRODUTO = frozenset({'preco', 'descricao', 'garantia', 'troca',
+                            'disponibilidade', 'catalogo', 'promocao'})
 _TEMAS_NOTAS = {
     'descricao': re.compile(r'\b(?:ingredientes?|composicao|contem|compost[oa]|feito|'
                            r'fabricad[oa]|preparad[oa]|acompanha|leva|descricao|'
-                           r'caracteristicas?|tamanhos?|cores?|sabores?|variacoes?|'
+                           r'caracteristicas?|tamanhos?|cor(?:es)?|sabor(?:es)?|variacoes?|'
                            r'alergenos?|lactose|gluten)\b'),
     'troca': re.compile(r'\b(?:trocas?|trocar|devolucoes?|devolucao|devolver|reembolso)\b'),
     'garantia': re.compile(r'\b(?:garantias?)\b'),
@@ -326,7 +328,7 @@ def _produtos_citados(texto, nomes):
     return {indice for _, _, indice in maiores}
 
 
-def _nota_relevante(trecho, aspectos, produto_ids, nomes):
+def _nota_relevante(trecho, aspectos, produto_ids, nomes, campos_produtos):
     """Aceita o trecho inteiro ou o exclui; condições nunca são recortadas."""
     permitidos = set(_TEMAS_NOTAS) & aspectos
     if not permitidos:
@@ -340,6 +342,9 @@ def _nota_relevante(trecho, aspectos, produto_ids, nomes):
     temas_nota = {tema for tema, padrao in _TEMAS_NOTAS.items() if padrao.search(texto)}
     if not temas_nota or temas_nota - permitidos:
         return False
+    if any(tema not in campos_produtos.get(indice, aspectos)
+           for indice in citados for tema in temas_nota):
+        return False
     if 'descricao' in temas_nota and not (citados & produto_ids):
         return False
     for frase in frases:
@@ -350,7 +355,7 @@ def _nota_relevante(trecho, aspectos, produto_ids, nomes):
             if temas == {'descricao'} and not _produtos_citados(frase, nomes):
                 # Um título pode organizar a composição sem repetir o nome.
                 if not re.fullmatch(r'(?:ingredientes|composicao|alergenos|descricao|'
-                                    r'tamanhos|cores|sabores|variacoes)', frase):
+                                    r'tamanhos|cor|cores|sabor|sabores|variacoes)', frase):
                     return False
         else:
             nome_titulo = re.sub(r'^(?:o|a)\s+', '', frase)
@@ -365,13 +370,25 @@ def _dados_foco(foco, produtos):
     aspectos = getattr(foco, 'aspectos', None)
     ids = getattr(foco, 'produto_ids', None)
     esclarecer = getattr(foco, 'esclarecer', None)
+    mapa = getattr(foco, 'aspectos_produtos', ())
     if (not isinstance(aspectos, frozenset) or aspectos - _ASPECTOS
             or not isinstance(ids, tuple) or any(type(i) is not int or not 1 <= i <= len(produtos) for i in ids)
             or len(set(ids)) != len(ids) or not isinstance(esclarecer, str)
             or esclarecer != _texto(esclarecer) or len(esclarecer) > 512
             or esclarecer.count('?') > 1 or _LINK_OU_COMANDO.search(_normalizar(esclarecer))):
         raise ValueError('O foco da consulta comercial é inválido.')
-    return aspectos, frozenset(ids), esclarecer
+    if not isinstance(mapa, tuple):
+        raise ValueError('O mapa de campos do produto é inválido.')
+    campos_produtos = {}
+    for item in mapa:
+        if (not isinstance(item, tuple) or len(item) != 2 or type(item[0]) is not int
+                or item[0] not in ids or item[0] in campos_produtos
+                or not isinstance(item[1], frozenset) or item[1] - (_CAMPOS_PRODUTO & aspectos)):
+            raise ValueError('O mapa de campos do produto é inválido.')
+        campos_produtos[item[0]] = item[1]
+    if campos_produtos and campos_produtos.keys() != set(ids):
+        raise ValueError('O mapa de campos do produto está incompleto.')
+    return aspectos, frozenset(ids), esclarecer, campos_produtos
 
 
 def _esclarecimento_produto(aspectos, produto_ids, produtos):
@@ -388,7 +405,7 @@ def _esclarecimento_produto(aspectos, produto_ids, produtos):
     return f'Quer confirmar com a equipe {detalhe} {complemento}?'
 
 
-def _fontes_focadas(produtos, contexto, aspectos, produto_ids):
+def _fontes_focadas(produtos, contexto, aspectos, produto_ids, campos_produtos):
     prazo_pedido = 'prazo' in aspectos and ('entrega' in aspectos or not aspectos & {'troca', 'garantia'})
     if prazo_pedido:
         prazo = 'Para confirmar o prazo de entrega ou retirada, fale com a equipe da loja.'
@@ -405,18 +422,19 @@ def _fontes_focadas(produtos, contexto, aspectos, produto_ids):
         nome = _texto(produto.get('nome'))
         if not nome:
             continue
+        campos = campos_produtos.get(indice, aspectos)
         partes = []
-        if 'preco' in aspectos:
+        if 'preco' in campos:
             preco = _dinheiro(produto.get('preco'))
             if preco:
                 partes.append(preco)
-        if 'descricao' in aspectos:
+        if 'descricao' in campos:
             descricao = _texto(produto.get('descricao'))
             outros = {tema for tema, padrao in _TEMAS_NOTAS.items()
                       if tema != 'descricao' and padrao.search(_normalizar(descricao))}
-            if _nota_publicavel(descricao) and not outros - aspectos:
+            if _nota_publicavel(descricao) and not outros - campos:
                 partes.append(descricao)
-        if 'disponibilidade' in aspectos:
+        if 'disponibilidade' in campos:
             saldo = produto.get('estoque')
             if type(saldo) in (int, float) and 0 <= saldo <= 999999:
                 partes.append(f'Saldo cadastrado: {saldo} {_texto(produto.get("unidade")) or "un"}')
@@ -424,7 +442,7 @@ def _fontes_focadas(produtos, contexto, aspectos, produto_ids):
                 partes.append('Item cadastrado no catálogo da loja.')
         if partes:
             yield Fonte(f'catalogo.{indice}', f'{nome}: ' + '. '.join(partes))
-        elif 'catalogo' in aspectos:
+        elif 'catalogo' in campos:
             yield Fonte(f'catalogo.{indice}', nome)
     if not aspectos & set(_TEMAS_NOTAS):
         return
@@ -435,7 +453,7 @@ def _fontes_focadas(produtos, contexto, aspectos, produto_ids):
             continue
         indice += 1
         trecho = getattr(fonte, 'trecho', None)
-        if _nota_publicavel(trecho) and _nota_relevante(trecho, aspectos, produto_ids, nomes):
+        if _nota_publicavel(trecho) and _nota_relevante(trecho, aspectos, produto_ids, nomes, campos_produtos):
             yield Fonte(f'nota.{indice}', trecho)
 
 
@@ -451,7 +469,7 @@ def preparar(pergunta, produtos, contexto, *, limite=12000, foco=None) -> Circui
             or not isinstance(limite, int) or not 0 < limite <= _MAX_CONTEXTO):
         raise ValueError('Limite inválido para as fontes comerciais.')
     nome, segmento = _texto(config.NOME_RESTAURANTE), _texto(config.COMERCIO_SEGMENTO)
-    aspectos, ids, esclarecer = _dados_foco(foco, produtos) if foco is not None else (frozenset(), frozenset(), '')
+    aspectos, ids, esclarecer, campos = _dados_foco(foco, produtos) if foco is not None else (frozenset(), frozenset(), '', {})
     orientacao = esclarecer or _RESPOSTAS['esclarecer']
     if not esclarecer and ids:
         orientacao = _esclarecimento_produto(aspectos, ids, produtos)
@@ -474,7 +492,7 @@ def preparar(pergunta, produtos, contexto, *, limite=12000, foco=None) -> Circui
 
     if foco is not None:
         if not esclarecer:
-            for fonte in _fontes_focadas(produtos, contexto, aspectos, ids):
+            for fonte in _fontes_focadas(produtos, contexto, aspectos, ids, campos):
                 incluir(fonte)
         return CircuitoPreparado(tuple(fontes), nome, segmento, limite, orientacao, True)
 

@@ -83,7 +83,9 @@ def responder(d):
         c.execute('BEGIN IMMEDIATE')
         if not c.execute("SELECT 1 FROM atendimentos_humanos WHERE telefone=? AND estado='ASSUMIDO'",(t,)).fetchone():
             raise ValueError('Assuma a conversa antes de responder.')
-        cur=c.execute("INSERT INTO tarefas_bot(origem,chave,telefone,texto,resposta,entrada_registrada) VALUES('HUMANO',?,?, '',?,1)",(secrets.token_hex(32),t,msg))
-    from . import processamento
+        from . import processamento
+        rota=processamento._rota_para_fila(c)
+        sessao=processamento._sessao_para_fila()
+        cur=c.execute("INSERT INTO tarefas_bot(origem,chave,telefone,texto,resposta,entrada_registrada,rota,sessao) VALUES('HUMANO',?,?, '',?,1,?,?)",(secrets.token_hex(32),t,msg,rota,sessao))
     processamento._acordar.set()
     return {'ok':True,'tarefa_id':cur.lastrowid,'aviso':'Resposta registrada na fila. Confira o envio no painel WhatsApp e IA.'}

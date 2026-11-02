@@ -197,7 +197,7 @@ def fechar_pelo_admin(admin_id,tid,d):
 
 def vendas(uid):
     with get_conn() as c:
-        return [dict(r) for r in c.execute('SELECT p.id,p.numero_pedido,p.status,p.total_pedido,p.total_pago,c.nome AS nome FROM vendas_balcao v JOIN pedidos p ON p.id=v.pedido_id JOIN clientes c ON c.id=p.cliente_id WHERE v.operador_id=? ORDER BY p.id DESC LIMIT 100', (uid,))]
+        return [dict(r) for r in c.execute('SELECT p.id,p.numero_pedido,p.status,p.total_pedido,p.total_pago,COALESCE(p.nome_cliente,c.nome) AS nome FROM vendas_balcao v JOIN pedidos p ON p.id=v.pedido_id JOIN clientes c ON c.id=p.cliente_id WHERE v.operador_id=? ORDER BY p.id DESC LIMIT 100', (uid,))]
 
 
 def resultado(uid, chave):

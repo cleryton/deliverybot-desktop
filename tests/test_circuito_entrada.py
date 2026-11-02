@@ -43,6 +43,10 @@ def test_palavra_operacional_nao_autoriza_assunto_independente(pergunta):
     'Preciso de um atendente',
     'Quero um X-Salada sem cebola',
     'Quais ingredientes do X-Salada?',
+    'Qual a cor do X-Salada?',
+    'Qual o sabor do X-Salada?',
+    'E a cor?',
+    'E o sabor?',
     'Quanto custa esse produto?',
     'Qual o preço deste item?',
     'Oi, qual o horário e o endereço?',
@@ -102,6 +106,8 @@ def test_conhecimento_precisa_de_vinculo_em_cada_sentenca(nota):
     '# Retirada\nA retirada do pedido é no balcão.',
     '# Ingredientes do X-Salada\nO X-Salada contém pão, carne e queijo.',
     '# Ingredientes do XSalada\nO XSalada contém pão, carne e queijo.',
+    'O X-Salada tem cor branca.',
+    'O X-Salada tem sabor salgado.',
     '# Pagamento\nAceitamos Pix e dinheiro.',
 ])
 def test_conhecimento_comercial_pode_ser_revisado_para_inferencia(nota):

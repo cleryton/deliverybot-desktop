@@ -127,7 +127,7 @@ _OPERACIONAL_FECHADA = re.compile(
 )
 _CONSULTA_CONTINUACAO = re.compile(
     r'e (?:o preco|os precos|quanto custa|quanto fica|os ingredientes|a composicao|'
-    r'a descricao|o tamanho|as cores|a garantia|a disponibilidade)'
+    r'a descricao|o tamanho|a cor|as cores|o sabor|os sabores|a garantia|a disponibilidade)'
 )
 
 # Uma palavra como "endereço" ou "pagamento" no meio de uma pergunta não
@@ -164,7 +164,7 @@ _COMPLEMENTOS_OPERACIONAIS = frozenset((
 ).split())
 _RELACAO_PRODUTO = re.compile(
     r"\b(?:tem|vendem?|vende|oferecem?|quero|gostaria|preciso|comprar|pedir|pedidos?|encomendas?|encomendar|"
-    r"escolher|escolhi|agend[ao]|saber|conhecer|precos?|valor|custa|tamanhos?|cores?|modelo|"
+    r"escolher|escolhi|agend[ao]|saber|conhecer|precos?|valor|custa|tamanhos?|cor(?:es)?|modelo|"
     r"ingredientes?|alergenos?|alergia|gluten|lactose|acucar|sem|com|serve|acompanha|leva|"
     r"contem|composto|feito|fabricado|preparad[oa]|personalizacoes|adaptacoes|embalagem|"
     r"porcao|opcao|opcoes|sabor|sabores|fritura|troca|garantia|entrega|retirada|chegou|errad[oa]|"
@@ -172,8 +172,8 @@ _RELACAO_PRODUTO = re.compile(
 )
 _FATO_PRODUTO = re.compile(
     r"\b(?:ingredientes?|composicao|contem|composto|feito|fabricado|preparad[oa]|"
-    r"acompanha|leva|vendid[oa]|fornecid[oa]|disponiveis?|variacoes?|tamanhos?|cores?|"
-    r"sabores?|alergenos?|gluten|lactose|embalagem|entrega|retirada|garantia)\b"
+    r"acompanha|leva|vendid[oa]|fornecid[oa]|disponiveis?|variacoes?|tamanhos?|cor(?:es)?|"
+    r"sabor(?:es)?|alergenos?|gluten|lactose|embalagem|entrega|retirada|garantia)\b"
 )
 
 

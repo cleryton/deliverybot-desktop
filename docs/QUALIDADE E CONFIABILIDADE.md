@@ -1,10 +1,24 @@
 # Qualidade e confiabilidade dos pedidos
 
+## Preservação da operação — 2.49.1
+
+Cada pedido guarda nome, telefone, CEP e endereço informados naquela compra. Uma nova compra ou a atualização automática do cadastro do mesmo telefone não reescreve o pedido anterior, a fila, a lista do caixa ou o recibo. Os campos públicos da API continuam os mesmos. Na atualização de um banco antigo, a migração conserva os dados ainda disponíveis; ela não recupera endereços históricos que já tenham sido sobrescritos antes desta versão. Dados desconhecidos permanecem vazios. Confira entregas antigas em andamento após atualizar.
+
+A correção explícita de cadastro, com identidade confirmada pelo responsável, continua abrangendo os registros do titular. A remoção de identificação também apaga os novos campos dos pedidos, preservando os itens e totais e impedindo a remoção enquanto houver pedidos em andamento. Backups antigos exigem a mesma revisão de privacidade já descrita no guia.
+
+A conexão do WhatsApp não pode ser trocada enquanto houver tarefas pendentes ou resultados incertos. A fila confere o transporte antes de reservar e enviar respostas. Trocar tokens da mesma conta continua permitido; trocar provedor, endpoint, sessão ou número exige concluir ou revisar as tarefas. Uma inconsistência interrompe o envio para conferência, sem encaminhar a mensagem por outra conta. Notificações diretas e PDFs usam a sessão ativa configurada, em vez de uma sessão antiga lembrada no cadastro do contato; eventos de outra sessão não atualizam esse cadastro.
+
+Tarefas anteriores à atualização podem não conter o vínculo com a conexão de origem. Elas ficam preservadas para conferência, sem envio automático. Quando a origem não puder ser confirmada, descarte a tarefa pelo painel e solicite uma nova mensagem do cliente na conexão atual. A retomada normal continua disponível para tarefas cujo vínculo permanece válido.
+
+O cadastro de produto e o simulador preservam texto, foto e alterações feitas durante uma requisição. Uma criação confirmada recebe seu ID antes do próximo salvamento, evitando repetir o cadastro. A limpeza agendada do histórico continua sendo tentada mesmo quando o backup falha; os marcadores de sucesso são independentes, e o painel mantém o aviso de falha.
+
 ## Foco do atendimento
 
 A versão 2.49.0 resolve o assunto atual antes da inferência. O foco é temporário: identifica os produtos pelo catálogo permitido e os aspectos pedidos, sem criar memória permanente nem ampliar permissões. O histórico enviado ao modelo contém somente antecedentes necessários à continuação; uma pergunta nova independente recebe apenas a entrada atual. Respostas anteriores do assistente não escolhem produtos pelo cliente.
 
 O circuito Ollama oferece somente fontes compatíveis com esse foco e continua montando a resposta no aplicativo. Preço, descrição e dados operacionais são selecionados separadamente. Notas de conhecimento com assunto ou produto extra são excluídas inteiras, preservando condições e ressalvas. Uma pergunta ambígua sobre produto é esclarecida localmente; perguntas sobre prazo encaminham à equipe e não usam o horário de funcionamento ou o tempo de preparo como promessa.
+
+Perguntas compostas associam os aspectos a cada produto: “preço de X e ingredientes de Y” não libera ingredientes de X nem preço de Y. Uma associação ambígua pede esclarecimento. Perguntar se um produto contém lactose é tratado como composição, sem acrescentar o saldo de estoque.
 
 Os testes usam catálogos e notas fictícios e modelos simulados. Cobrem mudança de assunto, continuações, produtos negados ou ambíguos, consulta composta, ausência de fonte e tentativa de selecionar referências alheias. Isso valida os controles e os casos reproduzidos; não mede satisfação, qualidade geral de um modelo real nem tempo de entrega do WhatsApp. O provedor remoto recebe referências reduzidas, mas não usa o renderizador fechado do Ollama.
 
@@ -50,6 +64,8 @@ Depois de salvar o pedido, o servidor responde com redirecionamento HTTP 303 par
 O comprovante exige o token e a sessão assinada do mesmo navegador que confirmou o pedido. O cookie contém somente hash do token, ID, prazo e flags de confirmação; não contém nome, telefone ou endereço. São guardadas até cinco autorizações, por oito horas, sem renovação pela consulta. A página usa `no-store` e não oferece uma listagem pública de pedidos.
 
 Outro navegador, sessão removida ou expirada e pedido indisponível recebem acesso indisponível. Reiniciar o aplicativo ou o servidor pode invalidar a sessão. Portanto, o cliente deve imprimir ou salvar o PDF se precisar guardar o comprovante. Uma conexão interrompida antes de o navegador receber a sessão também pode impedir a recuperação; o sistema mantém a proteção contra uma segunda confirmação.
+
+O servidor também compara o cliente do pedido com o telefone vinculado ao link. Uma associação inconsistente no banco não libera o comprovante, mesmo se os demais identificadores coincidirem. Os testes de isolamento usam clientes, telefones e navegadores distintos e tentativas de troca de token e ID. Testes adicionais alteram associações internas em um banco fictício para verificar essa segunda barreira; isso não equivale a demonstrar uma invasão pública nem reproduz, por si só, um relato ocorrido em uma instalação específica.
 
 ## Testes
 

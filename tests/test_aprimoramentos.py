@@ -245,7 +245,6 @@ def test_resposta_antiga_nao_atravessa_pausa_humana(cliente,monkeypatch):
 
 def test_backup_automatico_verificado_rotacao_e_segredo(tmp_path):
     from src import rotinas, backups
-    from pathlib import Path
     r=rotinas.configurar({'backup_ativo':True,'limpar':False,'horas':24,'quantidade':2,'senha':'senha-ficticia-separada','pasta':str(tmp_path/'copias')})
     assert 'senha' not in r and r['senha_configurada']
     for _ in range(3):
@@ -264,6 +263,7 @@ def test_backup_automatico_verificado_rotacao_e_segredo(tmp_path):
 def test_atendimento_humano_pausa_envio_e_retoma(cliente,monkeypatch):
     from src import humano,bot,processamento,whatsapp
     from unittest.mock import Mock
+    config.WHATSAPP_PROVIDER='LOCAL'
     t='5511999990011'
     assert 'humano' in bot.processar_mensagem(t,'ATENDENTE')
     assert bot.processar_mensagem(t,'4') is None
@@ -271,10 +271,9 @@ def test_atendimento_humano_pausa_envio_e_retoma(cliente,monkeypatch):
     humano.controlar(t,'assumir')
     with pytest.raises(ValueError):
         humano.responder({'telefone':t,'mensagem':'Olá'})
-    tarefa=humano.responder({'telefone':t,'mensagem':'Olá, sou da loja','confirmar_envio':True})
+    humano.responder({'telefone':t,'mensagem':'Olá, sou da loja','confirmar_envio':True})
     with pytest.raises(ValueError):
         humano.controlar(t,'retomar')
-    config.WHATSAPP_PROVIDER='LOCAL'
     config.MODO_TESTE=False
     monkeypatch.setattr(processamento,'_servico_pronto',lambda:True)
     envio=Mock()

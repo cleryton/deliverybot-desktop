@@ -153,7 +153,7 @@ Pontos de leitura: [contrato e renderização](../../src/circuito_comercial.py),
 
 ### src/foco_atendimento.py
 
-`resolver()` extrai o assunto atual, os aspectos perguntados e as posições dos produtos no retrato permitido do catálogo. Uma continuação curta só recupera um produto identificado pelo cliente, sem atravessar uma mudança de assunto ou confirmação ambígua. `Foco.historico()` limita os antecedentes necessários; a pergunta atual é enviada separadamente. Sem produto inequívoco, retorna uma pergunta dirigida que pode ser respondida sem inferência. Não consulta banco, arquivos ou rede, não autoriza ferramentas e não substitui a triagem de escopo.
+`resolver()` extrai o assunto atual, os aspectos perguntados e as posições dos produtos no retrato permitido do catálogo. O mapa imutável `aspectos_produtos` relaciona preço, descrição e outros aspectos a cada item de uma consulta composta. Uma associação ambígua pede esclarecimento. Uma continuação curta só recupera um produto identificado pelo cliente, sem atravessar uma mudança de assunto ou confirmação ambígua. `Foco.historico()` limita os antecedentes necessários; a pergunta atual é enviada separadamente. Sem produto inequívoco, retorna uma pergunta dirigida que pode ser respondida sem inferência. Não consulta banco, arquivos ou rede, não autoriza ferramentas e não substitui a triagem de escopo.
 
 Pontos de leitura: [resolução do foco](../../src/foco_atendimento.py), [regressões de continuidade](../../tests/test_foco_atendimento.py) e [integração de fontes e histórico](../../tests/test_ia_circuito.py).
 

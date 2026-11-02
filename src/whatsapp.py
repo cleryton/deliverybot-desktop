@@ -91,6 +91,13 @@ def _sessao_conhecida(telefone: str) -> str | None:
     return None
 
 
+def _sessao_envio(informada=None):
+    """O cadastro do contato não pode selecionar outra conta de envio."""
+    if not config.WAHA_SESSION or informada and informada != config.WAHA_SESSION:
+        raise ValueError('A sessão da mensagem não corresponde à conexão ativa do WhatsApp.')
+    return config.WAHA_SESSION
+
+
 def enviar_mensagem(
     telefone: str, texto: str, chat_id: str | None = None, session: str | None = None,
     *, permitir_externos: bool = False
@@ -115,7 +122,7 @@ def _enviar_via_waha(
         or _chat_id_conhecido(telefone)
         or f"{_numero_limpo(telefone)}@c.us"
     )
-    sessao_final = session or _sessao_conhecida(telefone) or config.WAHA_SESSION
+    sessao_final = _sessao_envio(session)
 
     payload = {"session": sessao_final, "chatId": chat_id_final, "text": texto}
     headers = {"Content-Type": "application/json"}
@@ -242,6 +249,8 @@ def extrair_mensagem_recebida_waha(payload: dict) -> dict | None:
             return None
 
         sessao = payload.get("session")
+        if config.WHATSAPP_PROVIDER in {'LOCAL', 'WAHA'} and sessao and sessao != config.WAHA_SESSION:
+            return None
         _lembrar_chat_id(telefone, chat_id_original, sessao)
 
         return {
