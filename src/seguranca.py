@@ -2,6 +2,7 @@
 import base64
 import ctypes
 import hmac
+import json
 import logging
 import os
 import re
@@ -11,7 +12,7 @@ import time
 from datetime import timedelta
 from urllib.parse import urlsplit
 
-from flask import g, request, session
+from flask import current_app, g, request, session
 from flask.sessions import SecureCookieSessionInterface
 
 from . import config
@@ -32,16 +33,32 @@ def acesso_administrativo():
     return local() or (config.ADMIN_PERMITIR_REMOTO and request.is_secure)
 
 
-def csrf():
+def _csrf_escopado(valor, escopo):
+    # A raiz CSRF aparece em outros formulários. Só a chave privada do servidor
+    # pode autorizar um escopo novo, mesmo quando o cliente conhece essa raiz.
+    chave = current_app.secret_key
+    if isinstance(chave, str):
+        chave = chave.encode('utf-8')
+    mensagem = json.dumps(['DeliveryBot-CSRF-v1', valor, escopo],
+                          ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+    return hmac.new(chave, mensagem, 'sha256').hexdigest()
+
+
+def csrf(escopo=None):
     session.setdefault("csrf", secrets.token_urlsafe(32))
-    return session["csrf"]
+    valor = session["csrf"]
+    return _csrf_escopado(valor, escopo) if escopo is not None else valor
 
 
-def csrf_valido():
+def csrf_valido(escopo=None):
     from .validacao_http import parametros_unicos
     if not parametros_unicos(request.args) or not parametros_unicos(request.form):
         return False
     esperado = session.get("csrf", "")
+    if not isinstance(esperado, str) or not esperado:
+        return False
+    if escopo is not None:
+        esperado = _csrf_escopado(esperado, escopo)
     recebido = request.headers.get("X-CSRF-Token", "") or request.form.get("csrf_token", "")
     origem = request.headers.get("Origin")
     if origem and origem != request.host_url.rstrip("/"):
@@ -51,7 +68,7 @@ def csrf_valido():
     return bool(esperado and igual(recebido, esperado))
 
 
-def login_bloqueado():
+def login_bloqueado(ambito='base'):
     agora = time.monotonic()
     with _trava:
         if len(_tentativas) > 4096:
@@ -60,13 +77,13 @@ def login_bloqueado():
                     _tentativas.pop(chave, None)
             if len(_tentativas) > 4096:
                 _tentativas.pop(next(iter(_tentativas)))
-        n, inicio = _tentativas.get(request.remote_addr, (0, agora))
+        n, inicio = _tentativas.get((ambito, request.remote_addr), (0, agora))
         return n >= 10 and agora - inicio < 300
 
 
-def registrar_login(ok):
+def registrar_login(ok, ambito='base'):
     with _trava:
-        chave = request.remote_addr
+        chave = (ambito, request.remote_addr)
         if ok:
             _tentativas.pop(chave, None)
         else:

@@ -39,6 +39,26 @@ def entrar(api,login='conta2'):
     return r
 
 
+@pytest.mark.parametrize('ambito', ['base', 'operador'])
+def test_bloqueio_de_outra_autenticacao_nao_nega_login_do_terminal(api, ambito):
+    with api.client.application.test_request_context('/', environ_base={'REMOTE_ADDR': '127.0.0.1'}):
+        for _ in range(10):
+            seguranca.registrar_login(False, ambito=ambito)
+        assert seguranca.login_bloqueado(ambito=ambito)
+    assert entrar(api).status_code == 200
+
+
+def test_sucesso_da_base_nao_desbloqueia_terminal(api):
+    for _ in range(10):
+        assert api('POST', '/terminal/entrar', json={
+            'login': 'conta2', 'senha': 'senha-errada-ficticia'}).status_code == 401
+    with api.client.application.test_request_context('/', environ_base={'REMOTE_ADDR': '127.0.0.1'}):
+        seguranca.registrar_login(True)
+        assert seguranca.login_bloqueado(ambito='terminal')
+    assert api('POST', '/terminal/entrar', json={
+        'login': 'conta2', 'senha': 'senha-ficticia-123'}).status_code == 429
+
+
 def test_api_exige_https_dispositivo_e_conta_individual(api):
     assert api('GET','/terminal/estado').status_code==401
     assert api('GET','/terminal/estado',base_url='http://127.0.0.1:5443').status_code==403

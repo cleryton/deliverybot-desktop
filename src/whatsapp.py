@@ -8,6 +8,7 @@ WHATSAPP_PROVIDER no .env:
 - TESTE -> nenhum provedor configurado: mensagens só aparecem no console.
 """
 import logging
+import threading
 
 import requests
 
@@ -39,15 +40,42 @@ def _numero_limpo(telefone: str) -> str:
 # ---------------------------------------------------------------------------
 _chat_id_cache: dict[str, str] = {}
 _sessao_cache: dict[str, str] = {}
+_trava_rotas = threading.Lock()
+_geracao_rotas = 0
 
 
-def _lembrar_chat_id(telefone: str, chat_id: str, sessao: str | None) -> None:
+def _invalidar_rotas(telefone=None):
+    global _geracao_rotas
+    with _trava_rotas:
+        _geracao_rotas += 1
+        if telefone is None:
+            _chat_id_cache.clear()
+            _sessao_cache.clear()
+        else:
+            _chat_id_cache.pop(telefone, None)
+            _sessao_cache.pop(telefone, None)
+
+
+def _persistir_chat_id(conn, telefone, chat_id, sessao):
+    conn.execute(
+        "INSERT INTO clientes (nome, telefone, chat_id, waha_session) "
+        "VALUES ('Cliente', ?, ?, ?) "
+        "ON CONFLICT(telefone) DO UPDATE SET "
+        "chat_id = excluded.chat_id, "
+        "waha_session = COALESCE(excluded.waha_session, clientes.waha_session)",
+        (telefone, chat_id, sessao),
+    )
+
+
+def _lembrar_chat_id(telefone: str, chat_id: str, sessao: str | None, *, _conn=None) -> None:
     if not telefone or not chat_id:
         return
-    _chat_id_cache[telefone] = chat_id
-    if sessao:
-        _sessao_cache[telefone] = sessao
-
+    if _conn is not None:
+        # O chamador controla a transação; um rollback não pode publicar cache.
+        _persistir_chat_id(_conn, telefone, chat_id, sessao)
+        return
+    with _trava_rotas:
+        geracao = _geracao_rotas
     try:
         with get_conn() as conn:
             # Upsert: cria um registro mínimo do cliente se ele ainda não
@@ -55,40 +83,43 @@ def _lembrar_chat_id(telefone: str, chat_id: str, sessao: str | None) -> None:
             # atualiza chat_id/sessão se já existir. O nome placeholder é
             # substituído pelo nome real assim que o cliente finaliza um
             # pedido (pedidos.obter_ou_criar_cliente sobrescreve o nome).
-            conn.execute(
-                "INSERT INTO clientes (nome, telefone, chat_id, waha_session) "
-                "VALUES ('Cliente', ?, ?, ?) "
-                "ON CONFLICT(telefone) DO UPDATE SET "
-                "chat_id = excluded.chat_id, "
-                "waha_session = COALESCE(excluded.waha_session, clientes.waha_session)",
-                (telefone, chat_id, sessao),
-            )
+            _persistir_chat_id(conn, telefone, chat_id, sessao)
+        with _trava_rotas:
+            if geracao == _geracao_rotas:
+                _chat_id_cache[telefone] = chat_id
+                if sessao:
+                    _sessao_cache[telefone] = sessao
     except Exception:
         logger.warning("Não foi possível persistir a rota de atendimento")
 
 
-def _chat_id_conhecido(telefone: str) -> str | None:
-    if telefone in _chat_id_cache:
-        return _chat_id_cache[telefone]
-
-    with get_conn() as conn:
-        row = conn.execute("SELECT chat_id FROM clientes WHERE telefone = ?", (telefone,)).fetchone()
-    if row and row["chat_id"]:
-        _chat_id_cache[telefone] = row["chat_id"]
-        return row["chat_id"]
+def _rota_conhecida(telefone, campo, cache):
+    consulta = {'chat_id': 'SELECT chat_id FROM clientes WHERE telefone=?',
+                'waha_session': 'SELECT waha_session FROM clientes WHERE telefone=?'}[campo]
+    # Uma leitura iniciada antes da troca não pode repor um cache já invalidado.
+    for _ in range(2):
+        with _trava_rotas:
+            geracao = _geracao_rotas
+            if telefone in cache:
+                return cache[telefone]
+        with get_conn() as conn:
+            row = conn.execute(consulta, (telefone,)).fetchone()
+        with _trava_rotas:
+            if geracao != _geracao_rotas:
+                continue
+            if row and row[campo]:
+                cache[telefone] = row[campo]
+                return row[campo]
+            return None
     return None
+
+
+def _chat_id_conhecido(telefone: str) -> str | None:
+    return _rota_conhecida(telefone, 'chat_id', _chat_id_cache)
 
 
 def _sessao_conhecida(telefone: str) -> str | None:
-    if telefone in _sessao_cache:
-        return _sessao_cache[telefone]
-
-    with get_conn() as conn:
-        row = conn.execute("SELECT waha_session FROM clientes WHERE telefone = ?", (telefone,)).fetchone()
-    if row and row["waha_session"]:
-        _sessao_cache[telefone] = row["waha_session"]
-        return row["waha_session"]
-    return None
+    return _rota_conhecida(telefone, 'waha_session', _sessao_cache)
 
 
 def _sessao_envio(informada=None):
@@ -213,7 +244,7 @@ def extrair_mensagem_recebida_meta(payload: dict) -> dict | None:
         return None
 
 
-def extrair_mensagem_recebida_waha(payload: dict) -> dict | None:
+def extrair_mensagem_recebida_waha(payload: dict, *, lembrar=True) -> dict | None:
     """Extrai {telefone, texto, nome, chat_id, session} do payload de webhook
     do WAHA.
 
@@ -251,7 +282,8 @@ def extrair_mensagem_recebida_waha(payload: dict) -> dict | None:
         sessao = payload.get("session")
         if config.WHATSAPP_PROVIDER in {'LOCAL', 'WAHA'} and sessao and sessao != config.WAHA_SESSION:
             return None
-        _lembrar_chat_id(telefone, chat_id_original, sessao)
+        if lembrar:
+            _lembrar_chat_id(telefone, chat_id_original, sessao)
 
         return {
             "telefone": telefone,

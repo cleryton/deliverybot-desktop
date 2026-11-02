@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.49.3 — 2026-11-02
+
+Reforça o aplicativo real: prova do formulário vinculada ao link, limites de confirmação antes de consultas externas, bloqueios de autenticação independentes e recebimento de mensagens vinculado à conexão de origem na transação da fila. Invalida rotas técnicas na troca de conta e na remoção de identificação, inclusive contra leituras em andamento. Preserva pedidos, catálogo e dados existentes, com regressões e documentação de segurança.
+
 ## 2.49.2 — 2026-11-02
 
 Corrige o isolamento dos links individuais no laboratório QA: formulário, confirmação e catálogo PDF exigem a sessão que criou o pedido. Preserva a consulta dos comprovantes próprios, adiciona identificação da versão publicada e regressões entre dois navegadores, sem alterar o fluxo dos links de WhatsApp em produção.

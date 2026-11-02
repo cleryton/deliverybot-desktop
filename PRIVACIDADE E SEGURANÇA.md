@@ -1,4 +1,4 @@
-# Privacidade e segurança — DeliveryBot 2.3
+# Privacidade e segurança — DeliveryBot
 
 Este documento descreve as medidas implementadas e as decisões que a loja precisa manter. Não representa certificação de conformidade: a aplicação da LGPD depende das finalidades, bases legais, pessoas com acesso, fornecedores e práticas da empresa.
 
@@ -17,6 +17,18 @@ Há proteção CSRF nas alterações administrativas, cozinha e formulário de c
 A pasta Desktop em `%LOCALAPPDATA%\DeliveryBot` tem permissões restritas à conta Windows atual e SYSTEM, incluindo dados antigos. Atalhos e junções não são percorridos. Não coloque a pasta em localização compartilhada nem abra o app por uma conta coletiva. Administradores do Windows, programas na mesma conta e pessoas com acesso a uma sessão desbloqueada podem acessar os dados. Bloqueio de tela, proteção da conta, atualização do Windows e criptografia de disco são medidas complementares.
 
 Segredos guardados nas configurações são protegidos por DPAPI no Windows, com migração dos valores antigos sem mudança das credenciais. Em outra conta, informe novamente a credencial. O `.env` de um servidor e os dados internos da sessão WhatsApp exigem controle de acesso próprio. O banco SQLite em uso não tem criptografia integral; o objetivo das permissões é restringir acesso por outras contas, não proteger um disco removido ou um computador comprometido.
+
+## Pedidos públicos e autenticações
+
+No aplicativo real, o formulário assina uma prova vinculada à sessão e ao link específico do pedido. Uma prova de outro pedido ou de um formulário administrativo não confirma a compra. O primeiro acesso pelo WhatsApp e pedidos em abas diferentes continuam funcionando. A assinatura usa a chave privada do servidor, sem acrescentar telefones ou links ao cookie. As verificações de origem e de campos repetidos continuam obrigatórias.
+
+O link de compra continua sendo uma credencial de posse, temporária e de uso único: quem recebe um link válido pode abrir seu formulário. A assinatura do formulário não comprova a identidade de quem abriu esse link. Não compartilhe o endereço individual; o formulário não preenche dados pessoais de compras anteriores, e o comprovante exige a sessão que confirmou a compra, seu identificador e a correspondência entre cliente e link.
+
+A confirmação admite até oito tentativas por link e sessenta por banco a cada minuto, com duas operações simultâneas por processo. Os limites são aplicados antes da consulta de entrega, gravação e notificações. Uma recusa responde com 429 e prazo para tentar novamente, preservando o link e o estoque. As vagas são liberadas inclusive em falhas. O controle guarda somente resumos de identificadores e não substitui os limites de rede da hospedagem.
+
+As tentativas de autenticação da cozinha, do operador e do terminal são independentes. Um acesso válido a uma dessas barreiras não reinicia erros da outra. O bloqueio por origem continua durando cinco minutos após dez falhas; pessoas no mesmo endereço de rede podem compartilhar esse bloqueio no mesmo tipo de acesso.
+
+Eventos WAHA só iniciam atendimento quando LOCAL ou WAHA é o provedor ativo. O recebimento captura a conexão de origem e a fila a confere dentro da transação de gravação. Uma troca concorrente não pode atribuir o evento à conta substituta. Eventos ignorados ou recusados não atualizam os contatos. Ao mudar de conexão, as rotas técnicas aprendidas para contatos são descartadas; nomes, telefones, pedidos e histórico comercial são preservados. A nova conexão aprende seus próprios identificadores nas próximas mensagens. Credenciais comprometidas precisam ser revogadas ou substituídas pelo responsável.
 
 ## Backups e restauração
 

@@ -1,5 +1,6 @@
 import concurrent.futures
 from contextlib import closing
+import re
 import sqlite3
 import pytest
 
@@ -144,15 +145,16 @@ def test_api_autenticacao_csrf_e_pedido_pelo_formulario(monkeypatch):
     p = cliente.post("/gestao/api/produtos", json={"nome": "Notebook", "categoria": "Eletrônicos", "preco": 3000, "estoque": 1}, headers=headers).json
     resposta = cliente.post("/gestao/api/simular", json={"telefone": "5547999990000", "texto": "2"}, headers=headers).json
     caminho = resposta["caminho"]
-    assert b'Notebook' in cliente.get(caminho).data
-    r = cliente.post(caminho, data={"nome": "Ana", "forma_pagamento": "Pix", "csrf_token": csrf, f'qtd_{p["id"]}': 1})
+    pagina = cliente.get(caminho)
+    assert b'Notebook' in pagina.data
+    csrf_pedido = re.search(r'name="csrf_token" value="([^"]+)"', pagina.text)[1]
+    r = cliente.post(caminho, data={"nome": "Ana", "forma_pagamento": "Pix", "csrf_token": csrf_pedido, f'qtd_{p["id"]}': 1})
     assert r.status_code == 303
     assert cliente.get(r.location).status_code == 200
     assert cliente.post(caminho, data={f'qtd_{p["id"]}': 1}).status_code == 410
     backup = cliente.post("/gestao/api/backup", json={"senha": "senha-de-backup-teste"}, headers=headers).json["caminho"]
     from src.backups import abrir_arquivo
     dados = abrir_arquivo(backup, "senha-de-backup-teste")
-    from desktop import validar_backup
     with closing(sqlite3.connect(':memory:')) as copia:
         copia.deserialize(dados)
         assert copia.execute("SELECT estoque FROM produtos").fetchone()[0] == 0

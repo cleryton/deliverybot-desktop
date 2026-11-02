@@ -1,10 +1,13 @@
 """Configurações editáveis pela interface, preservando compatibilidade com .env."""
 from urllib.parse import urlsplit
+import threading
 
 from . import config
 from .db import get_conn
 from .estoque import dinheiro, inteiro, texto, invalidar_catalogo
 from .seguranca import proteger_segredo, revelar_segredo
+
+_trava_entrada_whatsapp = threading.RLock()
 
 TEXTOS = {
     'COMERCIO_SEGMENTO': 120, 'COMERCIO_DESCRICAO': 1200,
@@ -31,6 +34,11 @@ ROTEAMENTO_WHATSAPP = ('WHATSAPP_PROVIDER', 'WAHA_URL', 'WAHA_SESSION',
 
 def roteamento_whatsapp(valores=None):
     """Identifica o transporte ativo sem incluir tokens ou chaves rotativas."""
+    with _trava_entrada_whatsapp:
+        return _roteamento_whatsapp(valores)
+
+
+def _roteamento_whatsapp(valores=None):
     valores = valores or {}
     def obter(chave):
         return valores.get(chave, getattr(config, chave))
@@ -45,7 +53,19 @@ def roteamento_whatsapp(valores=None):
     return (provedor,)
 
 
+def capturar_entrada_whatsapp():
+    """Captura rota e autenticação juntas, sem banco ou rede sob a trava."""
+    with _trava_entrada_whatsapp:
+        return roteamento_whatsapp(), config.WEBHOOK_SECRET, config.WHATSAPP_APP_SECRET
+
+
 def aplicar(valores):
+    with _trava_entrada_whatsapp:
+        _aplicar(valores)
+    invalidar_catalogo()
+
+
+def _aplicar(valores):
     for chave, valor in valores.items():
         if chave in CAMPOS:
             if chave == "TAXA_ENTREGA":
@@ -56,7 +76,6 @@ def aplicar(valores):
     config.MODO_TESTE = config.WHATSAPP_PROVIDER == "TESTE" or (
         config.WHATSAPP_PROVIDER == "META" and not (config.WHATSAPP_TOKEN and config.WHATSAPP_PHONE_NUMBER_ID))
     config.WHATSAPP_API_URL = f"https://graph.facebook.com/{config.WHATSAPP_GRAPH_VERSION}/{config.WHATSAPP_PHONE_NUMBER_ID}/messages"
-    invalidar_catalogo()
 
 
 def carregar():
@@ -161,11 +180,20 @@ def salvar(dados, *, numero_meta_esperado=None, conta_meta_esperada=None, meta_s
         persistidos = {r['chave']: r['valor'] for r in conn.execute(
             'SELECT chave,valor FROM configuracoes WHERE chave IN ('
             + ','.join('?' for _ in ROTEAMENTO_WHATSAPP) + ')', ROTEAMENTO_WHATSAPP)}
-        if (roteamento_whatsapp(persistidos) != roteamento_whatsapp({**persistidos, **valores})
-                and conn.execute("SELECT 1 FROM tarefas_bot WHERE estado!='CONCLUIDA' LIMIT 1").fetchone()):
+        troca_roteamento = roteamento_whatsapp(persistidos) != roteamento_whatsapp({**persistidos, **valores})
+        if (troca_roteamento and conn.execute("SELECT 1 FROM tarefas_bot WHERE estado!='CONCLUIDA' LIMIT 1").fetchone()):
             raise ValueError('Conclua ou revise as mensagens pendentes antes de alterar a conexão do WhatsApp.')
+        if troca_roteamento:
+            # Identificadores do transporte anterior não pertencem à nova conta.
+            # Nome, telefone, endereço e pedidos comerciais são preservados.
+            conn.execute('UPDATE clientes SET chat_id=NULL,waha_session=NULL')
         for chave, valor in valores.items():
             armazenado = proteger_segredo(str(valor)) if chave in SEGREDOS else str(valor)
             conn.execute("INSERT INTO configuracoes (chave, valor) VALUES (?, ?) ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor", (chave, armazenado))
+    if troca_roteamento:
+        from . import whatsapp
+        whatsapp._invalidar_rotas()
     aplicar(valores)
+    if troca_roteamento:
+        whatsapp._invalidar_rotas()
     return obter()

@@ -105,13 +105,14 @@ if config.IA_PROVIDER == "OLLAMA" and config.OLLAMA_AQUECER_AO_INICIAR:
 # da cozinha. Ver PRIVACIDADE E SEGURANÇA.md para como configurar.
 # ---------------------------------------------------------------------------
 
-def _segredo_valido(segredo_recebido: str) -> bool:
-    if not config.WEBHOOK_SECRET:
+def _segredo_valido(segredo_recebido: str, esperado=None) -> bool:
+    esperado = config.WEBHOOK_SECRET if esperado is None else esperado
+    if not esperado:
         # Sem segredo configurado, o endpoint fica bloqueado por padrão --
         # é melhor "esquecer de configurar e nada funcionar" do que "esquecer
         # de configurar e o endpoint ficar aberto pra qualquer um".
         return False
-    return seguranca.igual(segredo_recebido or "", config.WEBHOOK_SECRET)
+    return seguranca.igual(segredo_recebido or "", esperado)
 
 
 def _exigir_autenticacao_cozinha():
@@ -196,9 +197,10 @@ def verificar_webhook():
 
 @app.route("/webhook", methods=["POST"])
 def receber_webhook():
-    if not config.WHATSAPP_APP_SECRET:
+    roteamento, _, app_secret = preferencias.capturar_entrada_whatsapp()
+    if not app_secret:
         return jsonify(status="não autorizado"), 403
-    assinatura = "sha256=" + hmac.new(config.WHATSAPP_APP_SECRET.encode(), request.get_data(), hashlib.sha256).hexdigest()
+    assinatura = "sha256=" + hmac.new(app_secret.encode(), request.get_data(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(request.headers.get("X-Hub-Signature-256", ""), assinatura):
         return jsonify(status="não autorizado"), 403
     payload = request.get_json() or {}
@@ -229,7 +231,7 @@ def receber_webhook():
     if not dados['texto']:
         return jsonify(status='ignorado'),200
     try:
-        tarefa=processamento.enfileirar(dados,dados.get('id'))
+        tarefa=processamento.enfileirar(dados,dados.get('id'), roteamento_esperado=roteamento)
     except ValueError:
         return jsonify(status='ignorado'),200
     return jsonify(status='recebido',**tarefa),200
@@ -246,20 +248,26 @@ def receber_webhook():
 
 @app.route("/webhook/waha/<segredo>", methods=["POST"])
 def receber_webhook_waha(segredo):
-    if not _segredo_valido(segredo):
+    roteamento, segredo_esperado, _ = preferencias.capturar_entrada_whatsapp()
+    if not _segredo_valido(segredo, esperado=segredo_esperado):
         logger.warning("Tentativa de acesso ao webhook do WAHA com segredo inválido")
         return jsonify({"status": "não autorizado"}), 404  # 404 em vez de 401: não revela que a rota existe
+
+    # Um emissor antigo não pode iniciar atendimento pela conexão substituta.
+    # Confirmar o evento evita repetição, sem interpretar ou persistir seu corpo.
+    if roteamento[0] not in {'LOCAL', 'WAHA'}:
+        return jsonify(status='ignorado'), 200
 
     payload = request.get_json() or {}
     if not isinstance(payload, dict):
         return jsonify(status="dados inválidos"), 400
-    dados = whatsapp.extrair_mensagem_recebida_waha(payload)
+    dados = whatsapp.extrair_mensagem_recebida_waha(payload, lembrar=False)
 
     if dados is None:
         return jsonify({"status": "ignorado"}), 200
 
     chave = (payload.get("payload") or {}).get("id") or payload.get("id")
-    tarefa = processamento.enfileirar(dados, chave)
+    tarefa = processamento.enfileirar(dados, chave, roteamento_esperado=roteamento)
     return jsonify(status="recebido", **tarefa), 200
 
 
@@ -394,9 +402,20 @@ def enviar_pedido(token):
     if not ok:
         return render_template("link_invalido.html", mensagem=mensagem), 410
 
-    if not seguranca.csrf_valido():
+    if not seguranca.csrf_valido(escopo='pedido:' + token):
         return "A sessão do pedido expirou. Reabra seu link de compra.", 403
 
+    from .protecao_pedido import ConfirmacaoOcupada, protecao
+    try:
+        with protecao.reservar(token):
+            return _confirmar_pedido(token, link)
+    except ConfirmacaoOcupada as exc:
+        return ('Aguarde um instante antes de tentar novamente. Confira se já recebeu '
+                'a confirmação antes de reenviar o pedido.', 429,
+                {'Retry-After': str(exc.aguardar)})
+
+
+def _confirmar_pedido(token, link):
     telefone = link["telefone"]
     nome_cliente = request.form.get("nome", "Cliente").strip() or "Cliente"
     if len(nome_cliente) > 160:

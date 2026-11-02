@@ -198,10 +198,10 @@ def aparencia_api():
 def login_operador():
     if not acesso_base() or not seguranca.csrf_valido():
         return 'Reabra o painel para entrar.',403
-    if seguranca.login_bloqueado():
+    if seguranca.login_bloqueado(ambito='operador'):
         return 'Muitas tentativas. Aguarde cinco minutos.',429
     ok=operadores.entrar(request.form.get('login'),request.form.get('senha'))
-    seguranca.registrar_login(ok)
+    seguranca.registrar_login(ok, ambito='operador')
     if not ok:
         return pagina_login('Login ou senha inválidos.',401)
     return redirect('/gestao')
