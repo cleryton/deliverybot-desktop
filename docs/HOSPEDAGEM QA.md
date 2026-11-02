@@ -11,7 +11,7 @@ O cenário é a **Lanchonete Demonstração**, com quatro lanches, batata frita,
 - Build: `pip install -r requirements-web.txt`.
 - Iniciar: `gunicorn wsgi_qa:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 90`.
 - Variável obrigatória: `QA_WEB_HABILITADO=SIM`.
-- Verificação de saúde: `/healthz`.
+- Verificação de saúde: `/healthz`, com o campo `versao`. O cabeçalho `X-DeliveryBot-Version` e o rodapé do início também identificam a versão em execução, para conferir a publicação validada.
 - A origem HTTPS vem de `RENDER_EXTERNAL_URL`, definida pelo Render. Para outro provedor, defina `QA_BASE_URL`.
 - Use apenas um processo Gunicorn. A chave de sessão é aleatória a cada início; `QA_SESSION_SECRET` opcional permite defini-la por variável secreta, nunca no Git.
 - `render.yaml` registra a configuração gratuita, com publicação automática desligada. Ao configurar pela interface, selecione a branch validada e deixe a publicação manual.
@@ -20,7 +20,7 @@ A entrada não carrega `.env` e não usa a pasta de dados do desktop. O banco de
 
 ## Roteiro do grupo
 
-1. Abra a URL pública e escolha **Iniciar pedido de teste**.
+1. Cada participante deve abrir a URL pública e escolher **Iniciar pedido de teste**, no próprio navegador. Mantenha os cookies habilitados e continue o teste nesse mesmo navegador; não compartilhe o endereço individual `/m/...`.
 2. Teste busca, categorias, fotos, quantidades, cálculos e download do PDF.
 3. Preencha nome e endereço fictícios. Para entrega, o CEP é consultado no ViaCEP, como no aplicativo; não utilize endereço pessoal.
 4. Confirme o pedido e confira o recibo e o minijogo. A tela informa que nenhum WhatsApp foi enviado.
@@ -30,6 +30,8 @@ A entrada não carrega `.env` e não usa a pasta de dados do desktop. O banco de
 Após confirmar, **Imprimir ou salvar comprovante** abre a impressão do próprio navegador: escolha uma impressora ou Salvar como PDF. O comprovante identifica a loja, os itens, o total e a forma de recebimento; não tem valor fiscal nem comprova pagamento. O botão não envia dados a serviços externos e não reenvia o pedido. O jogo e os controles são ocultados na impressão.
 
 A confirmação redireciona para o comprovante. Atualizar essa página não repete pedidos ou mensagens. Ele pode ser consultado por até oito horas no mesmo navegador; a sessão guarda até cinco autorizações. Abrir o endereço em outro navegador não libera a consulta. O link original de compra continua sendo de uso único. Reiniciar a hospedagem pode encerrar o acesso antes desse prazo; salve o PDF se precisar guardar o resultado.
+
+No laboratório, o formulário de compra, sua confirmação e o catálogo PDF exigem a sessão que criou o link. Conhecer o endereço de outro participante, mesmo com uma sessão e um CSRF próprios válidos, não permite usar ou consumir seu link. O comprovante exige a autorização específica registrada na confirmação; iniciar outro pedido no mesmo navegador preserva os recibos anteriores ainda autorizados. Este vínculo é exclusivo do QA: os links de compra enviados pelo WhatsApp no aplicativo instalado seguem o fluxo de produção, e os comprovantes continuam exigindo a sessão que confirmou o pedido.
 
 Sessão expirada, link usado, página inexistente, excesso de tentativas e falha do serviço apresentam uma orientação com retorno ao início. Os códigos HTTP e os bloqueios continuam ativos; erros internos não exibem detalhes técnicos. Um link usado não deve ser reenviado para tentar repetir a mesma compra.
 
@@ -41,4 +43,4 @@ Segundo a [documentação do Render](https://render.com/docs/free), a instância
 
 O plano inclui cotas de horas, tráfego e construção. Mantenha o serviço no plano Free e não habilite complementos pagos. Caso a plataforma solicite um cartão ou uma contratação, interrompa e reveja a configuração. Não há banco pago, disco persistente, SMS nem consumo de API Meta nesta publicação.
 
-Os testes automatizados cobrem isolamento de rotas, dados e pasta; configuração sem credenciais de WhatsApp; catálogo e fotos; CSRF e origem; pedido/recibo; link de uso único; PDF; cabeçalhos, host e proxy HTTPS.
+Os testes automatizados cobrem isolamento de rotas, dados e pasta; configuração sem credenciais de WhatsApp; catálogo e fotos; CSRF e origem; pedido/recibo; link de uso único; PDF; cabeçalhos, host e proxy HTTPS. Regressões com dois navegadores verificam a recusa de formulário, PDF, confirmação e comprovante alheios, sem criar pedidos nem consumir o link, além da continuidade e expiração dos recibos próprios e da identificação da versão publicada.

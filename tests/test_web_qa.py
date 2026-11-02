@@ -134,8 +134,9 @@ def test_reabrir_qa_atualiza_demo_antiga_sem_duplicar_ou_repor_bebidas(qa):
         assert conn.execute("SELECT estoque FROM produtos WHERE sku='QA-DEMO-6'").fetchone()[0]==998
 
 def test_health_modo_qa_e_csrf_errado(qa):
+    from src.atualizacoes import atual
     c,_=qa
-    assert c.get('/healthz',base_url='https://qa-ficticio.example').json=={'ok':True,'ambiente':'QA','whatsapp':'SIMULADO'}
+    assert c.get('/healthz',base_url='https://qa-ficticio.example').json=={'ok':True,'ambiente':'QA','whatsapp':'SIMULADO','versao':atual()}
     r=c.get('/',base_url='https://qa-ficticio.example')
     assert c.post('/qa/novo',base_url='https://qa-ficticio.example',headers={'Origin':'https://invasor.example'},data={'csrf_token':csrf(r)}).status_code==403
 
@@ -181,3 +182,88 @@ def test_falha_interna_nao_expoe_detalhes(qa,monkeypatch):
     r=novo(c)
     assert r.status_code==500
     assert 'Não foi possível concluir' in r.text and 'DETALHE_PRIVADO' not in r.text
+
+
+@pytest.mark.parametrize('operacao', ['pagina', 'pdf', 'confirmar'])
+@pytest.mark.parametrize('com_sessao_propria', [False, True])
+def test_link_de_outra_sessao_nao_libera_pagina_pdf_ou_confirmacao(qa, operacao, com_sessao_propria):
+    """Conhecer o token de outro testador não transfere a propriedade do pedido QA."""
+    dono, _ = qa
+    url = novo(dono).location
+    outro = dono.application.test_client()
+    inicio = outro.get('/', base_url='https://qa-ficticio.example')
+    dados = {'csrf_token': csrf(inicio), 'nome': 'Intruso fictício',
+             'forma_pagamento': 'Dinheiro', 'qtd_1': '1'}
+    if com_sessao_propria:
+        assert novo(outro).location != url
+    if operacao == 'confirmar':
+        r = outro.post(url, base_url='https://qa-ficticio.example', data=dados)
+    else:
+        r = outro.get(url + ('/catalogo.pdf' if operacao == 'pdf' else ''),
+                      base_url='https://qa-ficticio.example')
+    assert r.status_code == 410
+    assert 'no-store' in r.headers['Cache-Control']
+    assert 'TESTE - X-salada' not in r.text and not r.data.startswith(b'%PDF')
+    assert url.rsplit('/', 1)[-1] not in r.text
+    with get_conn() as conn:
+        assert conn.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0] == 0
+        link = conn.execute('SELECT usado,pedido_id FROM links_pedido WHERE token=?',
+                            (url.rsplit('/', 1)[-1],)).fetchone()
+        assert (link['usado'], link['pedido_id']) == (0, None)
+    pagina = dono.get(url, base_url='https://qa-ficticio.example')
+    assert pagina.status_code == 200
+    r = dono.post(url, base_url='https://qa-ficticio.example', data={
+        'csrf_token': csrf(pagina), 'nome': 'Dono fictício',
+        'forma_pagamento': 'Dinheiro', 'qtd_1': '1'})
+    assert r.status_code == 303
+    assert dono.get(r.location, base_url='https://qa-ficticio.example').status_code == 200
+    with get_conn() as conn:
+        numero = conn.execute('SELECT numero_pedido FROM pedidos').fetchone()[0]
+    negado = outro.get(r.location, base_url='https://qa-ficticio.example')
+    assert negado.status_code == 410 and numero not in negado.text
+    with get_conn() as conn:
+        assert conn.execute('SELECT COUNT(*) FROM pedidos').fetchone()[0] == 1
+
+
+def test_comprovantes_proprios_continuam_disponiveis_apos_novo_link(qa, monkeypatch):
+    from src import comprovantes
+    dono, _ = qa
+    recibos = []
+    for nome in ('Primeira pessoa fictícia', 'Segunda pessoa fictícia'):
+        url = novo(dono).location
+        pagina = dono.get(url, base_url='https://qa-ficticio.example')
+        r = dono.post(url, base_url='https://qa-ficticio.example', data={
+            'csrf_token': csrf(pagina), 'nome': nome,
+            'forma_pagamento': 'Dinheiro', 'qtd_1': '1'})
+        assert r.status_code == 303
+        with get_conn() as conn:
+            numero = conn.execute('SELECT p.numero_pedido FROM pedidos p JOIN links_pedido l '
+                                  'ON l.pedido_id=p.id WHERE l.token=?',
+                                  (url.rsplit('/', 1)[-1],)).fetchone()[0]
+        recibos.append((r.location, numero))
+    novo(dono)
+    outro = dono.application.test_client()
+    novo(outro)
+    with get_conn() as conn:
+        conn.execute("UPDATE links_pedido SET expira_em='2000-01-01 00:00:00' WHERE usado=1")
+    for url, numero in recibos:
+        r = dono.get(url, base_url='https://qa-ficticio.example')
+        assert r.status_code == 200 and numero in r.text
+        negado = outro.get(url, base_url='https://qa-ficticio.example')
+        assert negado.status_code == 410 and numero not in negado.text
+    agora = comprovantes.time()
+    monkeypatch.setattr(comprovantes, 'time', lambda: agora + comprovantes.DURACAO + 1)
+    assert all(dono.get(url, base_url='https://qa-ficticio.example').status_code == 410
+               for url, _ in recibos)
+
+
+def test_qa_informa_versao_sem_expor_configuracao(qa):
+    from src.atualizacoes import atual
+    c, _ = qa
+    r = c.get('/healthz', base_url='https://qa-ficticio.example')
+    assert r.json == {'ok': True, 'ambiente': 'QA', 'whatsapp': 'SIMULADO', 'versao': atual()}
+    for path in ('/', '/healthz', '/gestao', '/m/token-nao-existente'):
+        r = c.get(path, base_url='https://qa-ficticio.example')
+        assert r.headers['X-DeliveryBot-Version'] == atual()
+    inicio = c.get('/', base_url='https://qa-ficticio.example').text
+    assert 'Versão de testes ' + atual() in inicio
