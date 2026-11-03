@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 2.49.4 — 2026-11-03
+
+Amplia a cobertura de segurança: revalida permissões administrativas dentro das alterações de contas, remove custos internos das respostas de atendentes, rejeita assinaturas Meta malformadas antes de ler o corpo e oculta o token de verificação nos logs. Backups só são aceitos após migração e validação de estrutura e referências em uma cópia isolada. Inclui regressões e análise passiva local com OWASP ZAP.
+
 ## 2.49.3 — 2026-11-02
 
 Reforça o aplicativo real: prova do formulário vinculada ao link, limites de confirmação antes de consultas externas, bloqueios de autenticação independentes e recebimento de mensagens vinculado à conexão de origem na transação da fila. Invalida rotas técnicas na troca de conta e na remoção de identificação, inclusive contra leituras em andamento. Preserva pedidos, catálogo e dados existentes, com regressões e documentação de segurança.

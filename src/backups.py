@@ -1,6 +1,8 @@
 """Backups portáveis autenticados: AES-256-GCM com chave derivada por scrypt."""
 import os
+import re
 import sqlite3
+import time
 from contextlib import closing
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +17,92 @@ from .db import get_conn
 MAGIC = b"DELIVERYBOT-BACKUP-1\n"
 LIMITE = 256 * 1024 * 1024
 LOCAL_MAGIC = b"DELIVERYBOT-BACKUP-WINDOWS-1\n"
+
+
+def _chaves_banco(conn, tabela):
+    colunas = conn.execute('SELECT name,type,pk FROM pragma_table_info(?) ORDER BY pk', (tabela,)).fetchall()
+    primaria = tuple((r['name'], r['type'].upper()) for r in colunas if r['pk'])
+    indices = conn.execute('SELECT name,"unique",origin,partial FROM pragma_index_list(?)', (tabela,)).fetchall()
+    unica = set()
+    for indice in indices:
+        if not indice['unique']:
+            continue
+        campos = tuple(r['name'] for r in conn.execute('SELECT name FROM pragma_index_info(?) ORDER BY seqno',
+                                                      (indice['name'],)))
+        condicao = None
+        if indice['partial']:
+            sql = conn.execute("SELECT sql FROM sqlite_master WHERE type='index' AND name=?", (indice['name'],)).fetchone()[0]
+            normal = re.sub(r'\s+', ' ', sql).casefold()
+            condicao = re.sub(r'\s+', '', normal.partition(' where ')[2])
+        unica.add((campos, condicao))
+    referencias = {tuple(r) for r in conn.execute(
+        'SELECT "table","from","to",on_update,on_delete FROM pragma_foreign_key_list(?)', (tabela,))}
+    # INTEGER PRIMARY KEY sem índice próprio é o identificador automático usado
+    # pelo app. INT PRIMARY KEY ou WITHOUT ROWID não têm o mesmo comportamento.
+    automatica = len(primaria) == 1 and primaria[0][1] == 'INTEGER' and not any(r['origin'] == 'pk' for r in indices)
+    return primaria, unica, referencias, automatica
+
+
+def validar_banco(caminho):
+    """Prova a compatibilidade e as migrações numa cópia, sem trocar o banco ativo."""
+    from .db import _MIGRACOES_COLUNAS, _aplicar_migracoes, _colunas_existentes
+    arquivo = Path(caminho)
+    if not arquivo.is_file() or not 0 < arquivo.stat().st_size <= LIMITE:
+        raise ValueError('Escolha um banco de dados do DeliveryBot de até 256 MB.')
+    schema = (Path(__file__).resolve().parents[1]/'sql/schema.sql').read_text(encoding='utf-8')
+    prazo = time.monotonic() + 30
+
+    def esgotado():
+        return time.monotonic() >= prazo
+
+    def progresso(*_):
+        if esgotado():
+            raise ValueError('Não foi possível validar o formato do backup no prazo permitido.')
+
+    try:
+        with closing(sqlite3.connect(arquivo.resolve().as_uri()+'?mode=ro', uri=True)) as origem, \
+                closing(sqlite3.connect(':memory:')) as modelo, closing(sqlite3.connect(':memory:')) as copia:
+            for conn in (origem, modelo, copia):
+                conn.row_factory = sqlite3.Row
+                conn.execute('PRAGMA trusted_schema=OFF')
+                conn.set_progress_handler(esgotado, 1000)
+            # Somente o schema distribuído com o app é executado. O backup não
+            # pode fornecer vistas, gatilhos ou tabelas virtuais para a migração.
+            objetos = origem.execute('SELECT type,sql FROM sqlite_master').fetchall()
+            if any(r['type'] in {'trigger', 'view'} or
+                   (r['sql'] or '').lstrip().upper().startswith('CREATE VIRTUAL TABLE') for r in objetos):
+                raise ValueError('O arquivo possui estruturas que não fazem parte do backup do DeliveryBot.')
+            if origem.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+                raise ValueError('O arquivo de backup está corrompido.')
+            modelo.executescript(schema)
+            _aplicar_migracoes(modelo)
+            tabelas = {r[0] for r in origem.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            if not {'produtos', 'pedidos', 'clientes', 'itens_pedido', 'fila_preparo', 'links_pedido'} <= tabelas:
+                raise ValueError('O backup não tem o formato esperado.')
+            esperadas = {r[0]: _colunas_existentes(modelo, r[0]) for r in modelo.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+            for tabela in tabelas & esperadas.keys():
+                migraveis = {nome for nome, _ in _MIGRACOES_COLUNAS.get(tabela, ())}
+                if not esperadas[tabela] - migraveis <= _colunas_existentes(origem, tabela):
+                    raise ValueError('O backup não tem o formato esperado para restaurar com segurança.')
+            origem.backup(copia, pages=256, progress=progresso)
+            # Limita valores criados por expressões do schema do arquivo, sem
+            # reduzir o máximo de 16 MB por nota do snapshot Obsidian.
+            copia.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 17 * 1024 * 1024)
+            copia.executescript(schema)
+            _aplicar_migracoes(copia)
+            if any(not colunas <= _colunas_existentes(copia, tabela) for tabela, colunas in esperadas.items()):
+                raise ValueError('O backup não tem o formato esperado após a migração.')
+            for tabela in esperadas:
+                pk, unicas, referencias, automatica = _chaves_banco(modelo, tabela)
+                pk_copia, unicas_copia, referencias_copia, automatica_copia = _chaves_banco(copia, tabela)
+                if (pk_copia != pk or not unicas <= unicas_copia or not referencias <= referencias_copia
+                        or automatica != automatica_copia):
+                    raise ValueError('O backup não tem as chaves do formato esperado para restaurar com segurança.')
+            if copia.execute('PRAGMA integrity_check').fetchone()[0] != 'ok' or copia.execute('PRAGMA foreign_key_check').fetchone():
+                raise ValueError('O backup tem dados incompatíveis com o formato esperado.')
+    except (sqlite3.Error, TypeError, AttributeError, OverflowError) as exc:
+        raise ValueError('O backup tem formato incompatível ou não permite a migração segura.') from exc
 
 
 def _chave(senha, salt):

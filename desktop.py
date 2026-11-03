@@ -13,20 +13,8 @@ import threading
 
 
 def validar_backup(caminho):
-    with closing(sqlite3.connect(Path(caminho).resolve().as_uri() + "?mode=ro", uri=True)) as conn:
-        conn.execute("PRAGMA trusted_schema=OFF")
-        if conn.execute("SELECT 1 FROM sqlite_master WHERE type IN ('trigger','view')").fetchone():
-            raise ValueError("O arquivo possui estruturas que não fazem parte do backup do DeliveryBot.")
-        if conn.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
-            raise ValueError("O arquivo de backup está corrompido.")
-        tabelas = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        if not {"produtos", "pedidos", "clientes", "itens_pedido", "fila_preparo", "links_pedido"} <= tabelas:
-            raise ValueError("Escolha um banco de dados do DeliveryBot (.db).")
-        for tabela, colunas in {"produtos": {"id", "nome", "preco", "ativo", "categoria"},
-                               "pedidos": {"id", "cliente_id", "numero_pedido", "status"}}.items():
-            existentes = {r[1] for r in conn.execute(f"PRAGMA table_info({tabela})")}
-            if not colunas <= existentes:
-                raise ValueError("O backup não tem o formato esperado.")
+    from src.backups import validar_banco
+    validar_banco(caminho)
 
 
 def preparar_dados(pasta):

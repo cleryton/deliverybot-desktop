@@ -191,8 +191,10 @@ def verificar_webhook():
     desafio = request.args.get("hub.challenge")
 
     if config.WHATSAPP_VERIFY_TOKEN not in {"", "trocar_por_uma_palavra_secreta"} and modo == "subscribe" and seguranca.igual(token or "", config.WHATSAPP_VERIFY_TOKEN):
-        return desafio, 200
-    return "Token de verificação inválido", 403
+        if not desafio or not desafio.strip() or len(desafio) > 1024:
+            return 'Desafio de verificação inválido.', 400, {'Content-Type': 'text/plain; charset=utf-8'}
+        return desafio, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    return "Token de verificação inválido", 403, {'Content-Type': 'text/plain; charset=utf-8'}
 
 
 @app.route("/webhook", methods=["POST"])
@@ -200,8 +202,11 @@ def receber_webhook():
     roteamento, _, app_secret = preferencias.capturar_entrada_whatsapp()
     if not app_secret:
         return jsonify(status="não autorizado"), 403
+    recebida = request.headers.get("X-Hub-Signature-256", "")
+    if not re.fullmatch(r'sha256=[0-9a-f]{64}', recebida):
+        return jsonify(status="não autorizado"), 403
     assinatura = "sha256=" + hmac.new(app_secret.encode(), request.get_data(), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(request.headers.get("X-Hub-Signature-256", ""), assinatura):
+    if not seguranca.igual(recebida, assinatura):
         return jsonify(status="não autorizado"), 403
     payload = request.get_json() or {}
     if not isinstance(payload, dict):
