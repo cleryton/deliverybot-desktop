@@ -399,12 +399,15 @@ def movimentos():
 @bp.route("/gestao/api/pedidos")
 @protegido
 def listar_pedidos():
-    resultado = pedidos.listar_pedidos()
+    return jsonify(_pedidos_para_perfil(pedidos.listar_pedidos()))
+
+
+def _pedidos_para_perfil(resultado):
     if not operadores.admin():
         for p in resultado:
             for item in p['itens']:
                 item.pop('custo_unitario',None)
-    return jsonify(resultado)
+    return resultado
 
 
 @bp.route("/gestao/api/pedidos/<int:pedido_id>/avancar", methods=["POST"])
@@ -412,7 +415,8 @@ def listar_pedidos():
 def avancar(pedido_id):
     status = status_pedido_informado()
     esperado = 'AGUARDANDO' if status in {'RECEBIDO', 'CONFIRMADO'} else status
-    return jsonify(fila.avancar_status(pedido_id, status_esperado=esperado))
+    pedido = fila.avancar_status(pedido_id, status_esperado=esperado)
+    return jsonify(_pedidos_para_perfil([pedido])[0])
 
 
 def status_pedido_informado():

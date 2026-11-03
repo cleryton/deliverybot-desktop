@@ -51,6 +51,15 @@ def senha_valida(senha):
     return generate_password_hash(senha)
 
 
+def _exigir_administrador(c):
+    """A revogação precisa valer na mesma transação que grava outra conta."""
+    ator = c.execute("SELECT id FROM operadores WHERE id=? AND versao=? AND ativo=1 AND perfil='ADMIN'",
+                     (session.get('operador_id'), session.get('operador_versao'))).fetchone()
+    if not ator:
+        raise ValueError('A autorização do administrador mudou. Entre novamente para continuar.')
+    return ator['id']
+
+
 def criar(d):
     login=texto(d.get('login',''),'Login',80,True).casefold()
     if not re.fullmatch(r'[a-z0-9._-]{3,80}',login):
@@ -65,6 +74,7 @@ def criar(d):
         primeiro=not c.execute('SELECT 1 FROM operadores LIMIT 1').fetchone()
         if primeiro and perfil!='ADMIN':
             raise ValueError('A primeira conta precisa ser administradora.')
+        ator = None if primeiro else _exigir_administrador(c)
         if c.execute('SELECT 1 FROM operadores WHERE login=?',(login,)).fetchone():
             raise ValueError('Este login já está cadastrado.')
         versao=secrets.token_hex(24)
@@ -74,24 +84,24 @@ def criar(d):
         session['operador_id']=uid
         session['operador_versao']=versao
         session.permanent=True
-    auditar('CRIAR_OPERADOR',uid)
+    auditar('CRIAR_OPERADOR',uid,usuario_id=uid if primeiro else ator)
     return {'id':uid,'nome':nome,'login':login,'perfil':perfil}
 
 
 def alterar(uid,d):
-    ator=usuario()
     senha=senha_valida(d['senha']) if d.get('senha') else None
     if not isinstance(d.get('ativo'),bool) or d.get('perfil') not in {'ADMIN','ATENDENTE','CAIXA'}:
         raise ValueError('Informe perfil e situação da conta.')
     with get_conn() as c:
         c.execute('BEGIN IMMEDIATE')
+        ator = _exigir_administrador(c)
         u=c.execute('SELECT * FROM operadores WHERE id=?',(uid,)).fetchone()
         if not u:
             raise ValueError('Conta não encontrada.')
         if u['ativo'] and u['perfil']=='ADMIN' and (not d['ativo'] or d['perfil']!='ADMIN') and not c.execute("SELECT 1 FROM operadores WHERE id!=? AND ativo=1 AND perfil='ADMIN'",(uid,)).fetchone():
             raise ValueError('Mantenha pelo menos um administrador ativo.')
         c.execute('UPDATE operadores SET ativo=?,perfil=?,senha_hash=?,versao=? WHERE id=?',(d['ativo'],d['perfil'],senha or u['senha_hash'],secrets.token_hex(24),uid))
-    auditar('ALTERAR_OPERADOR',uid,usuario_id=ator['id'] if ator else None)
+    auditar('ALTERAR_OPERADOR',uid,usuario_id=ator)
 
 
 def entrar(login,senha):

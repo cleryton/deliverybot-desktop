@@ -69,6 +69,12 @@ O servidor também compara o cliente do pedido com o telefone vinculado ao link.
 
 ## Testes
 
+Na revisão 2.49.4, novas regressões cobrem revogação concorrente de administrador durante a preparação de alterações de contas, primeiro cadastro concorrente, custos ocultos para atendentes no avanço de pedidos, assinaturas Meta malformadas, desafio de verificação como texto simples e redução do token de verificação nos logs. A restauração verifica uma cópia isolada, incluindo capacidade de migração, chaves, índices únicos, referências e preservação do banco atual quando o backup é recusado. O esquema original da versão 2.2.0 também foi validado localmente; os testes automatizados incluem um esquema legado com migrações pendentes.
+
+O OWASP ZAP 2.17.0 instalado foi executado em modo passivo contra uma loja fictícia exposta somente em `127.0.0.1:5030`, com escopo restrito, envio de formulários desativado e sem contas ou mensagens reais. O plano terminou com 57 verificações aprovadas, quatro avisos e zero bloqueios de risco alto ou controles essenciais. Os avisos foram: versão do servidor de desenvolvimento do laboratório (10036), permissão de estilos inline na CSP existente (10055) e identificações informativas de aplicação e sessão (10109 e 10112). A revisão não trata esses avisos como uma prova de exploração. O ajuste da política de estilos permanece uma melhoria própria da interface, e o cabeçalho do servidor de desenvolvimento não representa o executável de produção.
+
+O scanner não exercita os privilégios internos nem a restauração: esses controles são verificados pelos testes com perfis e bancos fictícios. Os relatórios locais são gerados em `artifacts/zap-v2494.json` e `artifacts/zap-v2494.html`, sem entrar no Git. As regressões e a política ZAP também seguem na validação do GitHub; a análise passiva das páginas alcançadas não é certificação de ausência de falhas.
+
 - `tests/test_carrinho_lote.py`: consultas, agrupamento, precisão, preços atuais, custos internos e snapshot concorrente.
 - `tests/test_viacep.py`: respostas malformadas, recuperação após timeout, validade e limite do cache e regras de área de entrega.
 - `tests/test_comprovante.py`: redirecionamento, atualização sem efeitos, isolamento entre navegadores, prazo, limite de sessão e pedido indisponível.

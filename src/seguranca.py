@@ -10,7 +10,7 @@ import secrets
 import threading
 import time
 from datetime import timedelta
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from flask import current_app, g, request, session
 from flask.sessions import SecureCookieSessionInterface
@@ -96,6 +96,10 @@ def reduzir_dados(texto):
     texto = str(texto)
     texto = re.sub(r"(?i)(/m/|/webhook/waha/|/api/bot/mensagem/)[^\s?\"'<>]+", r"\1[privado]", texto)
     texto = re.sub(r"(?i)(acesso=|input_token=|access_token=|client_secret=|appsecret_proof=|Bearer\s+)[^\s&\"']+", r"\1[privado]", texto)
+    # O nome do parâmetro pode aparecer percent-encoded no log HTTP. Decodificar
+    # somente esse nome evita interpretar ou voltar a expor o valor secreto.
+    texto = re.sub(r"([\w.%]+)=([^\s&\"'<>]+)",
+                   lambda m: m[1]+'=[privado]' if unquote(m[1]).casefold() == 'hub.verify_token' else m[0], texto)
     texto = re.sub(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", "[e-mail]", texto)
     texto = re.sub(r"(?<!\d)(?:\+?\d[\s().-]*){10,15}(?!\d)", "[telefone/documento]", texto)
     return texto

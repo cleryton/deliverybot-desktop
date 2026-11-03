@@ -28,13 +28,19 @@ A confirmação admite até oito tentativas por link e sessenta por banco a cada
 
 As tentativas de autenticação da cozinha, do operador e do terminal são independentes. Um acesso válido a uma dessas barreiras não reinicia erros da outra. O bloqueio por origem continua durando cinco minutos após dez falhas; pessoas no mesmo endereço de rede podem compartilhar esse bloqueio no mesmo tipo de acesso.
 
+A criação e a alteração de contas conferem novamente o administrador ativo e a versão de sua sessão dentro da transação que grava a mudança. Uma conta revogada durante a preparação da requisição não pode recriar privilégios administrativos. O primeiro cadastro mantém seu fluxo próprio, com conferência do estado inicial na transação. As respostas de listagem e de avanço de pedidos ocultam o custo interno dos itens para atendentes; a consulta administrativa mantém esse dado.
+
 Eventos WAHA só iniciam atendimento quando LOCAL ou WAHA é o provedor ativo. O recebimento captura a conexão de origem e a fila a confere dentro da transação de gravação. Uma troca concorrente não pode atribuir o evento à conta substituta. Eventos ignorados ou recusados não atualizam os contatos. Ao mudar de conexão, as rotas técnicas aprendidas para contatos são descartadas; nomes, telefones, pedidos e histórico comercial são preservados. A nova conexão aprende seus próprios identificadores nas próximas mensagens. Credenciais comprometidas precisam ser revogadas ou substituídas pelo responsável.
+
+O webhook Meta rejeita assinaturas ausentes ou com formato inválido antes de ler o corpo. A comparação continua usando a credencial capturada com a conexão. A verificação inicial exige um desafio preenchido de até 1.024 caracteres e o devolve como texto simples. O filtro dos logs oculta também `hub.verify_token`, incluindo o nome codificado no endereço.
 
 ## Backups e restauração
 
 Backups novos `.dbot` usam AES-256-GCM e scrypt com salt aleatório e senha de 12 a 256 caracteres. A autenticação detecta senha incorreta e alteração do arquivo. A cópia é feita em memória e não gera um intermediário de exportação sem criptografia. Chaves e tokens de provedores são excluídos da cópia portável; as credenciais precisam ser reconfiguradas após restaurar.
 
 A senha não é armazenada pelo app. Guarde-a separadamente, restrinja o acesso ao arquivo e mantenha uma cópia em outro equipamento. Teste a recuperação com dados fictícios. Cópias automáticas anteriores à restauração usam DPAPI e extensão `.dbot-local`; só podem ser abertas pela conta Windows de origem. Backups antigos `.db` continuam legíveis por quem tiver acesso: planeje sua conversão e descarte conforme a política da loja. A atualização não remove cópias antigas automaticamente.
+
+Antes de aceitar a restauração, o aplicativo abre o banco de origem somente para leitura e testa o esquema e as migrações distribuídos com o aplicativo em uma cópia isolada em memória. Confere colunas, chaves primárias, unicidade, referências e integridade, recusando estruturas incompatíveis e SQL de vistas, gatilhos ou tabelas virtuais. A validação não troca a configuração do banco em uso nem modifica o arquivo original. Backups antigos compatíveis continuam migrando; uma recusa preserva o banco atual e o arquivo pendente. Há limite de 256 MB e prazo de validação de 30 segundos.
 
 ## Direitos dos titulares
 
