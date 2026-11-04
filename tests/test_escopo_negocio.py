@@ -28,7 +28,8 @@ def test_calculo_geral_recusado_mesmo_apos_historico_comercial(texto, provedor, 
         {'role': 'user', 'content': 'Quero comprar um X-Salada'},
         {'role': 'assistant', 'content': 'O X-Salada custa R$ 20,00. Quer fazer o pedido?'},
     ]))
-    assert ia.responder(T, texto) == ia.RESPOSTA_FORA_ESCOPO
+    esperada = ia.RESPOSTA_RAIZ_QUADRADA if any(m in texto.casefold() for m in ('sqrt', 'square root', 'raiz quadrada', '√')) else ia.RESPOSTA_FORA_ESCOPO
+    assert ia.responder(T, texto) == esperada
     modelo.assert_not_called()
 
 

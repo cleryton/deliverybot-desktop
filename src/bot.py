@@ -291,8 +291,9 @@ def _processar(telefone: str, texto: str) -> str | None:
 
     # Uma pergunta geral não pode virar nome/endereço nem alterar um rascunho
     # enquanto a compra está ativa. Campos comerciais livres continuam locais.
-    if ia.assunto_alheio_explicito(texto_limpo):
-        return ia.RESPOSTA_FORA_ESCOPO
+    recusa = ia.resposta_recusa(texto_limpo)
+    if recusa is not None:
+        return recusa
 
     from . import conversa_pedido
     resposta_conversa = conversa_pedido.responder(telefone, texto_limpo)

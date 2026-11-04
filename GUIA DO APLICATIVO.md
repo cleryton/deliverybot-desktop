@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.50.0
+# DeliveryBot Desktop 2.51.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -364,3 +364,7 @@ No aplicativo do responsável, abra **Acesso remoto** para gerar um convite indi
 ## Testes da página web em servidor
 
 O [guia de hospedagem QA](docs/HOSPEDAGEM%20QA.md) descreve uma publicação gratuita independente do computador da loja. Ela expõe somente o catálogo, pedido, fotos, PDF e minijogo, com dados fictícios e sem enviar WhatsApp. Os dados são descartáveis e a hospedagem gratuita pode hibernar.
+
+## Instalação em computador simples
+
+O roteiro completo está em **MANUAL COMPUTADOR SIMPLES.md**, com edição em PDF fornecida junto desta entrega. Para reduzir consumo, comece com o atendimento local e deixe o Ollama opcional. A recusa de raiz quadrada usa a frase solicitada pelo responsável: “não foi dessa vez seu marcos”. Destinos como espaço, Lua e Marte recebem orientação de CEP/equipe sem confirmar cobertura. A resposta não identifica a pessoa que fez a pergunta.

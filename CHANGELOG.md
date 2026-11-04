@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 2.51.0 — 2026-11-04
+
+- Respostas locais específicas para raiz quadrada e destinos incompatíveis, antes do modelo e dos campos do carrinho. A frase solicitada é preservada nas retentativas; respostas matemáticas antigas são recusadas sem atribuir identidade ao cliente.
+- Ampliação da triagem de cálculos e tópicos gerais misturados a produtos; correção da exceção de telefone para conferir quantidade de dígitos.
+- Redução de classificação repetida na resposta local, sem armazenar perguntas em cache ou carregar o Ollama para recusas.
+- Corpus adversarial com semente fixa, perguntas aleatórias, Unicode, cinco etapas da compra, retomada de pedido, fila, privacidade e transporte simulado.
+- Manual completo para instalação em computador simples, operação leve, WhatsApp/HTTPS, funcionários, backup e solução de problemas; preservação do banco e das credenciais nas atualizações.
+
 ## 2.50.0 — 2026-11-04
 
 - Atendimento restrito ao comércio: cálculos gerais em texto ou símbolos são recusados antes de inferência, atalhos e campos livres da compra; citar um produto ou ter histórico comercial não libera a pergunta. Resposta curta e sem bloqueio punitivo.

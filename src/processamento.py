@@ -264,19 +264,19 @@ def processar_proxima(somente_rapidas=False):
         resposta = tarefa["resposta"]
         # Uma resposta pronta de uma versão anterior também precisa respeitar
         # o assunto atual. Não reabre a inferência nem converte a recusa em PDF.
-        # Dados livres do pedido não passam por uma autorização de segmento;
-        # esta triagem identifica somente assuntos explicitamente alheios.
-        fora_escopo = (tarefa['origem'] != 'HUMANO'
-                       and not protecao_ia.privacidade(tarefa['texto'])
-                       and (ia.assunto_alheio_explicito(tarefa['texto'])
-                            or resposta is not None and ia.assunto_alheio_explicito(resposta)))
-        usar_pdf = (not fora_escopo and tarefa['origem'] != 'HUMANO'
+        # O mesmo helper preserva a recusa específica nas retentativas e pede
+        # uma área atendida para destinos incompatíveis, sem confirmar entrega.
+        recusa = (ia.resposta_recusa(tarefa['texto'], resposta)
+                  if tarefa['origem'] != 'HUMANO' and not protecao_ia.privacidade(tarefa['texto'])
+                  else None)
+        usar_pdf = (recusa is None and tarefa['origem'] != 'HUMANO'
                     and tarefa['formato_saida'] == 'PDF')
-        if tarefa['origem'] != 'HUMANO' and not fora_escopo and not usar_pdf and tarefa['erro'] == _ERRO_HTTPS and tarefa['tentativas'] >= 1 and not endereco():
+        if (tarefa['origem'] != 'HUMANO' and recusa is None and not usar_pdf
+                and tarefa['erro'] == _ERRO_HTTPS and tarefa['tentativas'] >= 1 and not endereco()):
             usar_pdf = tarefa['texto'].strip() == '2' or ia.intencao_pedido(tarefa['texto'], ia._historico_mensagens(tarefa['telefone']))
         pdf = None
-        if fora_escopo:
-            resposta = ia.RESPOSTA_FORA_ESCOPO
+        if recusa is not None:
+            resposta = recusa
             with get_conn() as conn:
                 conn.execute("UPDATE tarefas_bot SET formato_saida='TEXTO',resposta=? WHERE id=?", (resposta, tarefa['id']))
         elif usar_pdf:

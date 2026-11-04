@@ -57,7 +57,8 @@ def impedir_inferencia(monkeypatch):
 def test_matematica_geral_nao_herda_assunto_comercial(texto, monkeypatch):
     modelo, notas = impedir_inferencia(monkeypatch)
     resposta = bot.processar_mensagem(TELEFONE, texto)
-    assert resposta.startswith(ia.RESPOSTA_FORA_ESCOPO)
+    esperada = ia.RESPOSTA_RAIZ_QUADRADA if any(m in texto.casefold() for m in ('sqrt', 'square root', 'raiz quadrada', '√')) else ia.RESPOSTA_FORA_ESCOPO
+    assert resposta.startswith(esperada)
     modelo.assert_not_called()
     notas.assert_not_called()
     with get_conn() as conn:
@@ -80,7 +81,8 @@ def test_pergunta_geral_nao_vira_campo_do_pedido(etapa, texto, monkeypatch):
         bot.processar_mensagem(TELEFONE, 'Rua Raiz de Mandioca, 123, Centro')
     with get_conn() as conn:
         antes = dict(conn.execute('SELECT * FROM carrinhos_conversa').fetchone())
-    assert bot.processar_mensagem(TELEFONE, texto).startswith(ia.RESPOSTA_FORA_ESCOPO)
+    esperada = ia.RESPOSTA_RAIZ_QUADRADA if texto != 'quanto é 2 + 2?' else ia.RESPOSTA_FORA_ESCOPO
+    assert bot.processar_mensagem(TELEFONE, texto).startswith(esperada)
     with get_conn() as conn:
         assert dict(conn.execute('SELECT * FROM carrinhos_conversa').fetchone()) == antes
         assert conn.execute('SELECT count(*) FROM pedidos').fetchone()[0] == 0
