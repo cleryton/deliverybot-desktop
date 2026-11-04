@@ -21,6 +21,16 @@
   let enviando = false;
   let feedbackTimer;
   const camposInvalidos = new Set();
+  let campoErroServidor = null;
+
+  function limparErroServidor() {
+    if (!campoErroServidor) return;
+    if (!camposInvalidos.has(campoErroServidor)) campoErroServidor.removeAttribute('aria-invalid');
+    const descricoes = (campoErroServidor.getAttribute('aria-describedby') || '').split(/\s+/).filter(function (id) { return id && id !== 'erro-pedido'; });
+    if (descricoes.length) campoErroServidor.setAttribute('aria-describedby', descricoes.join(' '));
+    else campoErroServidor.removeAttribute('aria-describedby');
+    campoErroServidor = null;
+  }
 
   function avisar(texto) {
     clearTimeout(feedbackTimer);
@@ -51,6 +61,7 @@
     const passo = Number(produto.querySelector('.stepper').dataset.passo);
     input.value = String(Math.max(0, Math.min(Number(input.max), Math.round((quantidade(produto) + sentido * passo) * 1000) / 1000)));
     sincronizarQuantidade(produto, true);
+    if (campoErroServidor === input && input.validity.valid) limparErroServidor();
     atualizarResumo();
     avisar(produto.dataset.nome + ': ' + medida.format(quantidade(produto)) + ' ' + produto.dataset.unidade + '.');
   }
@@ -199,7 +210,9 @@
       atualizarResumo();
       avisar(produto.dataset.nome + ': ' + medida.format(quantidade(produto)) + ' ' + produto.dataset.unidade + '.');
     });
-    sincronizarQuantidade(produto, true);
+    // Em um retorno de validação, a quantidade solicitada pode superar o
+    // saldo atualizado. Só a pessoa deve decidir como corrigir sua seleção.
+    sincronizarQuantidade(produto, false);
   });
   if (busca) {
     form.querySelector('.ferramentas-catalogo').hidden = false;
@@ -259,5 +272,19 @@
   document.body.classList.add('js-pronto');
   atualizarEntrega();
   const erro = document.getElementById('erro-pedido');
-  if (erro) erro.focus();
+  if (erro) {
+    const campo = document.getElementById(erro.dataset.campoErro);
+    const atalho = document.getElementById('revisar-erro-pedido');
+    if (campo) {
+      if (campo.matches('input')) {
+        campoErroServidor = campo;
+        campo.setAttribute('aria-invalid', 'true');
+        campo.setAttribute('aria-describedby', ((campo.getAttribute('aria-describedby') || '') + ' erro-pedido').trim());
+        campo.addEventListener('input', limparErroServidor);
+        campo.addEventListener('change', limparErroServidor);
+      }
+      if (atalho) atalho.addEventListener('click', function (evento) { evento.preventDefault(); campo.focus(); });
+    }
+    erro.focus();
+  }
 })();

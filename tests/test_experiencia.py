@@ -65,3 +65,12 @@ def test_interface_carrega_dependencia_antes_do_painel_e_tem_estado_acessivel():
     assert s.elementos['sync-status'][0]['role'] == 'status'
     assert s.elementos['product-save-status'][0]['aria-live'] == 'polite'
     assert s.elementos['menu-toggle'][0]['aria-controls'] == 'app-menu'
+
+
+def test_busca_catalogo_explica_entrada_e_anuncia_resultado():
+    s = tela()
+    assert s.elementos['search'][0]['aria-controls'] == 'product-list'
+    assert s.elementos['search'][0]['aria-describedby'] in s.elementos
+    assert s.elementos['filter'][0]['aria-controls'] == 'product-list'
+    assert s.elementos['product-count'][0]['role'] == 'status'
+    assert s.elementos['product-list'][0]['role'] == 'rowgroup'

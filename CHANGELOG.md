@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 2.50.0 — 2026-11-04
+
+- Atendimento restrito ao comércio: cálculos gerais em texto ou símbolos são recusados antes de inferência, atalhos e campos livres da compra; citar um produto ou ter histórico comercial não libera a pergunta. Resposta curta e sem bloqueio punitivo.
+- A fila revalida entradas e respostas automáticas antigas antes de inferência, PDF e envio; recusas são persistidas como texto. Autoria humana, privacidade, rotas e pausas são preservadas.
+- UX/UI do catálogo: busca por palavras em qualquer ordem com índice reutilizado, listas idênticas mantêm foco/imagens e consultas antigas não revertem saldos. Filtros com rótulos visíveis e cartões adaptados ao celular.
+- Checkout apresenta erro com atalho ao campo correspondente, preserva dados e quantidades para revisão e informa itens que saíram do catálogo; elimina redução silenciosa por estoque alterado.
+- Ações em espera preservam o nome acessível e recuperam o foco somente quando ele não foi movido pela pessoa ou por um diálogo.
+- Regressões unitárias cobrem escopo, fila, carrinho, validação, busca, atualização concorrente e foco, com dados fictícios e transportes simulados.
+
 ## 2.49.4 — 2026-11-03
 
 Amplia a cobertura de segurança: revalida permissões administrativas dentro das alterações de contas, remove custos internos das respostas de atendentes, rejeita assinaturas Meta malformadas antes de ler o corpo e oculta o token de verificação nos logs. Backups só são aceitos após migração e validação de estrutura e referências em uma cópia isolada. Inclui regressões e análise passiva local com OWASP ZAP.

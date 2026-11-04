@@ -23,7 +23,7 @@
       <div><p class="sobretitulo">Escolha no seu ritmo</p><h2 id="titulo-boas-vindas">{{ catalogo_titulo }}</h2><p>Encontre {{ catalogo_itens }}, confira os detalhes e deixe o resto com a gente.</p></div>
       <ol class="etapas" aria-label="Como fazer seu pedido"><li><span>1</span> Escolha</li><li><span>2</span> Confira</li><li><span>3</span> Confirme</li></ol>
     </section>
-    {% if erro %}<div class="aviso aviso-erro" id="erro-pedido" role="alert" tabindex="-1"><strong>Vamos ajustar seu pedido</strong><p>{{ erro }}</p><span>Confira os dados abaixo e tente novamente.</span></div>{% endif %}
+    {% if erro %}<div class="aviso aviso-erro" id="erro-pedido" role="alert" tabindex="-1" data-campo-erro="{{ campo_erro or 'catalogo' }}"><strong>Vamos ajustar seu pedido</strong><p>{{ erro }}</p>{% if itens_indisponiveis %}<p>{{ itens_indisponiveis }} {{ 'item ficou indisponível e saiu da seleção' if itens_indisponiveis == 1 else 'itens ficaram indisponíveis e saíram da seleção' }}. Os demais itens e seus dados foram mantidos.</p>{% else %}<p>Sua seleção e seus dados foram mantidos. Confira o ajuste antes de confirmar novamente.</p>{% endif %}<a class="botao-texto" id="revisar-erro-pedido" href="#{{ campo_erro or 'catalogo' }}">{{ 'Revisar minha seleção' if not campo_erro or campo_erro == 'catalogo' else 'Revisar campo destacado' }}</a></div>{% endif %}
     <noscript><p class="aviso">Preencha a quantidade desejada em cada produto e confirme no fim da página. Ative o JavaScript para usar a busca e acompanhar o total antes de enviar.</p></noscript>
     <form method="post" action="" id="form-pedido" data-taxa-entrega="{{ taxa_entrega }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token('pedido:' ~ token) }}">

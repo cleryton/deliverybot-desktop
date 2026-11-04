@@ -65,8 +65,7 @@ PEDIDO_INDISPONIVEL = (
 )
 
 RESPOSTA_FORA_ESCOPO = (
-    "Me conta o que precisa sobre a loja: respondo apenas sobre nossos produtos, "
-    "serviços, pedidos e atendimento."
+    "Posso ajudar com produtos, serviços e pedidos da loja. O que você precisa?"
 )
 
 # O modelo não é um assistente geral. Esta triagem local evita enviar perguntas
@@ -111,6 +110,23 @@ _GERAL_EXPLICITO = re.compile(
     r"\b(?:fotossintese|teoria da relatividade|equacoes?|raiz quadrada|segunda guerra mundial|"
     r"programacao|programar|horoscopo|noticias do mundo|aconselhamento juridico|diagnostico medico)\b"
 )
+# Matemática geral não ganha autorização por vir junto do nome de um produto.
+# Datas, horários, telefones, códigos e quantidades comerciais permanecem dados:
+# não tratamos uma barra ou um hífen isolados como uma operação matemática.
+_CALCULO_GERAL = re.compile(
+    r'(?:[√∛∜]\s*[\d(]|\b(?:sqrt|cbrt)(?:\b|(?=\d))|\b(?:square|cube)\s+root\b|'
+    r'\braiz(?:es)?\s*(?:quadrad[ao]s?|cubic[ao]s?)\b|'
+    r'\braiz(?:es)?\s*(?:(?:d[eo]|do numero|de um numero|de numero)\s*)?\d|'
+    r'\bao\s+(?:quadrado|cubo)\b|'
+    r'(?<![\w.,])\d+(?:[.,]\d+)?\s*(?:\*\*|[+*×÷^=/]|\s-\s)\s*[+\-]?\d+(?:[.,]\d+)?(?![\w.,])|'
+    r'\b\d+(?:[.,]\d+)?\s+(?:elevad[oa]\s+a|vezes|dividid[oa]\s+por|mais|menos)\s+\d|'
+    r'\b(?:calcule|calcula|resolva|quanto (?:e|da)|resultado de)\b[^\n.!?]{0,60}'
+    r'\d\s*[-/]\s*\d)'
+)
+_LINHA_ENDERECO = re.compile(
+    r'(?:endereco\s*:\s*)?(?:rua|avenida|av\.?|travessa|alameda|estrada|rodovia|praca)\b[^?!]{2,400}'
+)
+_TELEFONE_INFORMADO = re.compile(r'(?:meu )?(?:telefone|fone|celular)(?: e|:)?\s+\+?[\d ()-]{8,30}')
 _DIVIDIR_PERGUNTAS = re.compile(
     r"[.!?;]+\s*|\s+(?:e (?:depois|tambem)|mas|tambem|alem disso|depois)\s+|"
     r"\s+e\s+(?=(?:qual|quem|como|por que|me|explique|ensine|escreva|crie|conte|"
@@ -187,9 +203,43 @@ def _operacao_delimitada(atual):
     )
 
 
-def _fora_explicito(atual, regra):
+def assunto_alheio_explicito(texto: str) -> bool:
+    """Triagem local, inclusive antes dos campos livres da compra.
+
+    Não aplica a política de segmento a nomes e endereços: uma Rua da Oficina
+    continua válida em uma lanchonete. A recusa também não bloqueia o cliente.
+    """
+    # Campos declarados não são consultas ao modelo. Não confundimos uma rua
+    # real com uma pergunta escolar. Expressões de cálculo continuam vetadas.
+    linhas = []
+    for linha in (texto or '').splitlines():
+        linha = normalizar_texto(linha)
+        endereco = (_LINHA_ENDERECO.fullmatch(linha) and re.search(r'\d|\bs/n\b', linha)
+                    and not _CALCULO_GERAL.search(linha))
+        if endereco or _TELEFONE_INFORMADO.fullmatch(linha):
+            linhas.append('campo comercial informado')
+        else:
+            linhas.append(linha)
+    atual = ' '.join(linhas)
+    if _FORA_ASSUNTO.search(atual) or _GERAL_EXPLICITO.search(atual):
+        return True
+    # Data de entrega não é uma divisão. A exceção exige o contexto de data.
+    atual = re.sub(r'\b(?:dia|data|entrega(?: (?:dia|em))?)\s+\d{1,2}/\d{1,2}(?:/\d{2,4})?\b',
+                   'data de entrega', atual)
+    if not _CALCULO_GERAL.search(atual):
+        return False
+    # Somente nomes oficiais podem explicar símbolos como Combo 2+1. O nome
+    # é removido por inteiro; ele nunca libera uma conta anexada à mensagem.
+    for produto in cardapio.listar_produtos_ativos():
+        nome = normalizar_texto(str(produto.get('nome') or ''))
+        if nome:
+            atual = re.sub(r'(?<!\w)' + re.escape(nome) + r'(?!\w)', 'produto cadastrado', atual)
     return bool(_FORA_ASSUNTO.search(atual) or _GERAL_EXPLICITO.search(atual)
-                or escopo_loja.fora_do_segmento(atual, regra))
+                or _CALCULO_GERAL.search(atual))
+
+
+def _fora_explicito(atual, regra):
+    return assunto_alheio_explicito(atual) or escopo_loja.fora_do_segmento(atual, regra)
 
 
 def _referencia_comercial(atual, regra):
@@ -262,7 +312,7 @@ def assunto_negocio(texto: str, mensagens: list[dict] | None = None, *, telefone
     consulta = re.sub(r'^\s*(?:oi|ol[aá]|opa|bom dia|boa tarde|boa noite)\b[\s,!.;:]*',
                       '', texto or '', flags=re.I).strip() or (texto or '')
     atual = normalizar_texto(consulta).strip('.!? ')
-    if not atual or _FORA_ASSUNTO.search(atual) or _GERAL_EXPLICITO.search(atual):
+    if not atual or assunto_alheio_explicito(atual):
         return False
     if atual in {'oi', 'ola', 'opa', 'bom dia', 'boa tarde', 'boa noite', 'e ai',
                  'oie', 'oii', 'oiii', 'hello', 'obrigado', 'obrigada', 'valeu',

@@ -289,6 +289,11 @@ def _processar(telefone: str, texto: str) -> str | None:
     if texto_limpo == "9" or texto_limpo.casefold() in {"privacidade", "lgpd", "meus dados"}:
         return _resposta_opcao(texto_limpo, telefone)
 
+    # Uma pergunta geral não pode virar nome/endereço nem alterar um rascunho
+    # enquanto a compra está ativa. Campos comerciais livres continuam locais.
+    if ia.assunto_alheio_explicito(texto_limpo):
+        return ia.RESPOSTA_FORA_ESCOPO
+
     from . import conversa_pedido
     resposta_conversa = conversa_pedido.responder(telefone, texto_limpo)
     if resposta_conversa is not None:

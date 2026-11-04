@@ -11,6 +11,65 @@ from src.db import get_conn, init_db
 T = '5511999990066'
 
 
+@pytest.mark.parametrize('provedor', ['OLLAMA', 'ANTHROPIC'])
+@pytest.mark.parametrize('texto', [
+    'Qual a raiz de 144?', 'Quanto custa X-Salada sqrt(144)?',
+    'Quero fazer um pedido com 2+2', 'O X-Salada tem raiz cúbica de 27?',
+    'Quanto custa X-Salada ao quadrado?', 'Qual é a square root de 144?',
+    'Quero saber X-Salada 144**0.5', 'Quanto custa X-Salada 8 - 4',
+    'Quanto custa X-Salada 8/4', 'Quanto custa X-Salada sqrt144',
+])
+def test_calculo_geral_recusado_mesmo_apos_historico_comercial(texto, provedor, monkeypatch):
+    modelo = Mock(side_effect=AssertionError('Não calcular fora do comércio'))
+    monkeypatch.setattr(config, 'IA_PROVIDER', provedor)
+    monkeypatch.setattr(ia, '_responder_ollama', modelo)
+    monkeypatch.setattr(ia, '_responder_anthropic', modelo)
+    monkeypatch.setattr(ia, '_historico_mensagens', Mock(return_value=[
+        {'role': 'user', 'content': 'Quero comprar um X-Salada'},
+        {'role': 'assistant', 'content': 'O X-Salada custa R$ 20,00. Quer fazer o pedido?'},
+    ]))
+    assert ia.responder(T, texto) == ia.RESPOSTA_FORA_ESCOPO
+    modelo.assert_not_called()
+
+
+@pytest.mark.parametrize('provedor', ['OLLAMA', 'ANTHROPIC'])
+@pytest.mark.parametrize('resposta', [
+    '√144 = 12', 'sqrt(144) = 12', 'A raiz cúbica de 27 é 3.',
+    'O X-Salada custa R$ 20,00. 2 + 2 = 4.',
+])
+def test_saida_calculadora_nao_e_publicada(resposta, provedor, monkeypatch):
+    monkeypatch.setattr(config, 'IA_PROVIDER', provedor)
+    monkeypatch.setattr(ia, '_responder_ollama', Mock(return_value=resposta))
+    monkeypatch.setattr(ia, '_responder_anthropic', Mock(return_value=resposta))
+    assert ia.responder(T, 'Quais produtos vocês têm?') == ia.RESPOSTA_FORA_ESCOPO
+
+
+@pytest.mark.parametrize('texto', [
+    'Quero 2 X-Salada e 1 refrigerante', 'Quanto custa o X-Salada?',
+    'O X-Salada custa 20 reais?', 'Meu pedido 12345678 chegou errado',
+    'Entrega dia 04/11', 'Telefone da loja',
+])
+def test_numeros_comerciais_nao_sao_matematica_geral(texto):
+    assert not ia.assunto_alheio_explicito(texto)
+
+
+@pytest.mark.parametrize('texto', [
+    'Quero o Combo 2+1', 'Vocês têm Foto 3×4?',
+    '1 × 2X Burguer — R$ 20,00',
+    'Rua da Programação, 123',
+    'Endereço: Rua da Programação, 123\nPagamento: Dinheiro',
+    'Meu telefone é 47 99999 - 0000',
+])
+def test_referencia_exata_e_campos_comerciais_nao_viram_calculadora(texto, monkeypatch):
+    monkeypatch.setattr(ia.cardapio, 'listar_produtos_ativos', Mock(return_value=[
+        {'nome': 'Combo 2+1', 'categoria': 'Lanches'},
+        {'nome': 'Foto 3×4', 'categoria': 'Fotos'},
+        {'nome': '2X Burguer', 'categoria': 'Lanches'},
+    ]))
+    assert not ia.assunto_alheio_explicito(texto)
+    assert ia.assunto_alheio_explicito('Quero o Combo 2+1 e calcule sqrt144')
+
+
 @pytest.fixture(autouse=True)
 def ambiente(tmp_path, monkeypatch):
     monkeypatch.setattr(config, 'DATABASE_PATH', str(tmp_path / 'escopo-ficticio.db'))

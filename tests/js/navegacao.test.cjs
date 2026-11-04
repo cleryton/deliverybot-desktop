@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const nav = require('../../web/static/navegacao.js');
+const ux = require('../../web/static/experiencia.js');
 
 function elemento(dados={}) {
   const classes=new Set(), atributos=new Map();
@@ -86,7 +87,7 @@ function painel() {
   const botoes=['inicio','pedidos','produtos','humano','configuracoes','comercio'].map(page=>elemento({dataset:{page},textContent:page}));
   $('#navigation-pages').querySelectorAll=seletor=>seletor==='[data-page]'?botoes:[];
   const contexto=vm.createContext({console,DeliveryNav:nav,
-    DeliveryUX:{solicitar:async()=>({}),texto:String,pedidos:items=>items,ocupado:(_,fn)=>{const p=fn();p.catch(()=>{});acoes.push(p);return p;}},
+    DeliveryUX:{...ux,solicitar:async()=>({}),ocupado:(_,fn)=>{const p=fn();p.catch(()=>{});acoes.push(p);return p;}},
     document:{body:{dataset:{admin:'true',whatsappProvider:'TESTE',perfilPendente:'false'},classList:elemento().classList},querySelector:$,
       querySelectorAll:seletor=>seletor==='#app-menu nav [data-page]'?botoes:[],addEventListener(nome,fn){(documentoEventos[nome]||=[]).push(fn);},visibilityState:'visible'},
     window:{addEventListener(nome,fn){janelaEventos[nome]=fn;},scrollTo(){}},
@@ -101,12 +102,13 @@ function painel() {
     Option:class{},FileReader:class{},
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../../web/static/gestao.js'),'utf8'),contexto);
+  const carregarResumo=contexto.summary;
   contexto.toast=(mensagem)=>avisos.push(mensagem);
   contexto.summary=async()=>{};
   contexto.api=async()=>({segredos_configurados:{},nome:'Loja fictícia',segmento:'Lanchonete',descricao:'Exemplo',modelo:'PRODUCAO',controlar_estoque:false});
   const exec=codigo=>vm.runInContext(codigo,contexto);
   const editar=pagina=>$(pagina==='configuracoes'?'#settings-form':'#commerce-form').emitir('input');
-  return {$,contexto,acoes,avisos,confirmacoes,janelaEventos,exec,editar};
+  return {$,contexto,acoes,avisos,confirmacoes,janelaEventos,exec,editar,resumoReal:()=>carregarResumo()};
 }
 const aguardar=()=>new Promise(resolve=>setImmediate(resolve));
 
@@ -273,4 +275,134 @@ test('simulador limpa apenas mensagem concluída sem edição posterior e preser
   assert.equal(f.elements.texto.value,'');
   f.elements.texto.value='Pergunta mantida';a.contexto.api=async()=>{throw Error('Falha fictícia');};
   f.emitir('submit',{submitter:elemento()});await Promise.allSettled(a.acoes);await aguardar();assert.equal(f.elements.texto.value,'Pergunta mantida');
+});
+
+function catalogo(a,itens){
+  a.exec('state.products='+JSON.stringify(itens));a.$('#filter').value='todos';
+}
+function produto(dados={}){
+  return {id:7,nome:'Calabresa especial',categoria:'Pizzas salgadas',sku:'PZ-07',familia:'Tradicional',variacao:'Grande',
+    preco:58,unidade:'un',estoque:12,estoque_minimo:2,ativo:true,...dados};
+}
+function observarLista(a,seletor){
+  const el=a.$(seletor);let html=el.innerHTML,escritas=0;
+  Object.defineProperty(el,'innerHTML',{get:()=>html,set(valor){html=valor;escritas++;a.contexto.document.activeElement=null;}});
+  return {get escritas(){return escritas;}};
+}
+
+test('busca do catálogo combina palavras sem ordem, acentos ou campos vazios artificiais',()=>{
+  const a=painel();catalogo(a,[produto({nome:'Porção de coração'}),produto({id:9,nome:'Suco',categoria:'Bebidas',sku:undefined,familia:undefined,variacao:undefined})]);
+  a.$('#search').value='  GRANDE   coracao  ';a.exec('renderProducts()');
+  assert.match(a.$('#product-list').innerHTML,/Porção de coração/);assert.doesNotMatch(a.$('#product-list').innerHTML,/Suco/);
+  assert.equal(a.$('#product-count').textContent,'1 produto');
+  a.$('#search').value='undefined';a.exec('renderProducts()');
+  assert.equal(a.$('#product-count').textContent,'0 produtos');assert.equal(a.$('#products-empty').hidden,false);
+  a.$('#search').value='calabresa bebida';a.exec('renderProducts()');assert.equal(a.$('#product-count').textContent,'0 produtos');
+});
+
+test('buscas sucessivas reutilizam o índice e refletem alterações nos nomes imediatamente',()=>{
+  const a=painel();catalogo(a,Array.from({length:250},(_,id)=>produto({id,nome:'Produto '+id,categoria:'Categoria fictícia'})));
+  let normalizacoes=0;const normalizar=a.contexto.DeliveryUX.texto;
+  a.contexto.DeliveryUX.texto=valor=>{if(String(valor).includes('Categoria fictícia'))normalizacoes++;return normalizar(valor);};
+  for(const busca of ['produto','pro','pr']){a.$('#search').value=busca;a.exec('renderProducts()');}
+  assert.equal(normalizacoes,250);assert.equal(a.$('#product-count').textContent,'250 produtos');
+  a.exec("state.products[0].nome='Outro nome'");a.$('#search').value='produto';a.exec('renderProducts()');
+  assert.equal(normalizacoes,251);assert.equal(a.$('#product-count').textContent,'249 produtos');
+});
+
+test('catálogo inalterado preserva foco e imagens; mudança real de saldo atualiza a tabela',async()=>{
+  const a=painel();a.$('#filter').value='todos';const lista=observarLista(a,'#product-list');
+  const categoria=observarLista(a,'#categories'),alertas=observarLista(a,'#low-stock');
+  a.contexto.api=async()=>[produto({estoque:1})];await a.exec('products()');
+  const foco=elemento({dataset:{edit:'7'}});a.contexto.document.activeElement=foco;
+  await a.exec('products()');a.$('#search').value='especial';a.exec('renderProducts()');
+  assert.equal(lista.escritas,1);assert.equal(categoria.escritas,1);assert.equal(alertas.escritas,1);
+  assert.equal(a.contexto.document.activeElement,foco);
+  a.exec('state.products[0].estoque=5;renderProducts()');assert.equal(lista.escritas,2);
+  assert.match(a.$('#product-list').innerHTML,/data-label="Disponível"><b>5<\/b>/);
+});
+
+test('pedidos fora da seleção não desmontam os cartões visíveis durante atualização',()=>{
+  const a=painel();const lista=observarLista(a,'#order-list');a.$('#order-filter').value='abertos';
+  a.exec("state.orders=[{id:7,status:'RECEBIDO',numero_pedido:'#12345678',itens:[],total_pedido:12},{id:9,status:'ENTREGUE',numero_pedido:'#87654321',itens:[],total_pedido:15}];renderOrders()");
+  const foco=elemento({dataset:{advance:'7'}});a.contexto.document.activeElement=foco;
+  a.exec("state.orders[1].total_pedido=20;renderOrders()");
+  assert.equal(lista.escritas,1);assert.equal(a.contexto.document.activeElement,foco);
+  a.exec("state.orders[0].status='PRONTO';renderOrders()");
+  assert.equal(lista.escritas,2);assert.match(a.$('#order-list').innerHTML,/data-advance="7" data-status="PRONTO"/);
+});
+
+test('resposta atrasada do catálogo não reverte o saldo mais recente ou categorias',async()=>{
+  const a=painel();a.$('#filter').value='todos';const liberar=[];
+  a.contexto.api=()=>new Promise(resolve=>liberar.push(resolve));
+  const antiga=a.exec('products()'),nova=a.exec('products()');
+  liberar[1]([produto({estoque:3,categoria:'Categoria atual'})]);await nova;
+  liberar[0]([produto({estoque:20,categoria:'Categoria anterior'})]);await antiga;
+  assert.equal(a.exec('state.products[0].estoque'),3);assert.match(a.$('#categories').innerHTML,/Categoria atual/);
+  assert.doesNotMatch(a.$('#categories').innerHTML,/Categoria anterior/);
+});
+
+test('atualização manual informa andamento, conclusão e falha sem limpar catálogo exibido',async()=>{
+  const a=painel();catalogo(a,[produto()]);a.exec("state.page='humano'");let liberar;
+  a.contexto.summary=()=>new Promise(resolve=>{liberar=resolve;});
+  const carga=a.exec('reload()');assert.match(a.$('#sync-status').textContent,/Atualizando dados/);
+  liberar();await carga;assert.match(a.$('#sync-status').textContent,/Atualizado às/);
+  a.contexto.summary=async()=>{throw Error('Falha fictícia de conexão');};
+  await assert.rejects(a.exec('reload()'),/Falha fictícia/);
+  assert.match(a.$('#sync-status').textContent,/Não foi possível atualizar/);assert.equal(a.exec('state.products.length'),1);
+});
+
+test('consulta atrasada não troca feedback da tela atual nem inicia leitura desnecessária',async()=>{
+  const a=painel();a.exec("state.page='produtos'");let liberar,leituras=0;
+  a.contexto.summary=()=>new Promise(resolve=>{liberar=resolve;});a.contexto.products=async()=>leituras++;
+  const anterior=a.exec('reload()');a.exec("state.page='humano'");a.contexto.summary=async()=>{};
+  await a.exec('reload()');const atual=a.$('#sync-status').textContent;
+  liberar();assert.equal(await anterior,false);assert.equal(leituras,0);assert.equal(a.$('#sync-status').textContent,atual);
+});
+
+test('falha antiga não substitui atualização concluída e atualização automática é silenciosa',async()=>{
+  const a=painel();a.exec("state.page='humano'");let rejeitar;
+  a.contexto.summary=()=>new Promise((_,reject)=>{rejeitar=reject;});
+  const antiga=a.exec('reload()');a.contexto.summary=async()=>{};await a.exec('reload()');
+  const concluido=a.$('#sync-status').textContent;rejeitar(Error('Falha antiga'));
+  await assert.rejects(antiga,/Falha antiga/);assert.equal(a.$('#sync-status').textContent,concluido);
+  let liberar;a.contexto.summary=()=>new Promise(resolve=>{liberar=resolve;});
+  a.$('#sync-status').textContent='';const automatica=a.exec('reload({silencioso:true})');
+  assert.equal(a.$('#sync-status').textContent,'');liberar();await automatica;assert.equal(a.$('#sync-status').textContent,'');
+});
+
+function resumo(dados={}){
+  return {nome:'Loja fictícia',produtos:2,ativos:2,baixos:0,produtos_controlados:1,
+    pendentes:0,pedidos:0,vendas:0,comercio:{controlar_estoque:true,titulo_catalogo:'Produtos e estoque'},
+    modo_teste:false,whatsapp:'META',privacidade_configurada:true,webhook_waha:'Recebimento configurado',...dados};
+}
+for(const [dados,texto,aviso] of [
+  [{modo_teste:true},'Modo de teste',true],
+  [{whatsapp:'TESTE'},'Modo de teste',true],
+  [{whatsapp:'META',operacao:{whatsapp_ok:true,https_ok:true,fila_ok:true}},'Meta configurada · confira o webhook',false],
+  [{whatsapp:'LOCAL',operacao:{whatsapp_ok:true,https_ok:true,fila_ok:true}},'WhatsApp conectado · HTTPS disponível',false],
+  [{whatsapp:'META'},'WhatsApp precisa de atenção',true],
+  [{whatsapp:'LOCAL',operacao:{whatsapp_ok:true}},'Página de pedidos precisa de atenção',true],
+])test(`resumo inicial resolve o estado da conexão sem consultar serviços: ${texto} (${dados.whatsapp||'modo de teste'})`,async()=>{
+  const a=painel(),chamadas=[];a.$('#connection').textContent='Verificando conexão…';
+  a.contexto.api=async rota=>{chamadas.push(rota);return resumo(dados);};
+  await a.resumoReal();assert.equal(a.$('#connection').textContent,texto);
+  assert.equal(a.$('#connection').classList.contains('warning'),aviso);assert.deepEqual(chamadas,['resumo']);
+});
+
+test('resumo preserva o diagnóstico detalhado já recebido do mesmo provedor',async()=>{
+  const a=painel();a.exec("state.connections={provedor:'LOCAL'}");
+  a.$('#connection').textContent='WhatsApp · Aguardando leitura do QR Code';a.$('#connection').classList.add('warning');
+  a.contexto.api=async()=>resumo({whatsapp:'LOCAL',operacao:{whatsapp_ok:true,https_ok:true,fila_ok:true}});
+  await a.resumoReal();assert.equal(a.$('#connection').textContent,'WhatsApp · Aguardando leitura do QR Code');
+  assert.equal(a.$('#connection').classList.contains('warning'),true);
+});
+
+test('troca de provedor descarta o badge antigo e modo de teste nunca conserva sucesso',async()=>{
+  const a=painel();a.exec("state.connections={provedor:'LOCAL'}");a.$('#connection').textContent='WhatsApp conectado';
+  a.contexto.api=async()=>resumo({whatsapp:'META'});await a.resumoReal();
+  assert.equal(a.$('#connection').textContent,'WhatsApp precisa de atenção');assert.equal(a.$('#connection').classList.contains('warning'),true);
+  a.exec("state.connections={provedor:'META'}");a.$('#connection').textContent='WhatsApp · Meta configurada';
+  a.contexto.api=async()=>resumo({modo_teste:true,whatsapp:'META'});await a.resumoReal();
+  assert.equal(a.$('#connection').textContent,'Modo de teste');assert.equal(a.$('#connection').classList.contains('warning'),true);
 });

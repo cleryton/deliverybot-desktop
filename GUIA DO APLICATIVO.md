@@ -1,4 +1,4 @@
-# DeliveryBot Desktop 2.49.4
+# DeliveryBot Desktop 2.50.0
 
 O atendimento com IA pausa automaticamente uma conversa quando detecta sinais explícitos de manipulação das regras, pedido de credenciais ou informações internas, comandos privilegiados ou excesso de mensagens. Os outros contatos continuam sendo atendidos. Em **Atendimento humano**, revise o motivo e abra a conversa; o administrador usa **Revisar e liberar IA**, e depois a equipe escolhe **Retomar bot**. A liberação não reenvia mensagens canceladas. O guia **Proteção das conversas com IA** aparece no visual e no Graph do Obsidian e não concede permissões.
 
@@ -64,11 +64,17 @@ Na Visão geral, o próximo passo mostra o que falta configurar e os atalhos lev
 
 Em **Configurações** e **Meu comércio**, um aviso identifica alterações ainda não salvas. Ao trocar de tela ou usar **Atualizar dados**, escolha entre continuar editando e descartar. Não há salvamento automático: clique em **Salvar** para confirmar. Se continuar digitando durante o envio, as mudanças adicionais permanecem na tela para um novo salvamento. Os rascunhos não são recuperados após fechar o aplicativo.
 
+No catálogo, combine palavras em qualquer ordem para buscar por nome, código ou categoria. No celular, cada produto reúne preço, disponibilidade e ações no mesmo cartão. Atualizações com conteúdo idêntico preservam o foco e as imagens da lista; uma consulta antiga não substitui o saldo obtido mais recentemente.
+
+Na página de compra, um erro apresenta um atalho para o campo que precisa de correção. Os dados digitados e as quantidades são mantidos para revisão; se um produto saiu do catálogo, a página avisa. O aplicativo confere o preço e o estoque novamente antes de registrar o pedido. Os campos pessoais não são gravados como rascunho no navegador.
+
 ## Limitar a IA ao tipo da loja
 
 Em **Meu comércio**, informe um segmento específico e descreva o que oferece. A triagem usa esse perfil e o catálogo ativo: uma lanchonete atende alimentação; uma oficina atende sua atividade e serviços. Um item antigo de outro ramo não amplia um perfil específico. Para atividades realmente combinadas, escolha **Misto** e descreva as áreas oferecidas.
 
 Horário, contato, entrega, pagamento, privacidade e atendimento humano continuam disponíveis. Perguntas de outro ramo ou sem relação clara recebem uma orientação local, sem chamar o modelo. O histórico e o catálogo usado pela IA são filtrados; respostas evidentemente incompatíveis ou preparadas durante mudança de perfil ou catálogo são descartadas. Não há uma segunda inferência para essas recusas.
+
+O assistente não funciona como calculadora geral. Perguntas como “qual a raiz quadrada de 144?”, `sqrt(144)` ou “X-Salada e 2+2” recebem uma orientação curta para voltar ao atendimento. A triagem ocorre antes de usar a pergunta como campo de um pedido e confere também respostas automáticas antigas ainda na fila. Quantidades, preços, datas, telefones e o cálculo oficial do total do pedido continuam disponíveis. Uma recusa por assunto não bloqueia o cliente: ele pode voltar a perguntar sobre a loja.
 
 Notas em Conhecimento podem usar `categoria_atendimento: ALIMENTACAO`, `MODA`, `ELETRONICOS`, `OFICINA`, `REVENDA`, `PRODUCAO`, `SERVICOS`, `MISTO` ou `GERAL`, conforme o perfil editorial ativo mostrado no painel. Quando presente, a categoria deve corresponder ao perfil ativo. Sem o campo, a nota permanece uma referência geral aprovada. Editar notas não amplia os assuntos permitidos nem concede acesso ao sistema. A triagem é conservadora e pode exigir esclarecimento; use **ATENDENTE** quando necessário.
 
