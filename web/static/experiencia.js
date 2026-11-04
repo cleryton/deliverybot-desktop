@@ -117,12 +117,37 @@
     const rotulo = button?.tagName === 'BUTTON';
     const aria = button?.getAttribute('aria-busy');
     const label = button?.getAttribute('aria-label');
-    if (button) {acoesAtivas.add(button);button.disabled=true;button.setAttribute('aria-busy','true');button.classList.add('busy');if(rotulo)button.setAttribute('aria-label','Aguarde…');}
+    const documento = button?.ownerDocument;
+    const estavaFocado = documento?.activeElement === button;
+    let focoMovido = false;
+    const acompanharFoco = evento => {if (evento.target !== button) focoMovido = true;};
+    if (button) {
+      acoesAtivas.add(button);
+      button.disabled=true;
+      button.setAttribute('aria-busy','true');
+      button.classList.add('busy');
+      // O nome da ação continua reconhecível para quem usa leitor de tela.
+      // aria-labelledby mantém a precedência e os elementos referenciados.
+      if(rotulo && !button.getAttribute('aria-labelledby')) {
+        const nome = label?.trim() || button.textContent?.trim() || button.getAttribute('title') || 'Ação';
+        button.setAttribute('aria-label',`${nome} · aguarde…`);
+      }
+      if (estavaFocado) documento.addEventListener('focusin', acompanharFoco);
+    }
     try {await action();return true;}
     finally {
       if (button) {acoesAtivas.delete(button);button.disabled=disponibilidade.get(button) ?? false;button.classList.remove('busy');
         if(rotulo){if(label===null)button.removeAttribute('aria-label');else button.setAttribute('aria-label',label);}
-        if (aria === null) button.removeAttribute('aria-busy');else button.setAttribute('aria-busy',aria);}
+        if (aria === null) button.removeAttribute('aria-busy');else button.setAttribute('aria-busy',aria);
+        if (estavaFocado) {
+          documento.removeEventListener('focusin', acompanharFoco);
+          // Desabilitar pode mandar o foco ao corpo da página. Não interrompe
+          // uma navegação, um diálogo ou outra escolha de foco durante a ação.
+          if (!focoMovido && documento.activeElement === documento.body && button.isConnected &&
+              !button.disabled && !button.hidden && !button.closest?.('[hidden], [inert], [aria-hidden="true"]') &&
+              button.getClientRects?.().length !== 0) button.focus({preventScroll:true});
+        }
+      }
     }
   }
   return {texto, pedidos, proximoPasso, conexao, fila, solicitar, ocupado, disponivel, consultaAtual};

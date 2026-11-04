@@ -6,7 +6,7 @@ const code = fs.readFileSync(require.resolve('../../web/static/pedido.js'), 'utf
 
 // DOM mínimo em memória: executa o mesmo script e os eventos do navegador,
 // sem bibliotecas, armazenamento, formulário real ou chamadas de rede.
-function fixture() {
+function fixture(opcoes={}) {
   let document;
   class Element {
     constructor(tag='div', id='') {
@@ -55,12 +55,18 @@ function fixture() {
   for(const [id,name,price,max,step,unit] of [['1','Lanche fictício',10.01,2,1,'un'],['2','Porção fracionada',6,.25,.001,'kg']]) {
     const product=new Element('article');product.className='produto';
     product.dataset={produtoId:id,nome:name,preco:String(price),unidade:unit,busca:name};
-    const input=new Element('input','qtd-'+id);input.type='number';input.name='qtd_'+id;input.value='0';input.max=String(max);input.step=String(step);input.labels=[{textContent:'Quantidade de '+name}];
+    const input=new Element('input','qtd-'+id);input.type='number';input.name='qtd_'+id;input.value=opcoes.quantidades?.[id]??'0';input.max=String(max);input.step=String(step);input.labels=[{textContent:'Quantidade de '+name}];
     const stepper=new Element();stepper.className='stepper';stepper.dataset.passo=step===1?'1':'.1';
     const less=new Element('button');less.className='menos';const more=new Element('button');more.className='mais';
     stepper.append(less,input,more);product.append(stepper);section.append(product);products.push({product,input,more,less});
   }
   const body=new Element('body');body.append(form);
+  if(opcoes.campoErro){
+    const erro=new Element('div','erro-pedido');erro.dataset.campoErro=opcoes.campoErro;
+    const atalho=new Element('a','revisar-erro-pedido');erro.append(atalho);body.append(erro);
+    const campo=opcoes.campoErro==='cep'?byId.cep:products.find(p=>p.input.id===opcoes.campoErro)?.input;
+    if(campo)campo.setAttribute('aria-describedby','dica-original');
+  }
   document={body,activeElement:null,createElement:tag=>new Element(tag),createDocumentFragment:()=>new Element('fragment'),
     getElementById:id=>{let found=null;const visit=e=>{if(e.id===id)found=e;for(const child of e.children)visit(child);};visit(body);return found;}};
   const window={events:{},matchMedia:()=>({matches:true}),addEventListener(type,handler){this.events[type]=handler;}};
@@ -122,4 +128,25 @@ test('validação preserva os valores e deixa de exigir CEP quando a pessoa muda
   assert.match(f.byId['validacao-pedido'].textContent,/^CEP:/);
   f.byId.forma_entrega.value='RETIRADA BALCAO';f.byId.forma_entrega.fire('change');
   assert.equal(f.byId['validacao-pedido'].hidden,true);assert.equal(f.byId.nome.value,'Pessoa fictícia');
+});
+
+test('retorno de estoque insuficiente mantém a quantidade solicitada até a pessoa corrigir',()=>{
+  const f=fixture({quantidades:{'1':'5','2':'0.2'},campoErro:'qtd-1'});
+  assert.equal(f.products[0].input.value,'5');assert.equal(f.products[0].input.validity.valid,false);
+  assert.equal(f.products[1].input.value,'0.2');assert.equal(f.get('carrinho-1-mais').disabled,true);
+  f.get('carrinho-1-menos').click();assert.equal(f.products[0].input.value,'2');
+  assert.equal(f.products[1].input.value,'0.2');
+  assert.equal(f.products[0].input.getAttribute('aria-invalid'),null);
+});
+
+test('erro recebido do servidor recebe foco e oferece atalho ao campo com descrição acessível',()=>{
+  const f=fixture({campoErro:'cep'});
+  assert.equal(f.document.activeElement,f.get('erro-pedido'));
+  assert.equal(f.get('revisar-erro-pedido').click().prevented,true);
+  assert.equal(f.document.activeElement,f.byId.cep);
+  assert.equal(f.byId.cep.getAttribute('aria-invalid'),'true');
+  assert.equal(f.byId.cep.getAttribute('aria-describedby'),'dica-original erro-pedido');
+  f.byId.cep.value='00000-001';f.byId.cep.fire('input');
+  assert.equal(f.byId.cep.getAttribute('aria-invalid'),null);
+  assert.equal(f.byId.cep.getAttribute('aria-describedby'),'dica-original');
 });

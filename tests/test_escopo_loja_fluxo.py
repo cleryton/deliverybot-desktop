@@ -45,6 +45,49 @@ def impedir_inferencia(monkeypatch):
     return modelo, notas
 
 
+@pytest.mark.parametrize('texto', [
+    'Qual a raiz quadrada de 144?', 'Qual a raiz de 144?', 'Quanto é √144?',
+    'Qual o valor do X-Salada sqrt(144)?', 'O X-Salada tem √144?',
+    'X-Salada tem raiz cúbica de 27', 'Quero saber X-Salada 2 + 2',
+    'Quero fazer um pedido com 2*2', 'Quanto custa X-Salada ao quadrado?',
+    'Quanto custa X-Salada tem 9 elevado a 2',
+    'Quero um X-Salada e calcule a raiz quadrada de 144',
+    'Quero fazer um pedido e qual a square root de 144?',
+])
+def test_matematica_geral_nao_herda_assunto_comercial(texto, monkeypatch):
+    modelo, notas = impedir_inferencia(monkeypatch)
+    resposta = bot.processar_mensagem(TELEFONE, texto)
+    assert resposta.startswith(ia.RESPOSTA_FORA_ESCOPO)
+    modelo.assert_not_called()
+    notas.assert_not_called()
+    with get_conn() as conn:
+        assert conn.execute('SELECT count(*) FROM pedidos').fetchone()[0] == 0
+        assert conn.execute('SELECT count(*) FROM carrinhos_conversa').fetchone()[0] == 0
+        assert conn.execute('SELECT count(*) FROM links_pedido').fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('etapa', ['itens', 'nome', 'endereco', 'pagamento'])
+@pytest.mark.parametrize('texto', ['Qual a raiz quadrada de 144?', 'sqrt(144)', 'quanto é 2 + 2?'])
+def test_pergunta_geral_nao_vira_campo_do_pedido(etapa, texto, monkeypatch):
+    modelo, notas = impedir_inferencia(monkeypatch)
+    bot.processar_mensagem(TELEFONE, 'pedido pelo WhatsApp')
+    if etapa != 'itens':
+        bot.processar_mensagem(TELEFONE, '1 X-Salada')
+    if etapa in {'endereco', 'pagamento'}:
+        bot.processar_mensagem(TELEFONE, 'Cliente Fictício')
+        bot.processar_mensagem(TELEFONE, 'entrega')
+    if etapa == 'pagamento':
+        bot.processar_mensagem(TELEFONE, 'Rua Raiz de Mandioca, 123, Centro')
+    with get_conn() as conn:
+        antes = dict(conn.execute('SELECT * FROM carrinhos_conversa').fetchone())
+    assert bot.processar_mensagem(TELEFONE, texto).startswith(ia.RESPOSTA_FORA_ESCOPO)
+    with get_conn() as conn:
+        assert dict(conn.execute('SELECT * FROM carrinhos_conversa').fetchone()) == antes
+        assert conn.execute('SELECT count(*) FROM pedidos').fetchone()[0] == 0
+    modelo.assert_not_called()
+    notas.assert_not_called()
+
+
 @pytest.mark.parametrize('segmento,texto', [
     ('Lanchonete', 'Vocês fazem troca de pneu?'),
     ('Lanchonete', 'Qual o preço da revisão do motor?'),

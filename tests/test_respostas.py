@@ -207,7 +207,7 @@ def test_registro_de_rate_limit_e_limitado_e_atomico(monkeypatch):
 def test_resposta_local_humana_quando_modelo_falha(monkeypatch):
     monkeypatch.setattr(ia, "responder", Mock(side_effect=ia.IAIndisponivel("timeout")))
     resposta = bot.processar_mensagem(TELEFONE, "me explique melhor")
-    assert "Me conta" in resposta and "1 - " not in resposta
+    assert resposta.startswith(ia.RESPOSTA_FORA_ESCOPO) and "1 - " not in resposta
 
 
 @pytest.mark.parametrize('pergunta', ['Qual o horário de entrega?', 'Qual o horário de retirada?'])

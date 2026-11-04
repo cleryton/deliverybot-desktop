@@ -421,10 +421,38 @@ def enviar_pedido(token):
 
 
 def _confirmar_pedido(token, link):
+    def corrigir_pedido(mensagem, campo=None):
+        # O próprio POST recompõe o formulário. Nenhum rascunho pessoal é
+        # persistido na sessão ou no navegador; catálogo e saldo são relidos.
+        produtos = cardapio.listar_produtos_ativos()
+        disponiveis = {str(produto['id']): produto for produto in produtos}
+        indisponiveis = 0
+        for chave, valor in request.form.items():
+            if not re.fullmatch(r'qtd_[0-9]{1,10}', chave) or len(valor) > 10:
+                continue
+            try:
+                qtd = Decimal(valor)
+                if not qtd.is_finite() or qtd <= 0:
+                    continue
+                produto = disponiveis.get(chave[4:])
+                if produto is None:
+                    indisponiveis += 1
+                elif campo is None and produto['estoque'] is not None and qtd > Decimal(str(produto['estoque'])):
+                    campo = 'qtd-' + str(produto['id'])
+            except ArithmeticError:
+                continue
+        if campo is None:
+            campo = 'catalogo'
+        return render_template(
+            'pedido.html', token=token, grupos=cardapio.agrupar_por_categoria(produtos),
+            nome_restaurante=config.NOME_RESTAURANTE, taxa_entrega=config.TAXA_ENTREGA,
+            erro=mensagem, campo_erro=campo, itens_indisponiveis=indisponiveis,
+        ), 400
+
     telefone = link["telefone"]
     nome_cliente = request.form.get("nome", "Cliente").strip() or "Cliente"
     if len(nome_cliente) > 160:
-        return "O nome deve ter no máximo 160 caracteres.", 400
+        return corrigir_pedido('O nome deve ter no máximo 160 caracteres.', 'nome')
     forma_pagamento = request.form.get("forma_pagamento", "Dinheiro")
     forma_entrega = request.form.get("forma_entrega", "RETIRADA BALCAO")
     cep = request.form.get("cep", "").strip()
@@ -433,22 +461,11 @@ def _confirmar_pedido(token, link):
     if forma_entrega == "ENTREGA":
         ok_cep, msg_cep, dados_cep = viacep.validar_area_entrega(cep)
         if not ok_cep:
-            produtos = cardapio.listar_produtos_ativos()
-            grupos = cardapio.agrupar_por_categoria(produtos)
-            return render_template(
-                "pedido.html",
-                token=token,
-                grupos=grupos,
-                nome_restaurante=config.NOME_RESTAURANTE,
-                taxa_entrega=config.TAXA_ENTREGA,
-                erro=msg_cep,
-            ), 400
+            return corrigir_pedido(msg_cep, 'cep')
         numero = request.form.get("numero", "").strip()[:30]
         complemento = request.form.get("complemento", "").strip()[:150]
         if not numero:
-            return render_template("pedido.html", token=token, grupos=cardapio.agrupar_por_categoria(cardapio.listar_produtos_ativos()),
-                                   nome_restaurante=config.NOME_RESTAURANTE, taxa_entrega=config.TAXA_ENTREGA,
-                                   erro="Informe o número do endereço ou s/n."), 400
+            return corrigir_pedido('Informe o número do endereço ou s/n.', 'numero')
         endereco = viacep.endereco_formatado(dados_cep) + ", " + numero + (", " + complemento if complemento else "")
 
     itens = []
@@ -460,16 +477,7 @@ def _confirmar_pedido(token, link):
                     itens.append({"produto_id": int(produto_id_str), "quantidade": valor})
 
     if not itens:
-        produtos = cardapio.listar_produtos_ativos()
-        grupos = cardapio.agrupar_por_categoria(produtos)
-        return render_template(
-            "pedido.html",
-            token=token,
-            grupos=grupos,
-            nome_restaurante=config.NOME_RESTAURANTE,
-            taxa_entrega=config.TAXA_ENTREGA,
-            erro="Selecione ao menos um item antes de enviar o pedido.",
-        ), 400
+        return corrigir_pedido('Selecione ao menos um item antes de enviar o pedido.')
 
     try:
         pedido = pedidos.criar_pedido(
@@ -483,16 +491,7 @@ def _confirmar_pedido(token, link):
             token=token,
         )
     except ValueError as exc:
-        produtos = cardapio.listar_produtos_ativos()
-        grupos = cardapio.agrupar_por_categoria(produtos)
-        return render_template(
-            "pedido.html",
-            token=token,
-            grupos=grupos,
-            nome_restaurante=config.NOME_RESTAURANTE,
-            taxa_entrega=config.TAXA_ENTREGA,
-            erro=str(exc),
-        ), 400
+        return corrigir_pedido(str(exc))
 
     mensagem_confirmacao = recibo.montar_mensagem_confirmacao(pedido)
     cupom = recibo.montar_recibo(pedido)

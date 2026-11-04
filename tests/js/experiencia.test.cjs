@@ -130,7 +130,7 @@ function button(tagName='BUTTON') {
 test('botão ocupado impede envio duplicado e recupera rótulo e acessibilidade',async()=>{
   const b=button();let done,attempts=0;
   const pending=ux.ocupado(b,()=>new Promise(resolve=>{done=resolve;attempts++;}));
-  assert.ok(b.disabled);assert.equal(b.getAttribute('aria-busy'),'true');assert.equal(b.getAttribute('aria-label'),'Aguarde…');assert.ok(b.classList.contains('busy'));
+  assert.ok(b.disabled);assert.equal(b.getAttribute('aria-busy'),'true');assert.equal(b.getAttribute('aria-label'),'Salvar · aguarde…');assert.ok(b.classList.contains('busy'));
   assert.equal(await ux.ocupado(b,()=>attempts++),false);assert.equal(attempts,1);
   done();assert.equal(await pending,true);assert.ok(!b.disabled);assert.equal(b.innerHTML,'<span>Salvar</span>');
   assert.equal(b.getAttribute('aria-busy'),null);assert.equal(b.getAttribute('aria-label'),null);assert.ok(!b.classList.contains('busy'));
@@ -148,9 +148,82 @@ test('indicador ocupado preserva elementos internos e rótulos acessíveis do bo
   const b=button();b.setAttribute('aria-label','Abrir catálogo');
   Object.defineProperty(b,'innerHTML',{get:()=>'<b id="catalog-nav-label">Catálogo</b>',set:()=>assert.fail('Não substituir os elementos do botão')});
   Object.defineProperty(b,'textContent',{get:()=> 'Catálogo',set:()=>assert.fail('Não remover os elementos do botão')});
-  await ux.ocupado(b,async()=>assert.match(b.innerHTML,/catalog-nav-label/));
+  await ux.ocupado(b,async()=>{
+    assert.match(b.innerHTML,/catalog-nav-label/);
+    assert.equal(b.getAttribute('aria-label'),'Abrir catálogo · aguarde…');
+  });
   assert.equal(b.getAttribute('aria-label'),'Abrir catálogo');
 });
+
+test('espera mantém nomes fornecidos por aria-labelledby e não altera sua referência',async()=>{
+  const b=button();b.setAttribute('aria-labelledby','catalog-nav-label');
+  await ux.ocupado(b,async()=>{
+    assert.equal(b.getAttribute('aria-labelledby'),'catalog-nav-label');
+    assert.equal(b.getAttribute('aria-label'),null);
+    assert.equal(b.getAttribute('aria-busy'),'true');
+  });
+  assert.equal(b.getAttribute('aria-labelledby'),'catalog-nav-label');
+  assert.equal(b.getAttribute('aria-label'),null);
+});
+
+function botaoComFoco() {
+  const b=button(), eventos=new Map(), corpo={}, documento={body:corpo};
+  let bloqueado=false;
+  Object.assign(documento,{
+    activeElement:b,
+    addEventListener:(nome,fn)=>eventos.set(nome,fn),
+    removeEventListener:(nome,fn)=>{assert.equal(eventos.get(nome),fn);eventos.delete(nome);}
+  });
+  Object.assign(b,{ownerDocument:documento,isConnected:true,hidden:false,
+    focus(opcoes){assert.deepEqual(opcoes,{preventScroll:true});documento.activeElement=b;b.focos++;},
+    focos:0,closest:()=>null,getClientRects:()=>[{}]});
+  Object.defineProperty(b,'disabled',{get:()=>bloqueado,set:valor=>{
+    bloqueado=valor;
+    if(valor && documento.activeElement===b)documento.activeElement=corpo;
+  }});
+  return {b,documento,eventos,moverFoco(alvo){documento.activeElement=alvo;eventos.get('focusin')?.({target:alvo});}};
+}
+
+for(const falha of [false,true]) {
+  test('ação '+(falha?'com falha':'concluída')+' recupera foco perdido ao desabilitar sem rolar a página',async()=>{
+    const a=botaoComFoco();
+    const acao=ux.ocupado(a.b,async()=>{
+      assert.equal(a.documento.activeElement,a.documento.body);
+      if(falha)throw new Error('Falha fictícia');
+    });
+    if(falha)await assert.rejects(acao,/Falha fictícia/);else await acao;
+    assert.equal(a.documento.activeElement,a.b);assert.equal(a.b.focos,1);assert.equal(a.eventos.size,0);
+  });
+}
+
+test('espera respeita foco movido para outro controle ou diálogo, mesmo se ele depois fechar',async()=>{
+  for(const fechar of [false,true]) {
+    const a=botaoComFoco(),outro={};
+    await ux.ocupado(a.b,async()=>{a.moverFoco(outro);if(fechar)a.moverFoco(a.documento.body);});
+    assert.equal(a.b.focos,0);assert.equal(a.eventos.size,0);
+    assert.equal(a.documento.activeElement,fechar?a.documento.body:outro);
+  }
+});
+
+test('botão não focado não captura foco após a ação',async()=>{
+  const a=botaoComFoco();a.documento.activeElement=a.documento.body;
+  await ux.ocupado(a.b,async()=>{});
+  assert.equal(a.b.focos,0);assert.equal(a.eventos.size,0);
+});
+
+for(const estado of ['removido','oculto','sem_layout','ancestral_oculto','indisponivel']) {
+  test('não devolve foco ao botão '+estado+' durante a ação',async()=>{
+    const a=botaoComFoco();
+    await ux.ocupado(a.b,async()=>{
+      if(estado==='removido')a.b.isConnected=false;
+      if(estado==='oculto')a.b.hidden=true;
+      if(estado==='sem_layout')a.b.getClientRects=()=>[];
+      if(estado==='ancestral_oculto')a.b.closest=()=>({hidden:true});
+      if(estado==='indisponivel')ux.disponivel(a.b,false);
+    });
+    assert.equal(a.b.focos,0);assert.equal(a.eventos.size,0);
+  });
+}
 
 for (const method of ['GET','POST']) {
   test('limite em resposta de texto informa a pausa sem repetir '+method,async()=>{
