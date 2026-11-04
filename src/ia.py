@@ -67,6 +67,11 @@ PEDIDO_INDISPONIVEL = (
 RESPOSTA_FORA_ESCOPO = (
     "Posso ajudar com produtos, serviços e pedidos da loja. O que você precisa?"
 )
+RESPOSTA_RAIZ_QUADRADA = 'não foi dessa vez seu marcos'
+RESPOSTA_DESTINO_IRREAL = (
+    'Consigo orientar apenas sobre a entrega da loja. Confira a área atendida '
+    'com seu CEP no pedido ou fale com ATENDENTE.'
+)
 
 # O modelo não é um assistente geral. Esta triagem local evita enviar perguntas
 # alheias ao comércio à inferência ou ao cofre. Ela é deliberadamente limitada:
@@ -108,8 +113,23 @@ _PEDIDO_ABERTO = re.compile(r"(?:quero|gostaria de|preciso de|vou) (?:fazer (?:u
                              r"(?:manda|mande|envia|envie|quero|gostaria de|preciso de|pode (?:me )?(?:mandar|enviar)) (?:o |um )?link(?: do pedido| para pedir| pra pedir| para comprar| pra comprar)?")
 _GERAL_EXPLICITO = re.compile(
     r"\b(?:fotossintese|teoria da relatividade|equacoes?|raiz quadrada|segunda guerra mundial|"
-    r"programacao|programar|horoscopo|noticias do mundo|aconselhamento juridico|diagnostico medico)\b"
+    r"programacao|programar|horoscopo|noticias do mundo|aconselhamento juridico|diagnostico medico|"
+    r"teorema de pitagoras|trigonometria|via lactea|galaxias?|governador|translate|traduza|traduzir)\b"
 )
+_RAIZ_QUADRADA = re.compile(
+    r'(?:√|\bsqrt(?:\b|(?=\d))|\bsquare\s+root\b|'
+    r'\braiz(?:es)?[\s._-]*quadrad[ao]s?\b|'
+    r'\br[\s._-]*a[\s._-]*i[\s._-]*z[\s._-]*'
+    r'q[\s._-]*u[\s._-]*a[\s._-]*d[\s._-]*r[\s._-]*a[\s._-]*d[\s._-]*a\b)'
+)
+_PEDIDO_ENTREGA = re.compile(r'\b(?:entreg(?:a[msr]?|ue[m]?)|delivery|frete|envia[rm]?|enviar|pedido|quero|pedir)\b')
+_DESTINO_IRREAL = re.compile(
+    r'\b(?:no|na|para|pra|pro|ate|em)\s+(?:o |a )?(?:'
+    r'espaco(?!\s+(?:kids|infantil|da loja|comercial|fisico|de festas)\b)|'
+    r'lua|marte|jupiter|saturno|netuno|urano|plutao|venus|mercurio|'
+    r'galaxia|via lactea|andromeda|outro planeta|espaco sideral|buraco negro)\b'
+)
+_LOGRADOURO_ENTREGA = re.compile(r'\b(?:rua|avenida|av\.?|travessa|alameda|estrada|rodovia|praca)\s+\w')
 # Matemática geral não ganha autorização por vir junto do nome de um produto.
 # Datas, horários, telefones, códigos e quantidades comerciais permanecem dados:
 # não tratamos uma barra ou um hífen isolados como uma operação matemática.
@@ -118,8 +138,10 @@ _CALCULO_GERAL = re.compile(
     r'\braiz(?:es)?\s*(?:quadrad[ao]s?|cubic[ao]s?)\b|'
     r'\braiz(?:es)?\s*(?:(?:d[eo]|do numero|de um numero|de numero)\s*)?\d|'
     r'\bao\s+(?:quadrado|cubo)\b|'
-    r'(?<![\w.,])\d+(?:[.,]\d+)?\s*(?:\*\*|[+*×÷^=/]|\s-\s)\s*[+\-]?\d+(?:[.,]\d+)?(?![\w.,])|'
+    r'(?<![\w.,])\d+(?:[.,]\d+)?\s*(?:\*\*|[+*×÷^=/-]|\sx\s)\s*[+\-]?\d+(?:[.,]\d+)?(?![\w.,])|'
     r'\b\d+(?:[.,]\d+)?\s+(?:elevad[oa]\s+a|vezes|dividid[oa]\s+por|mais|menos)\s+\d|'
+    r'\belevad[oa]\s+a\s+(?:metade|meio|um meio)\b|'
+    r'\b(?:log|ln|logaritmo|sin|cos|tan)\s*(?:\(|de\s+\d|\d)|'
     r'\b(?:calcule|calcula|resolva|quanto (?:e|da)|resultado de)\b[^\n.!?]{0,60}'
     r'\d\s*[-/]\s*\d)'
 )
@@ -203,39 +225,73 @@ def _operacao_delimitada(atual):
     )
 
 
+def _texto_triagem(texto):
+    """Preserva campos declarados sem interpretar nomes como perguntas gerais."""
+    linhas = []
+    for linha in (texto or '').splitlines():
+        linha = normalizar_texto(linha)
+        endereco = (_LINHA_ENDERECO.fullmatch(linha) and re.search(r'\d|\bs/n\b', linha)
+                    and not _CALCULO_GERAL.search(linha) and not _RAIZ_QUADRADA.search(linha))
+        telefone = (_TELEFONE_INFORMADO.fullmatch(linha)
+                    and 8 <= len(re.sub(r'\D', '', linha)) <= 15)
+        linhas.append('campo comercial informado' if endereco or telefone else linha)
+    atual = ' '.join(linhas)
+    return re.sub(r'\b(?:dia|data|entrega(?: (?:dia|em))?)\s+\d{1,2}/\d{1,2}(?:/\d{2,4})?\b',
+                  'data de entrega', atual)
+
+
+def _sem_nomes_cadastrados(atual):
+    for produto in cardapio.listar_produtos_ativos():
+        nome = normalizar_texto(str(produto.get('nome') or ''))
+        if nome:
+            atual = re.sub(r'(?<!\w)' + re.escape(nome) + r'(?!\w)', 'produto cadastrado', atual)
+    return atual
+
+
 def assunto_alheio_explicito(texto: str) -> bool:
+    return _assunto_alheio_preparado(_texto_triagem(texto))
+
+
+def _assunto_alheio_preparado(atual: str) -> bool:
     """Triagem local, inclusive antes dos campos livres da compra.
 
     Não aplica a política de segmento a nomes e endereços: uma Rua da Oficina
     continua válida em uma lanchonete. A recusa também não bloqueia o cliente.
     """
-    # Campos declarados não são consultas ao modelo. Não confundimos uma rua
-    # real com uma pergunta escolar. Expressões de cálculo continuam vetadas.
-    linhas = []
-    for linha in (texto or '').splitlines():
-        linha = normalizar_texto(linha)
-        endereco = (_LINHA_ENDERECO.fullmatch(linha) and re.search(r'\d|\bs/n\b', linha)
-                    and not _CALCULO_GERAL.search(linha))
-        if endereco or _TELEFONE_INFORMADO.fullmatch(linha):
-            linhas.append('campo comercial informado')
-        else:
-            linhas.append(linha)
-    atual = ' '.join(linhas)
-    if _FORA_ASSUNTO.search(atual) or _GERAL_EXPLICITO.search(atual):
+    if (_FORA_ASSUNTO.search(atual) or _GERAL_EXPLICITO.search(atual)
+            or _RAIZ_QUADRADA.search(atual)):
         return True
-    # Data de entrega não é uma divisão. A exceção exige o contexto de data.
-    atual = re.sub(r'\b(?:dia|data|entrega(?: (?:dia|em))?)\s+\d{1,2}/\d{1,2}(?:/\d{2,4})?\b',
-                   'data de entrega', atual)
+    if _PEDIDO_ENTREGA.search(atual) and _DESTINO_IRREAL.search(atual):
+        return bool(_DESTINO_IRREAL.search(_sem_nomes_cadastrados(atual)))
     if not _CALCULO_GERAL.search(atual):
         return False
     # Somente nomes oficiais podem explicar símbolos como Combo 2+1. O nome
     # é removido por inteiro; ele nunca libera uma conta anexada à mensagem.
-    for produto in cardapio.listar_produtos_ativos():
-        nome = normalizar_texto(str(produto.get('nome') or ''))
-        if nome:
-            atual = re.sub(r'(?<!\w)' + re.escape(nome) + r'(?!\w)', 'produto cadastrado', atual)
+    atual = _sem_nomes_cadastrados(atual)
     return bool(_FORA_ASSUNTO.search(atual) or _GERAL_EXPLICITO.search(atual)
                 or _CALCULO_GERAL.search(atual))
+
+
+def resposta_recusa(texto: str, resposta_anterior: str | None = None) -> str | None:
+    """Respostas locais sem inferência, identidade presumida ou alteração de pedido."""
+    atual = _texto_triagem(texto)
+    if _RAIZ_QUADRADA.search(atual):
+        return RESPOSTA_RAIZ_QUADRADA
+    if _PEDIDO_ENTREGA.search(atual) and _DESTINO_IRREAL.search(atual):
+        if _DESTINO_IRREAL.search(_sem_nomes_cadastrados(atual)):
+            return RESPOSTA_DESTINO_IRREAL
+    if _assunto_alheio_preparado(atual):
+        return RESPOSTA_FORA_ESCOPO
+    if resposta_anterior in (RESPOSTA_RAIZ_QUADRADA, RESPOSTA_DESTINO_IRREAL):
+        return resposta_anterior
+    if resposta_anterior is not None and assunto_alheio_explicito(resposta_anterior):
+        return RESPOSTA_FORA_ESCOPO
+    # Uma rua não prova cobertura: orientar a conferência não consulta uma API
+    # nem transforma Rua Marte em um destino espacial.
+    if _PEDIDO_ENTREGA.search(atual) and _LOGRADOURO_ENTREGA.search(atual):
+        if re.search(r'\b(?:entrega|entregar|entregam|entregue|frete|delivery)\b', atual):
+            return RESPOSTA_DESTINO_IRREAL
+    return None
 
 
 def _fora_explicito(atual, regra):
@@ -962,6 +1018,9 @@ def responder(telefone: str, texto: str) -> str:
         if protecao_ia.bloqueado(telefone) or protecao_ia.verificar(telefone,texto):
             raise protecao_ia.ConversaBloqueada()
         geracao=protecao_ia.versao(telefone)
+    recusa = resposta_recusa(texto)
+    if recusa is not None:
+        return protecao_ia.validar_saida(telefone, recusa, geracao)
     provedor = config.IA_PROVIDER
     from .conexoes import url_local
     externo = provedor == "ANTHROPIC" or (provedor == "OLLAMA" and not url_local(config.OLLAMA_URL))
